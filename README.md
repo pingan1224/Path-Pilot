@@ -69,6 +69,22 @@ cp .env.example .env
 Serves on `http://127.0.0.1:8000`. Check `GET /api/v1/health/ready` — it reports which
 dependencies are configured and which are missing.
 
+**Database**
+
+```bash
+.venv/Scripts/python -m scripts.init_db
+.venv/Scripts/python -m scripts.seed --reset
+.venv/Scripts/python -m scripts.data_report
+```
+
+`init_db` creates the pgvector extension and every table. `seed` loads three hand-authored
+student scenarios plus ~45 generated students for aggregate volume; all timestamps are
+offsets from the moment you run it, so the demo is always a live registration period.
+`data_report` runs the queries the dashboards depend on and prints the results — the
+fastest way to confirm the schema still answers the questions the product asks of it.
+
+`scripts/schema_sql.py` prints the full DDL without connecting to anything.
+
 **Web**
 
 ```bash
@@ -84,8 +100,8 @@ Serves on `http://localhost:5173`.
 | Phase | Scope | Status |
 |---|---|---|
 | P0 | Workspace, scaffolds, health checks | ✅ Done |
-| P1 | Postgres schema and seed data | ◻ Next |
-| P2 | API layer, frontend wired to real data | ◻ |
+| P1 | Postgres schema and seed data | ✅ Done |
+| P2 | API layer, frontend wired to real data | ◻ Next |
 | P3 | RAG assistant with forced citation and escalation | ◻ |
 | P4 | Eval harness — retrieval, citation, and escalation metrics | ◻ |
 | P5 | Role-based access control and audit log | ◻ |

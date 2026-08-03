@@ -107,10 +107,16 @@ From the RFP's UI/UX section. Applies to every screen.
 
 Current phase: **P3 done → P4 (eval harness)**
 
-P3 facts worth knowing: chat = Moonshot kimi-k3 via OpenAI SDK (`MOONSHOT_BASE_URL` is the
-.cn endpoint; never send temperature); embeddings = OpenAI text-embedding-3-small at
-dimensions=1024. Agent loop: max 6 iterations, submit_answer forced on the last, citations
-validated server-side against tool-returned source ids.
+P3 facts worth knowing: chat = Moonshot via OpenAI SDK (`MOONSHOT_BASE_URL` is the .cn
+endpoint; never send temperature — kimi-k3 rejects anything but 1); embeddings = OpenAI
+text-embedding-3-small at dimensions=1024. Agent loop: max 6 iterations, submit_answer
+forced on the last, citations validated server-side against tool-returned source ids.
+
+Model choice (measured 2026-08-03 on hero cases 1/2/5, n=1 each — indicative, not a
+benchmark; P4 does this properly):
+- kimi-k2.7-code-highspeed: 7-14s, correct behavior on all three → demo default
+- kimi-k3: 26-62s, deepest reasoning (found the prereq chain unprompted)
+- kimi-k2.6: 24-40s, over-escalated routine questions three times → avoid
 
 ## Out of scope
 

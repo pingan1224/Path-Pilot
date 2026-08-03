@@ -125,7 +125,9 @@ Hard rules, none of which you may relax:
 7. Answer in the user's language; keep source quotes in their original language.
 
 Work in small steps: gather evidence with tools (reformulate and search again when a
-result misses part of the question), then finish with submit_answer. Cite every claim."""
+result misses part of the question), then finish with submit_answer. Cite every claim.
+When lookups are independent — e.g. holds, attempts, and a policy search — request them
+as multiple tool calls in the SAME turn rather than one per turn; latency matters."""
 
 
 @dataclass

@@ -1,0 +1,99 @@
+# Evaluation gate.
+#
+# Two tiers, honestly separated:
+#
+# - `checks` runs on every push: lint, frontend build, and the parts of the eval that
+#   need no external service (golden-set integrity, schema compile). Free, fast, always on.
+#
+# - `eval-gate` runs the full agent evaluation and fails the build if a metric drops
+#   below threshold (see GATE in api/scripts/run_eval.py: high-stakes escalation recall
+#   >= 0.90, zero leakage, zero readiness mismatches, and the retrieval floors).
+#   It needs three secrets — DATABASE_URL, MOONSHOT_API_KEY, OPENAI_API_KEY — plus a
+#   database seeded for eval. Because it costs real tokens, it is wired to manual
+#   dispatch rather than every push; run it before merging anything that touches
+#   app/services/agent*.py, retrieval, or the prompts.
+
+name: eval
+
+on:
+  push:
+  workflow_dispatch:
+    inputs:
+      chat_model:
+        description: "CHAT_MODEL override (e.g. kimi-k3 to compare models)"
+        required: false
+        default: ""
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Frontend build + lint
+        working-directory: web
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+      - name: API deps
+        working-directory: api
+        run: pip install -r requirements.txt
+      - name: Schema compiles, golden set imports
+        working-directory: api
+        run: |
+          python -m scripts.schema_sql > /dev/null
+          python - <<'PY'
+          from eval.golden import BEHAVIOR_CASES, RETRIEVAL_CASES
+          ids = [c.id for c in RETRIEVAL_CASES] + [c.id for c in BEHAVIOR_CASES]
+          assert len(ids) == len(set(ids)), "duplicate case ids"
+          print(f"golden set OK: {len(RETRIEVAL_CASES)} retrieval + {len(BEHAVIOR_CASES)} behavior")
+          PY
+
+  eval-gate:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.EVAL_DATABASE_URL }}
+      MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
+      MOONSHOT_BASE_URL: https://api.moonshot.cn/v1
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+      - name: Install
+        working-directory: api
+        run: pip install -r requirements.txt
+      - name: Model override
+        if: inputs.chat_model != ''
+        run: echo "CHAT_MODEL=${{ inputs.chat_model }}" >> "$GITHUB_ENV"
+      - name: Seed eval database
+        working-directory: api
+        run: |
+          python -m scripts.init_db
+          python -m scripts.seed --reset
+          python -m scripts.embed_corpus
+      - name: Run gated evaluation
+        working-directory: api
+        run: python -m scripts.run_eval --gate
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: api/eval/results/

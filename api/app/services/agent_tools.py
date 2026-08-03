@@ -25,6 +25,7 @@ from app.models import (
     Hold,
     RegistrationAttempt,
     Section,
+    Student,
     Term,
     UserRole,
 )
@@ -109,6 +110,15 @@ def tool_get_holds(ctx: ToolContext) -> dict[str, Any]:
         select(Hold).where(Hold.student_id == student_id, Hold.cleared_at.is_(None))
     ).all()
 
+    # The query result itself is a citable fact, independent of the rows in it. Without
+    # this, "you have no active holds" is an assertion with no source_id — and a model
+    # correctly following the cite-everything rule can only escalate it. Found via eval
+    # case B07: absence needs provenance too.
+    student = ctx.session.get(Student, student_id)
+    collection_id = f"record:holds:{student_id}"
+    ctx.seen_source_ids.add(collection_id)
+    collection_provenance = policies.build(student.source_key, student.verified_at)
+
     out = []
     for hold in holds:
         source_id = f"record:hold:{hold.id}"
@@ -130,7 +140,19 @@ def tool_get_holds(ctx: ToolContext) -> dict[str, Any]:
                 "stale_note": provenance.disclosure,
             }
         )
-    return {"active_holds": out, "count": len(out)}
+    return {
+        "source_id": collection_id,
+        "active_holds": out,
+        "count": len(out),
+        "verified_at": collection_provenance.verified_at.isoformat(),
+        "data_age": humanize_age(collection_provenance.age_seconds),
+        "note": (
+            "A count of 0 is a verified empty result from the registrar mirror as of the "
+            "timestamp above — cite this source_id for it. It is not missing data."
+            if not out
+            else None
+        ),
+    }
 
 
 def tool_get_degree_progress(ctx: ToolContext) -> dict[str, Any]:

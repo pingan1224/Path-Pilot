@@ -115,12 +115,24 @@ Hard rules, none of which you may relax:
 1. Only assert facts returned by your tools in THIS conversation, citing their source_id.
    No training-data answers about this university's policies or this student's record.
 2. If a tool marks data stale (is_stale/stale_note), say how old it is and quote the note.
-3. High-stakes matters — graduation timing changes, substitutions, appeals, waiving
-   prerequisites, clearing holds, payments, academic standing — are decided by humans.
-   Explain what you verified, then escalate. Never promise an outcome.
+3. Escalation decision rule. Escalate when AT LEAST ONE of these is true:
+   (a) The user asks you to PERFORM, approve, change, or confirm completion of an action
+       — clear/remove a hold, waive a prerequisite, approve a substitution, update a
+       record, move money, "confirm you received X".
+   (b) The user asserts something your tools cannot see, AND the answer depends on it
+       (example: "I already uploaded the document" when document receipt is not in your
+       tools — you cannot confirm OR deny, so say what you can see and escalate).
+   (c) Evidence is conflicting, or stale enough that acting on it could hurt the user.
+   (d) The decision itself is reserved to staff: graduation-date commitments, exceptions,
+       appeals, aid amounts.
+   Otherwise ANSWER. Explaining verified facts, required steps, deadlines, and processes
+   is answering — the topic being a hold or money does not make it an escalation.
+   Example: "What do I need to do to clear my hold, and by when?" → answer from the hold
+   record. Example: "Do I have any holds?" with tools showing none active → answer
+   plainly: "No active holds as of <time>." Never promise an outcome either way.
 4. You cannot modify any record. You explain and escalate; offices act.
-5. If tools cannot verify what the user claims (e.g. "I already submitted it"), do not
-   confirm or deny it. Say what you can and cannot see, and escalate if it matters.
+5. When 3(b) applies, never confirm or deny the user's unverified claim — state what your
+   tools do show, what they cannot show, and open the escalation.
 6. No legal, medical, immigration, or mental-health advice; those go to a human.
 7. Answer in the user's language; keep source quotes in their original language.
 
@@ -201,15 +213,47 @@ def run_agent(
     while iterations < MAX_ITERATIONS:
         iterations += 1
         force_finish = iterations == MAX_ITERATIONS
-        message, usage = chat(
-            messages,
-            tools=tools,
-            tool_choice=(
-                {"type": "function", "function": {"name": "submit_answer"}}
-                if force_finish
-                else "auto"
-            ),
-        )
+        if force_finish:
+            # Force completion by narrowing the tool list to submit_answer alone rather
+            # than via tool_choice naming a function — Moonshot rejects a named
+            # tool_choice when thinking is enabled ("tool_choice 'specified' is
+            # incompatible with thinking enabled"), found the hard way by eval case B24.
+            call_tools = [SUBMIT_ANSWER_SCHEMA]
+            messages.append(
+                {
+                    "role": "user",
+                    "content": "Iteration limit reached. Call submit_answer now with what "
+                    "you have — escalate if the evidence is insufficient.",
+                }
+            )
+        else:
+            call_tools = tools
+
+        try:
+            message, usage = chat(messages, tools=call_tools, tool_choice="auto")
+        except Exception as exc:  # noqa: BLE001 — an upstream 4xx/5xx must degrade, not crash
+            # Rule 6: the assistant failing is an outcome the user hears about, with a
+            # case number — never a bare 500.
+            ctx.degraded_modes.add("llm_error")
+            payload = {
+                "answer": (
+                    "The assistant hit a technical problem and could not finish this "
+                    "request. It has been routed to a human instead."
+                ),
+                "intent": Intent.high_stakes.value,
+                "citations": [],
+                "confidence": "low",
+                "escalate": True,
+                "escalation": {
+                    "category": CaseCategory.general_support.value,
+                    "title": "Assistant failed mid-conversation",
+                    "summary": (
+                        f"Question: {question!r}. The model call failed on iteration "
+                        f"{iterations}: {type(exc).__name__}: {str(exc)[:300]}"
+                    ),
+                },
+            }
+            break
         tokens["input_tokens"] += usage["input_tokens"] or 0
         tokens["output_tokens"] += usage["output_tokens"] or 0
 

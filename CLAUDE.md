@@ -105,7 +105,13 @@ From the RFP's UI/UX section. Applies to every screen.
 `P0` scaffold · `P1` schema + seed · `P2` API + wire frontend · `P3` RAG bot ·
 `P4` eval harness · `P5` RBAC + audit · `P6` case study + demo
 
-Current phase: **P3 done → P4 (eval harness)**
+Current phase: **P4 done → P5 (RBAC + audit surfacing)**
+
+P4 facts: golden set in api/eval/golden.py (15 retrieval + 35 behavior cases); runner is
+scripts/run_eval.py (--gate for thresholds, --only for subsets, --reseed to restore the
+demo db). Official run 2026-08-03: 35/35, high-stakes recall 1.0, leakage 0, gate PASS.
+The behavior prompt was tuned against these cases — treat the set as a regression gate,
+and add held-out cases before claiming generalization.
 
 P3 facts worth knowing: chat = Moonshot via OpenAI SDK (`MOONSHOT_BASE_URL` is the .cn
 endpoint; never send temperature — kimi-k3 rejects anything but 1); embeddings = OpenAI

@@ -101,6 +101,45 @@ Every mirrored fact in these responses carries a `provenance` object — source,
 office, age, and whether it has exceeded that source's freshness tolerance. A client cannot
 render a value from this API without also being handed its age, which is the point.
 
+## Evaluation
+
+The original RFP promised *"90% escalation accuracy for high-stakes cases"* as a design
+target with nothing behind it. This repo measures it. A 50-case golden set
+([api/eval/golden.py](api/eval/golden.py)) runs against the live system:
+
+```bash
+cd api
+.venv/Scripts/python -m scripts.run_eval --gate   # exit 1 if any threshold fails
+```
+
+Latest full run (`kimi-k2.7-code-highspeed`, 2026-08-03, 230s):
+
+| metric | measured | gate |
+|---|---|---|
+| behavior cases passed | 35/35 | — |
+| **high-stakes escalation recall** | **1.00** | ≥ 0.90 (the RFP number) |
+| over-escalation rate | 0.00 | ≤ 0.40 |
+| citation coverage on answered | 0.91 | ≥ 0.90 |
+| restricted-document leakage | 0 | = 0 |
+| retrieval recall@5 / MRR | 1.00 / 1.00 | ≥ 0.85 / ≥ 0.70 |
+| readiness batch-vs-single mismatches | 0 / 48 | = 0 |
+| latency p50 / p95 | 4.7s / 17.2s | reported |
+
+The first run scored 31/35 and caught three real defects, which is the harness earning
+its keep: a provider 400 that crashed the request instead of degrading (Moonshot's
+thinking mode rejects a named `tool_choice`), a prompt that over-escalated routine
+hold questions three times, and — after fixing that overshot into a safety regression
+the controls caught — a tool-contract gap where *"you have no active holds"* had no
+citable source, so a model correctly following the cite-everything rule could only
+escalate it. Absence needs provenance too.
+
+Honesty notes: the corpus is 15 chunks, so perfect retrieval scores say little yet;
+the behavior fixes were tuned against these same 35 cases, so the set now serves as a
+regression gate rather than proof of generalization; and the exam's difficulty is
+ours — the measurements are real, the fixtures are authored. CI runs the free checks
+on every push and the full gated eval on manual dispatch with a `chat_model` input for
+model comparisons ([.github/workflows/eval.yml](.github/workflows/eval.yml)).
+
 **Web**
 
 ```bash
@@ -119,8 +158,8 @@ Serves on `http://localhost:5173`.
 | P1 | Postgres schema and seed data | ✅ Done |
 | P2 | API layer, frontend wired to real data | ✅ Done |
 | P3 | Bounded agent with forced citation and escalation | ✅ Done |
-| P4 | Eval harness — retrieval, citation, tool-choice, and escalation metrics | ◻ Next |
-| P5 | Role-based access control and audit log | ◻ |
+| P4 | Eval harness — retrieval, citation, tool-choice, and escalation metrics | ✅ Done |
+| P5 | Role-based access control and audit log | ◻ Next |
 | P6 | Case study, demo video, deployment | ◻ |
 
 ## License

@@ -149,6 +149,7 @@ def seed_terms(session: Session) -> dict[str, Term]:
         ("2026SP", "Spring 2026", date(2026, 1, 26), date(2026, 5, 15), date(2026, 2, 6), 2),
         ("2026FA", "Fall 2026", date(2026, 9, 1), date(2026, 12, 18), date(2026, 9, 14), 3),
         ("2027SP", "Spring 2027", date(2027, 1, 25), date(2027, 5, 14), date(2027, 2, 5), 4),
+        ("2027FA", "Fall 2027", date(2027, 9, 7), date(2027, 12, 17), date(2027, 9, 20), 5),
     ]
     terms = {}
     for code, name, starts, ends, add_drop, order in rows:
@@ -498,7 +499,10 @@ def seed_hero_students(
         program=program,
         advisor=staff["maya.patel"],
         terms=terms,
-        grad_term="2027SP",
+        # One term of slack, unlike Alex. Priya's problem is ordering, not pace — she is
+        # genuinely on track and still hit a wall, which is the case a credit-count-only
+        # dashboard would call fine and a blocker-only dashboard would call broken.
+        grad_term="2027FA",
         registration_opens=(NOW + timedelta(days=2)).date(),
     )
     enroll(
@@ -663,15 +667,25 @@ LAST_NAMES = [
 ]
 
 
+# How far along a background student is, and which graduation terms that makes plausible.
+# The spread is chosen so the advisor queue contains all three readiness statuses; a
+# population that is uniformly at risk would make the triage view meaningless.
+PROGRESS_LEVELS = {
+    1: (3, ["2027SP", "2027FA"]),  # 9 credits
+    2: (6, ["2027SP", "2027FA"]),  # 18 credits
+    3: (8, ["2026FA", "2027SP", "2027FA"]),  # 24 credits
+}
+
+
 def seed_background_students(
     session: Session,
     program: Program,
     staff: dict[str, User],
     terms: dict[str, Term],
     count: int = 45,
-) -> list[Student]:
+) -> list[tuple[Student, int]]:
     advisors = [staff["maya.patel"], staff["tom.becker"]]
-    students: list[Student] = []
+    students: list[tuple[Student, int]] = []
 
     for i in range(count):
         first = FIRST_NAMES[i % len(FIRST_NAMES)]
@@ -682,23 +696,59 @@ def seed_background_students(
         session.add(user)
         session.flush()
 
+        level = RNG.choice([1, 1, 2, 2, 2, 3, 3])
+        _, grad_options = PROGRESS_LEVELS[level]
+
         student = Student(
             student_number=f"N{20_000_000 + i * 137:08d}",
             user_id=user.id,
             advisor_id=advisors[i % 2].id,
             program_id=program.id,
             admitted_term_id=terms["2025FA"].id,
-            expected_graduation_term_id=terms[RNG.choice(["2026FA", "2027SP"])].id,
+            expected_graduation_term_id=terms[RNG.choice(grad_options)].id,
             registration_opens_at=(NOW + timedelta(days=RNG.randint(1, 14))).date(),
-            transfer_credits=RNG.choice([0, 0, 0, 3, 6]),
+            transfer_credits=0,
             source_key="registrar_student",
-            verified_at=NOW - timedelta(hours=RNG.randint(1, 23)),
+            verified_at=NOW - timedelta(hours=RNG.randint(1, 30)),
         )
         session.add(student)
-        students.append(student)
+        students.append((student, level))
 
     session.flush()
     return students
+
+
+def seed_background_enrollments(
+    session: Session,
+    background: list[tuple[Student, int]],
+    sections: dict[str, Section],
+) -> None:
+    """Give background students coursework so their readiness status is meaningful.
+
+    Courses are taken core-first, which is how the program is meant to be sequenced. A
+    consequence worth noting: nobody in the background population has started the capstone,
+    so every one of them carries the two-consecutive-terms capstone floor. That is realistic
+    and it is what makes the graduation-risk group non-empty.
+    """
+    ordered = [code for code, _, _ in CORE_COURSES] + [code for code, _, _ in ELECTIVE_COURSES]
+    grade_pool = [GRADES_A, GRADES_AM, GRADES_B]
+
+    for student, level in background:
+        course_count, _ = PROGRESS_LEVELS[level]
+        plan = ordered[:course_count]
+        split = len(plan) // 2
+        for term_code, chunk in (("2025FA", plan[:split]), ("2026SP", plan[split:])):
+            if not chunk:
+                continue
+            enroll(
+                session,
+                student,
+                sections,
+                term_code,
+                chunk,
+                EnrollmentStatus.completed,
+                {code: RNG.choice(grade_pool) for code in chunk},
+            )
 
 
 # Weighted so the breakdown looks like a real registration period rather than a uniform
@@ -733,7 +783,7 @@ def seed_registration_attempts(
     session: Session,
     heroes: dict[str, Student],
     holds: dict[str, Hold],
-    background: list[Student],
+    background: list[tuple[Student, int]],
     sections: dict[str, Section],
     terms: dict[str, Term],
 ) -> None:
@@ -791,7 +841,7 @@ def seed_registration_attempts(
     weights = [w for _, w in FAILURE_WEIGHTS]
     fall_section_keys = [k for k in sections if k.startswith("2026FA:")]
 
-    for student in background:
+    for student, _level in background:
         for _ in range(RNG.randint(1, 5)):
             key = RNG.choice(fall_section_keys)
             succeeded = RNG.random() < 0.55
@@ -825,7 +875,7 @@ def seed_registration_attempts(
     session.flush()
 
 
-def seed_background_holds(session: Session, background: list[Student]) -> None:
+def seed_background_holds(session: Session, background: list[tuple[Student, int]]) -> None:
     """Give roughly a third of the background population an active hold."""
     templates = [
         (
@@ -850,7 +900,7 @@ def seed_background_holds(session: Session, background: list[Student]) -> None:
         ),
     ]
 
-    for i, student in enumerate(background):
+    for i, (student, _level) in enumerate(background):
         if i % 3 != 0:
             continue
         hold_type, office, title, explanation, action, source = templates[i % len(templates)]
@@ -1324,6 +1374,7 @@ def main() -> None:
         heroes = seed_hero_students(session, program, staff, terms, sections)
         holds = seed_holds(session, heroes)
         background = seed_background_students(session, program, staff, terms)
+        seed_background_enrollments(session, background, sections)
         seed_background_holds(session, background)
         seed_registration_attempts(session, heroes, holds, background, sections, terms)
         seed_cases(session, heroes, staff)

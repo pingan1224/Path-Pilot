@@ -83,7 +83,22 @@ offsets from the moment you run it, so the demo is always a live registration pe
 `data_report` runs the queries the dashboards depend on and prints the results — the
 fastest way to confirm the schema still answers the questions the product asks of it.
 
-`scripts/schema_sql.py` prints the full DDL without connecting to anything.
+`scripts/schema_sql.py` prints the full DDL without connecting to anything, and
+`scripts/smoke.py` exercises every endpoint in-process.
+
+## API
+
+| Endpoint | Answers |
+|---|---|
+| `GET /students/{id}/readiness` | Will this student graduate on time, and what is the gap? |
+| `GET /students/{id}/blockers` | What is stopping them registering, and what do they do about it? |
+| `GET /advisors/{id}/queue` | Which advisees need attention, grouped by triage urgency? |
+| `GET /registrar/pressure` | Where is capacity tightening and why are registrations failing? |
+| `GET|POST /cases`, `PATCH /cases/{id}` | Escalations to humans |
+
+Every mirrored fact in these responses carries a `provenance` object — source, owning
+office, age, and whether it has exceeded that source's freshness tolerance. A client cannot
+render a value from this API without also being handed its age, which is the point.
 
 **Web**
 
@@ -101,8 +116,8 @@ Serves on `http://localhost:5173`.
 |---|---|---|
 | P0 | Workspace, scaffolds, health checks | ✅ Done |
 | P1 | Postgres schema and seed data | ✅ Done |
-| P2 | API layer, frontend wired to real data | ◻ Next |
-| P3 | RAG assistant with forced citation and escalation | ◻ |
+| P2 | API layer, frontend wired to real data | ✅ Done |
+| P3 | RAG assistant with forced citation and escalation | ◻ Next |
 | P4 | Eval harness — retrieval, citation, and escalation metrics | ◻ |
 | P5 | Role-based access control and audit log | ◻ |
 | P6 | Case study, demo video, deployment | ◻ |

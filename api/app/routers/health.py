@@ -1,21 +1,25 @@
 """Liveness and dependency checks.
 
 `/health` answers "is the process up". `/health/ready` answers "can it actually serve
-requests" — which, once a database is configured, means the database answers too. Keeping
-these separate matters for the degradation rules in CLAUDE.md: the API should be able to
-report partial capability rather than simply failing.
+requests" — which means the database is reachable, not merely configured. Keeping these
+separate matters for the degradation rules in CLAUDE.md: the API reports partial capability
+rather than failing outright, and a caller can tell which dependency is missing.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.db.session import DatabaseNotConfiguredError, get_engine
 
 router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "uax-api", "version": "0.1.0"}
+    return {"status": "ok", "service": "uax-api", "version": "0.2.0"}
 
 
 @router.get("/health/ready")
@@ -25,9 +29,14 @@ def ready() -> dict[str, object]:
     if settings.database_url is None:
         checks["database"] = "not_configured"
     else:
-        checks["database"] = "configured"
+        try:
+            with get_engine().connect() as conn:
+                conn.execute(text("SELECT 1"))
+            checks["database"] = "ok"
+        except (SQLAlchemyError, DatabaseNotConfiguredError) as exc:
+            checks["database"] = f"unreachable: {type(exc).__name__}"
 
-    degraded = [name for name, state in checks.items() if state != "configured"]
+    degraded = [name for name, state in checks.items() if state != "ok"]
 
     return {
         "status": "degraded" if degraded else "ready",

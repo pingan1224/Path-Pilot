@@ -16,6 +16,16 @@ class Settings(BaseSettings):
     # Comma-separated in the environment, split into a list below.
     cors_origins: str = "http://localhost:5173"
 
+    # LLM (Moonshot / Kimi, OpenAI-compatible). Optional: without them the assistant
+    # reports itself unavailable instead of the API failing to boot.
+    moonshot_api_key: str | None = None
+    moonshot_base_url: str = "https://api.moonshot.cn/v1"
+    chat_model: str = "kimi-k3"
+
+    # Embeddings (OpenAI). Separate provider because Moonshot has no embeddings endpoint.
+    openai_api_key: str | None = None
+    embedding_model: str = "text-embedding-3-small"
+
     @property
     def allowed_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

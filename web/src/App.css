@@ -773,11 +773,214 @@
   white-space: nowrap;
 }
 
+/* ---------------------------------------------------------------------------
+   Ask Albert AI — docked, non-modal
+   --------------------------------------------------------------------------- */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.fab {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 40;
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.7rem 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.22);
+}
+.fab:hover {
+  filter: brightness(1.1);
+}
+
+.chat {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 4.5rem;
+  z-index: 39;
+  width: min(420px, calc(100vw - 2rem));
+  height: min(560px, calc(100vh - 8rem));
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.22);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat__head {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.chat__sub {
+  font-size: 0.76rem;
+  color: var(--ink-3);
+  margin-top: 0.15rem;
+}
+
+.chat__scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.chat__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.chat__suggestion {
+  text-align: left;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.chat__suggestion:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.msg {
+  font-size: 0.87rem;
+  line-height: 1.55;
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.msg--user {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+  max-width: 85%;
+}
+.msg--assistant {
+  align-self: stretch;
+  background: var(--surface-2);
+}
+.msg--assistant .tag {
+  align-self: flex-start;
+}
+.msg--error {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.msg__body {
+  white-space: pre-wrap;
+}
+
+.msg__case {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.8rem;
+}
+.msg__degraded {
+  background: var(--warn-soft);
+  color: var(--warn);
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.78rem;
+}
+
+.msg__sources summary,
+.msg__trace summary {
+  cursor: pointer;
+  font-size: 0.76rem;
+  color: var(--ink-3);
+}
+.msg__sources ul,
+.msg__trace ol {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.msg__source-label {
+  font-weight: 600;
+}
+
+.chat__thinking {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--ink-3);
+}
+.chat__dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.chat__dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 1.2s infinite ease-in-out;
+}
+.chat__dots i:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.chat__dots i:nth-child(3) {
+  animation-delay: 0.4s;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+.chat__form {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+.chat__form input {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.87rem;
+}
+.chat__form input:disabled {
+  opacity: 0.6;
+}
+
 @media (max-width: 640px) {
   .topbar__inner {
     padding-block: 0.6rem;
   }
   .hero__pct {
     font-size: 1.7rem;
+  }
+  .chat {
+    right: 0.5rem;
+    bottom: 4.2rem;
+    width: calc(100vw - 1rem);
   }
 }

@@ -40,6 +40,8 @@ export const api = {
     request("/cases", { method: "POST", body: JSON.stringify(payload) }),
   updateCase: (id, payload) =>
     request(`/cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  ask: (payload) =>
+    request("/assistant/ask", { method: "POST", body: JSON.stringify(payload) }),
 };
 
 /** "3 hours ago" — the API gives us seconds, the UI needs words. */

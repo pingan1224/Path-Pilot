@@ -3,6 +3,7 @@ import "./App.css";
 import { api } from "./api";
 import { ErrorState, Loading } from "./components";
 import AdvisorView from "./views/AdvisorView";
+import AskAlbert from "./views/AskAlbert";
 import RegistrarView from "./views/RegistrarView";
 import StudentView from "./views/StudentView";
 
@@ -135,6 +136,9 @@ export default function App() {
           </>
         ) : null}
       </main>
+
+      {/* Non-modal by rule: the dashboard stays visible while the assistant is open. */}
+      {role === "student" && studentId ? <AskAlbert studentId={studentId} /> : null}
 
       <footer className="footer">
         <p>

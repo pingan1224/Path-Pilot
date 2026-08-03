@@ -105,7 +105,12 @@ From the RFP's UI/UX section. Applies to every screen.
 `P0` scaffold · `P1` schema + seed · `P2` API + wire frontend · `P3` RAG bot ·
 `P4` eval harness · `P5` RBAC + audit · `P6` case study + demo
 
-Current phase: **P0 → P1**
+Current phase: **P3 done → P4 (eval harness)**
+
+P3 facts worth knowing: chat = Moonshot kimi-k3 via OpenAI SDK (`MOONSHOT_BASE_URL` is the
+.cn endpoint; never send temperature); embeddings = OpenAI text-embedding-3-small at
+dimensions=1024. Agent loop: max 6 iterations, submit_answer forced on the last, citations
+validated server-side against tool-returned source ids.
 
 ## Out of scope
 

@@ -95,6 +95,7 @@ fastest way to confirm the schema still answers the questions the product asks o
 | `GET /advisors/{id}/queue` | Which advisees need attention, grouped by triage urgency? |
 | `GET /registrar/pressure` | Where is capacity tightening and why are registrations failing? |
 | `GET|POST /cases`, `PATCH /cases/{id}` | Escalations to humans |
+| `POST /assistant/ask` | The bounded agent: cited answers or a case number, never a guess |
 
 Every mirrored fact in these responses carries a `provenance` object — source, owning
 office, age, and whether it has exceeded that source's freshness tolerance. A client cannot
@@ -117,8 +118,8 @@ Serves on `http://localhost:5173`.
 | P0 | Workspace, scaffolds, health checks | ✅ Done |
 | P1 | Postgres schema and seed data | ✅ Done |
 | P2 | API layer, frontend wired to real data | ✅ Done |
-| P3 | RAG assistant with forced citation and escalation | ◻ Next |
-| P4 | Eval harness — retrieval, citation, and escalation metrics | ◻ |
+| P3 | Bounded agent with forced citation and escalation | ✅ Done |
+| P4 | Eval harness — retrieval, citation, tool-choice, and escalation metrics | ◻ Next |
 | P5 | Role-based access control and audit log | ◻ |
 | P6 | Case study, demo video, deployment | ◻ |
 

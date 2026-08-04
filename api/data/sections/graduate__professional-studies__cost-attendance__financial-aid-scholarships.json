@@ -1,0 +1,77 @@
+{
+  "slug": "graduate__professional-studies__cost-attendance__financial-aid-scholarships",
+  "url": "https://bulletins.nyu.edu/graduate/professional-studies/cost-attendance/financial-aid-scholarships/",
+  "title": "Financial Aid",
+  "school": "professional-studies",
+  "level": "graduate",
+  "topic": "financial",
+  "office": "financial_aid",
+  "scope": "home",
+  "fetched_at": "2026-08-04T16:06:39.164321+00:00",
+  "sha256": "fbeaa4b334ad7f8a62f0751d5cdb5dab28f83e8ebc35375bf3226045e4185f42",
+  "sections": [
+    {
+      "heading": "Financial Aid",
+      "level": 1,
+      "heading_path": "Financial Aid",
+      "anchor": null,
+      "text": "Earning a master's degree can help you advance in your current career and increase your salary. At NYU SPS, we know that committing to earning a graduate degree requires careful financial planning. Our goal is to help you make well informed decisions by ensuring that you are aware of all of your options and putting together a plan that works best for you."
+    },
+    {
+      "heading": "Scholarships and Grants",
+      "level": 3,
+      "heading_path": "Financial Aid > Explore Your Options > Scholarships and Grants",
+      "anchor": null,
+      "text": "Grants and scholarships are kinds of financial aid that you don’t have to pay back. While scholarships can be merit or need-based, most grants are based on your specific financial circumstances. To learn more about scholarships available to SPS graduate students, please visit our Graduate Financial Aid webpage ."
+    },
+    {
+      "heading": "Academic Department Scholarships",
+      "level": 4,
+      "heading_path": "Financial Aid > Explore Your Options > Scholarships and Grants > Academic Department Scholarships",
+      "anchor": null,
+      "text": "Some NYUSPS graduate programs offer departmental scholarships based upon financial need and/or academic merit. Requirements and award amounts vary. Detailed information can be found on the Graduate Scholarships page or by contacting your academic department."
+    },
+    {
+      "heading": "Loans and Payment Plans",
+      "level": 3,
+      "heading_path": "Financial Aid > Explore Your Options > Loans and Payment Plans",
+      "anchor": null,
+      "text": "Federal and private loans are available to help you pay for your graduate education. Federal loans require you filing a FAFSA. Payment plans offered through the NYU Bursar also available. Many employers also offer tuition reimbursement, so if you are working, be sure to check with your HR department."
+    },
+    {
+      "heading": "Federal Loans",
+      "level": 4,
+      "heading_path": "Financial Aid > Explore Your Options > Loans and Payment Plans > Federal Loans",
+      "anchor": null,
+      "text": "The federal government provides limited low-interest loans for US citizens and permanent residents. You must first file a Free Application for Federal Student Aid (FAFSA) using NYUs school code (002785). See Student Loan Repayment for more information about federal loans, including interest rates and repayment plans."
+    },
+    {
+      "heading": "Private Loans",
+      "level": 4,
+      "heading_path": "Financial Aid > Explore Your Options > Loans and Payment Plans > Private Loans",
+      "anchor": null,
+      "text": "A variety of additional, private (non-federal) alternative loans also are available from lending institutions. Please think carefully about your obligations as a borrower prior to pursuing any educational loan. Consider your educational investment at NYU, as well as your long-term financial commitments when borrowing."
+    },
+    {
+      "heading": "Payment Plans",
+      "level": 4,
+      "heading_path": "Financial Aid > Explore Your Options > Loans and Payment Plans > Payment Plans",
+      "anchor": null,
+      "text": "The NYU Office of the Bursar provides several payment plans to assist students with their tuition payments."
+    },
+    {
+      "heading": "Employer Tuition Reimbursement",
+      "level": 4,
+      "heading_path": "Financial Aid > Explore Your Options > Loans and Payment Plans > Employer Tuition Reimbursement",
+      "anchor": null,
+      "text": "If your employer provides tuition assistance or reimbursement, we are happy to accommodate such plans. Students who receive employer tuition reimbursement must complete and submit paperwork and documentation prior to the start of each term."
+    },
+    {
+      "heading": "Military Veterans & Active Duty Military",
+      "level": 3,
+      "heading_path": "Financial Aid > Explore Your Options > Military Veterans & Active Duty Military",
+      "anchor": null,
+      "text": "Active duty members of the military and their family members qualify for a range of military benefits and additional financial aid and scholarships. If you are in the military now, your unit may pay for your tuition if you attend college in your off-duty time. Tuition assistance for military spouses and other family members also is available. Once you have an understanding of your benefits, we can help you to plan the financial path best for you. Learn More"
+    }
+  ]
+}

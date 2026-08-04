@@ -1,0 +1,63 @@
+{
+  "slug": "graduate__nursing__student-services__registration",
+  "url": "https://bulletins.nyu.edu/graduate/nursing/student-services/registration/",
+  "title": "Registration",
+  "school": "nursing",
+  "level": "graduate",
+  "topic": "registration",
+  "office": "registrar",
+  "scope": "comparison",
+  "fetched_at": "2026-08-04T16:07:09.033354+00:00",
+  "sha256": "f66ac05d30434068af83a236c8b14b43230ee66922f6e0655bb253bfe291c77f",
+  "sections": [
+    {
+      "heading": "Registration",
+      "level": 1,
+      "heading_path": "Registration",
+      "anchor": null,
+      "text": "Students in good academic standing with no administrative holds and who have obtained adviser approval are eligible to register for courses during registration periods assigned by the University Registrar. Registration is done through the Albert Student Center, which can be accessed through NYU Home ."
+    },
+    {
+      "heading": "Registration Appointments",
+      "level": 2,
+      "heading_path": "Registration > Registration Appointments",
+      "anchor": null,
+      "text": "Each semester around midterm, the University Registrar sets a registration appointment for each student. The appointment will appear on the Albert Student Center. Appointments are established according to the number of credits a student has earned. The appointment date is the earliest time that a student can register for classes.\n\n*All students are required to obtain adviser approval in order to register."
+    },
+    {
+      "heading": "Student Registration Holds",
+      "level": 2,
+      "heading_path": "Registration > Student Registration Holds",
+      "anchor": null,
+      "text": "When logging into the Albert Student Center, students should verify that there are no holds on their record. Any holds, such as the library, prior term balance, and health vaccination holds, will prevent students from registering. Please contact the appropriate office to clear any holds before registering. To determine if a student has any holds, please view the Holds section on the Albert Student Center. Please follow the procedure below for registration each term:\n\n- Students will make an advising appointment with their academic adviser to be cleared for registration.\n- Students will bring one copy of their unofficial transcript from Albert and two copies of their proposed schedule.\n- Students register through their Albert Student Center accounts. Please refer to the directions on the Registrar’s website for assistance with using the Albert system to register.\n\n*Students should continually check Albert Student Center up to the start of classes for the latest room assignments, as these can change several times before classes actually begin."
+    },
+    {
+      "heading": "Registration of Designated Course Curriculum Progression",
+      "level": 2,
+      "heading_path": "Registration > Registration of Designated Course Curriculum Progression",
+      "anchor": null,
+      "text": "All NYU Meyers students should follow the appropriate nursing course progression outlined on their respective program curriculum sheets. After being cleared in NYU’s registration system, Albert, students are permitted to register for only the courses in which they were approved by their assigned academic adviser.\n\nStudents who register for any courses which were not approved by their adviser (e.g., different graduate NP program, or courses outside of the College and do not show proof of attempting to transfer to the different program) may be involuntarily withdrawn from the non-approved courses. When students register for courses outside of their approved curriculum course progression, the courses may not count towards their degree in NYU Meyers and may delay time to degree.\n\nThe College follows the university refund schedule for any dropped courses and the university registrar’s calendar for the “W” notation appearing on student transcripts for withdrawn courses."
+    },
+    {
+      "heading": "Permitted Course Loads",
+      "level": 2,
+      "heading_path": "Registration > Permitted Course Loads",
+      "anchor": null,
+      "text": "Full-time master’s and advanced certificate students may register for 9 to 18 credits a term. The maximum number permitted of any student is 18 credits. Graduate students registering for fewer than 9 credits are part-time students. Those who wish to establish full-time equivalency status should consult their advisor for specific regulations governing such procedures."
+    },
+    {
+      "heading": "Full-Time Equivalency",
+      "level": 3,
+      "heading_path": "Registration > Permitted Course Loads > Full-Time Equivalency",
+      "anchor": null,
+      "text": "A student is considered full-time by the University when registered each semester for a minimum of 9 credits of coursework, and half-time when registered for 4.5 credits. Eligible students should apply for equivalency if they must maintain full or half-time status to obtain student loans, defer repayment of student loans, or satisfy student visa requirements.\n\nIn order to be eligible for full-time equivalency status, students are expected to spend a minimum of 40 hours per week on a combination of coursework, and field work and/or clinical placement. Half-time students are expected to spend a minimum of 20 hours per week of coursework and field work and/or clinical placement. Specific requirements for the designated program are listed on the full-half time equivalency form.\n\nNOTE: Students are not eligible for equivalency if they are not registered for any credit-bearing coursework; therefore, students registered for maintenance of matriculation or zero credit courses will not be considered for equivalency. Certification of full-time study must be determined at the time of registration. The only way in which full-time equivalency can be officially established is by a fully completed equivalency form being filed. Information relating to both full-time and half-time equivalency status may be obtained from NYU Meyers Office of Advising & Academic Services."
+    },
+    {
+      "heading": "Independent Study",
+      "level": 2,
+      "heading_path": "Registration > Independent Study",
+      "anchor": null,
+      "text": "An independent study requires a minimum of 10 hours of work per credit each week. To enroll in an Independent Study, a student must:\n\n- Get adviser approval to take the Independent Study course.\n- Identify a full-time faculty member able to sponsor the work or research.\n- Meet with the instructor to plan the coursework or research project.\n- Register for the appropriate numbers of Independent Study credits in Albert."
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "slug": "graduate__professional-studies__admissions",
+  "url": "https://bulletins.nyu.edu/graduate/professional-studies/admissions/",
+  "title": "Admissions",
+  "school": "professional-studies",
+  "level": "graduate",
+  "topic": "overview",
+  "office": "registrar",
+  "scope": "home",
+  "fetched_at": "2026-08-04T16:06:29.330071+00:00",
+  "sha256": "cf017d26215067eee891bd3f0326436f4747d103f247e34ecc69984e68bd9c15",
+  "sections": [
+    {
+      "heading": "Admissions",
+      "level": 1,
+      "heading_path": "Admissions",
+      "anchor": null,
+      "text": "Admission to master’s programs at the NYU School of Professional Studies requires the completion of a U.S. bachelor's degree or its international equivalent. Admissions decisions are made through a holistic review process. Visit the SPS Admissions website for detailed application requirements and deadlines."
+    }
+  ]
+}

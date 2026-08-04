@@ -1,0 +1,21 @@
+{
+  "slug": "graduate__professional-studies",
+  "url": "https://bulletins.nyu.edu/graduate/professional-studies/",
+  "title": "School of Professional Studies",
+  "school": "professional-studies",
+  "level": "graduate",
+  "topic": "overview",
+  "office": "registrar",
+  "scope": "home",
+  "fetched_at": "2026-08-04T16:06:24.347802+00:00",
+  "sha256": "8726384b3dc5d3cf7bea6d71d66802f1e1ab5311b89bfe1e41d33306ff055ee1",
+  "sections": [
+    {
+      "heading": "About the NYU School of Professional Studies",
+      "level": 2,
+      "heading_path": "School of Professional Studies > About the NYU School of Professional Studies",
+      "anchor": null,
+      "text": "The NYU School of Professional Studies (NYU SPS) is an internationally recognized institution that transforms today’s students into tomorrow’s changemakers and industry leaders. Since 1934, the School has evolved alongside industries to spearhead innovation and drive impact.\n\nAt NYU SPS, academic excellence meets practical, real-world preparation. Through immersive, experiential learning opportunities, students connect with leading global organizations across a wide variety of fields, including real estate, hospitality, global affairs, sports business, integrated marketing, HR, publishing, and more.\n\nToday, NYU SPS offers one of the most diverse educational portfolios at NYU, including graduate degrees, bachelor’s degrees, continuing education courses, and certificate programs. Our bachelor’s and associate degree programs provide rigorous, industry-focused curricula with a liberal arts core, alongside award-winning career development services and opportunities to gain work experience at top companies. NYU SPS master's degrees provide unsurpassed networking opportunities, global study abroad experiences, internships, and the chance to learn directly from industry experts."
+    }
+  ]
+}

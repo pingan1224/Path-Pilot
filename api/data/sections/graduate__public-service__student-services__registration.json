@@ -1,0 +1,84 @@
+{
+  "slug": "graduate__public-service__student-services__registration",
+  "url": "https://bulletins.nyu.edu/graduate/public-service/student-services/registration/",
+  "title": "Registration",
+  "school": "public-service",
+  "level": "graduate",
+  "topic": "registration",
+  "office": "registrar",
+  "scope": "comparison",
+  "fetched_at": "2026-08-04T16:07:00.732143+00:00",
+  "sha256": "fa4c6f2aa5a2a62cb465865f8741b682a4d336efe7d9f693420a683f3f6cb938",
+  "sections": [
+    {
+      "heading": "Registration",
+      "level": 1,
+      "heading_path": "Registration",
+      "anchor": null,
+      "text": "Wagner students self-register for most coursework throughout their tenure. We offer registration checklists as a step-by-step guide for the registration process."
+    },
+    {
+      "heading": "Registration Checklist",
+      "level": 3,
+      "heading_path": "Registration > Registration Resources > Registration Checklist",
+      "anchor": null,
+      "text": "Follow the registration checklist each term as a step-by-step guide to the registration process.\n\nLearn More"
+    },
+    {
+      "heading": "Add/Drop Withdrawals",
+      "level": 3,
+      "heading_path": "Registration > Registration Resources > Add/Drop Withdrawals",
+      "anchor": null,
+      "text": "Review the guidelines for adding and dropping courses or withdrawing from courses after the Add/Drop period.\n\nLearn More"
+    },
+    {
+      "heading": "Course Information",
+      "level": 3,
+      "heading_path": "Registration > Registration Resources > Course Information",
+      "anchor": null,
+      "text": "Review degree requirements, course highlights, and non-Wagner course instructions in preparation for registration.\n\nLearn More"
+    },
+    {
+      "heading": "Specialization Change",
+      "level": 3,
+      "heading_path": "Registration > Registration Resources > Specialization Change",
+      "anchor": null,
+      "text": "Submit the Specialization Change Form to declare a different specialization (MPA-PNP, MPA-Health, and MUP students only).\n\nPlease note that any specialization changes must be approved at least two weeks prior to the start of the spring and fall registration."
+    },
+    {
+      "heading": "Changing Enrollment Status",
+      "level": 3,
+      "heading_path": "Registration > Registration Resources > Changing Enrollment Status",
+      "anchor": null,
+      "text": "Explore the implications for switching between full-time and part-time study.\n\nLearn More"
+    },
+    {
+      "heading": "Auditing",
+      "level": 3,
+      "heading_path": "Registration > Registration Resources > Auditing",
+      "anchor": null,
+      "text": "Understand the policy for auditing courses.\n\nLearn More"
+    },
+    {
+      "heading": "Registration Tools",
+      "level": 3,
+      "heading_path": "Registration > Registration Resources > Registration Tools",
+      "anchor": null,
+      "text": "NYU Registrar Albert Guide\n\nNYU Registrar Academic Calendar\n\nAlbert Course Search"
+    },
+    {
+      "heading": "Non-Wagner Student Registration for Wagner Courses",
+      "level": 3,
+      "heading_path": "Registration > Registration Resources > Non-Wagner Student Registration for Wagner Courses",
+      "anchor": null,
+      "text": "If you are an NYU student planning to register for a Wagner course, review the non-Wagner registration procedure."
+    },
+    {
+      "heading": "Frequently Asked Questions",
+      "level": 3,
+      "heading_path": "Registration > Registration Resources > Frequently Asked Questions",
+      "anchor": null,
+      "text": "If you are an NYU student with queries about registering for courses, please review the Registration FAQs ."
+    }
+  ]
+}

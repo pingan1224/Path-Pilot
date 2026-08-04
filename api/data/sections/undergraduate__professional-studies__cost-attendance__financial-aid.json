@@ -1,0 +1,70 @@
+{
+  "slug": "undergraduate__professional-studies__cost-attendance__financial-aid",
+  "url": "https://bulletins.nyu.edu/undergraduate/professional-studies/cost-attendance/financial-aid/",
+  "title": "Financial Aid",
+  "school": "professional-studies",
+  "level": "undergraduate",
+  "topic": "financial",
+  "office": "financial_aid",
+  "scope": "home",
+  "fetched_at": "2026-08-04T16:06:47.511348+00:00",
+  "sha256": "45345cf8f193ce43db4af491db10f20d06f8d17fcfe4324225e6e38f88fa1159",
+  "sections": [
+    {
+      "heading": "Financial Aid",
+      "level": 2,
+      "heading_path": "Financial Aid > Financial Aid",
+      "anchor": null,
+      "text": "Completing your undergraduate degree can help you to qualify for jobs that specifically require skills and knowledge, which are acquired through this important credential. Whether you are a transfer student or an adult going back to school after a long hiatus, committing to completing your undergraduate degree requires careful financial planning. Our goal is to help you make well- informed decisions by ensuring that you are aware of all of your financial aid options, and to put together a plan that works best for you."
+    },
+    {
+      "heading": "Scholarships and Grants",
+      "level": 4,
+      "heading_path": "Financial Aid > Financial Aid > Explore Your Options > Scholarships and Grants",
+      "anchor": null,
+      "text": "Grants and scholarships are kinds of financial aid that you don’t have to pay back. While scholarships can be merit or need-based, most grants are based on your specific financial circumstances. To learn about all of the scholarship and financial aid options available to SPS students, visit our Undergraduate Financial Aid webpage . To learn about DAUS departmental scholarships, visit our DAUS Scholarships webpage .\n\nFederal Pell Grants provides assistance to undergraduate students who demonstrate financial need according to requirements established by the federal government. To be eligible, you must not have previously earned a bachelor's, graduate, or professional degree. You are automatically considered for the Pell Grant upon filing the FAFSA. Amounts can change yearly.\n\nThe Tuition Assistance Program is a grant awarded to residents of the state of New York who are enrolled in a full-time degree program. TAP is based upon financial need, and you must file a FAFSA and a separate TAP application . If you qualify for TAP, the TAP application instructions will be included in your FAFSA results.\n\nAid for Part-Time Study (APTS) is a grant program that offers grants to New York state residents pursuing part-time undergraduate degree study. To be eligible, a student must have filed a FAFSA and must demonstrate financial need; must not have exhausted their TAP eligibility; must be otherwise eligible for financial aid; and must be enrolled for three to 11 credits per term."
+    },
+    {
+      "heading": "Loans and Payment Plans",
+      "level": 3,
+      "heading_path": "Financial Aid > Financial Aid > Loans and Payment Plans",
+      "anchor": null,
+      "text": "Federal and private loans are available to help you pay for your graduate education. Federal loans require you filing a FAFSA . Payment plans offered through the NYU Bursar also available. Many employers also offer tuition reimbursement, so if you are working, be sure to check with your HR department."
+    },
+    {
+      "heading": "Federal Loans",
+      "level": 4,
+      "heading_path": "Financial Aid > Financial Aid > Loans and Payment Plans > Federal Loans",
+      "anchor": null,
+      "text": "The federal government provides limited low-interest loans for US citizens and permanent residents. You must first file a Free Application for Federal Student Aid (FAFSA) using NYUs school code (002785). See Student Loan Repayment for more information about federal loans, including interest rates and repayment plans."
+    },
+    {
+      "heading": "Private Loans",
+      "level": 4,
+      "heading_path": "Financial Aid > Financial Aid > Loans and Payment Plans > Private Loans",
+      "anchor": null,
+      "text": "A variety of additional, private (non-federal) alternative loans also are available from lending institutions. Please think carefully about your obligations as a borrower prior to pursuing any educational loan. Consider your educational investment at NYU, as well as your long-term financial commitments when borrowing."
+    },
+    {
+      "heading": "Payment Plans",
+      "level": 4,
+      "heading_path": "Financial Aid > Financial Aid > Loans and Payment Plans > Payment Plans",
+      "anchor": null,
+      "text": "The Office of the NYU Bursar provides several payment plans to assist students with their tuition payments."
+    },
+    {
+      "heading": "Employer Tuition Reimbursement",
+      "level": 4,
+      "heading_path": "Financial Aid > Financial Aid > Loans and Payment Plans > Employer Tuition Reimbursement",
+      "anchor": null,
+      "text": "If your employer provides tuition assistance or reimbursement, we are happy to accommodate such plans. Students who receive employer tuition reimbursement must complete and submit paperwork and documentation prior to the start of each term"
+    },
+    {
+      "heading": "Military Veterans and Active Duty Military",
+      "level": 2,
+      "heading_path": "Financial Aid > Military Veterans and Active Duty Military",
+      "anchor": null,
+      "text": "Active duty members of the military and their family members qualify for a range of military benefits and additional financial aid and scholarships. If you are in the military now, your unit may pay for your tuition if you attend college in your off-duty time. Tuition assistance for military spouses and other family members also is available. Once you have an understanding of your benefits, we can help you to plan the financial path best for you. Learn More"
+    }
+  ]
+}

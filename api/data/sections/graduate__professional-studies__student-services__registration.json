@@ -1,0 +1,21 @@
+{
+  "slug": "graduate__professional-studies__student-services__registration",
+  "url": "https://bulletins.nyu.edu/graduate/professional-studies/student-services/registration/",
+  "title": "Registration",
+  "school": "professional-studies",
+  "level": "graduate",
+  "topic": "registration",
+  "office": "registrar",
+  "scope": "home",
+  "fetched_at": "2026-08-04T16:06:32.593969+00:00",
+  "sha256": "2e3355281953c1f76558328cb654df09067ce932a92b66f9356d7c0c0276f356",
+  "sections": [
+    {
+      "heading": "Registration",
+      "level": 1,
+      "heading_path": "Registration",
+      "anchor": null,
+      "text": "For information on registration, please refer to the Registration and Schedule Changes section on the SPS Academic Policies page for graduate students."
+    }
+  ]
+}

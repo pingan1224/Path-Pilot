@@ -1,0 +1,63 @@
+{
+  "slug": "graduate__professional-studies__cost-attendance",
+  "url": "https://bulletins.nyu.edu/graduate/professional-studies/cost-attendance/",
+  "title": "Cost of Attendance",
+  "school": "professional-studies",
+  "level": "graduate",
+  "topic": "financial",
+  "office": "bursar",
+  "scope": "home",
+  "fetched_at": "2026-08-04T16:06:35.899353+00:00",
+  "sha256": "a958f9dff57051ecc3ab94b1f675ef5c96a850cea9a119cd34dc6668c1d71ab1",
+  "sections": [
+    {
+      "heading": "2026-2027 Estimated Cost of Attendance",
+      "level": 2,
+      "heading_path": "Cost of Attendance > 2026-2027 Estimated Cost of Attendance",
+      "anchor": null,
+      "text": "For graduate students, the total Cost of Attendance includes tuition and fees for your program, as well as indirect expenses. The Cost of Attendance varies by school, program, and location, and represents an estimate of expenses for a full-time NYU graduate student before scholarships, grants, fellowships, or other financial aid are applied."
+    },
+    {
+      "heading": "Understand Your Tuition and Fees",
+      "level": 2,
+      "heading_path": "Cost of Attendance > Understand Your Tuition and Fees",
+      "anchor": null,
+      "text": "At NYU, tuition varies by graduate school. Graduate students should refer to the Bursar’s Tuition and Fees Lookup Tool below for official tuition and fees depending on your graduate school or college, program, admit term, and number of credits.\n\nLook Up Tuition and Fees\n\nNote: While most graduate schools’ tuition and fees are reflected in the Bursar's Look Up Tool above, there are some with varying expenses. You can find their cost of attendance below:\n\n- College of Dentistry*\n- NYU Abu Dhabi\n- NYU Grossman Long Island School of Medicine*\n- NYU Grossman School of Medicine*\n- NYU Shanghai\n- Rory Meyers College of Nursing\n- School of Law*\n\n*These schools handle their own financial aid. Please reach out to the school directly if you have any questions."
+    },
+    {
+      "heading": "Consider Your Indirect Expenses",
+      "level": 2,
+      "heading_path": "Cost of Attendance > Consider Your Indirect Expenses",
+      "anchor": null,
+      "text": "Indirect expenses estimate the various costs that may be associated with your attendance, but are not typically University charges. For example, what you may spend on food, housing, transportation, and health insurance are considered indirect costs.\n\nThe estimated indirect expenses are based on typical costs for most graduate schools at NYU, and differ depending on whether you are enrolled in a traditional on-campus or online program. Please note that if you are a student in any of the schools with varying tuition and fees listed above, you may have additional indirect expenses, as well."
+    },
+    {
+      "heading": "Indirect Expenses for Traditional Programs",
+      "level": 3,
+      "heading_path": "Cost of Attendance > Consider Your Indirect Expenses > Indirect Expenses for Traditional Programs",
+      "anchor": null,
+      "text": "Traditional Programs (9 credits)\n\n| Fee | Cost |\n| --- | --- |\n| Food | $6,910 |\n| Housing | $24,414 |\n| Books | $1,564 |\n| Transportation | $2,438 |\n| Personal Expenses | $3,146 |\n| Health Insurance | $5,100 |\n| Total (Fall/Spring semesters) | $42,274 |"
+    },
+    {
+      "heading": "Indirect Expenses for Online Programs",
+      "level": 3,
+      "heading_path": "Cost of Attendance > Consider Your Indirect Expenses > Indirect Expenses for Online Programs",
+      "anchor": null,
+      "text": "Online Programs (one semester)\n\n| Fee | Cost |\n| --- | --- |\n| Food and Housing | $15,545 |\n| Books and Supplies | $770 |\n| Transportation | $0 |\n| Personal Expenses | $1,542 |\n| Basic Health Insurance | $2,322 |\n| Total (one semester) | $20,179 |"
+    },
+    {
+      "heading": "Contact Information",
+      "level": 2,
+      "heading_path": "Cost of Attendance > Contact Information",
+      "anchor": null,
+      "text": "For additional information, please use the appropriate contact for a student's campus:\n\nNew York Campus Email: financial.aid@nyu.edu Phone: 212-998-4444\n\nShanghai Campus Email: shanghai.financial.support@nyu.edu Phone: 212-998-2838\n\nAbu Dhabi Campus Email: nyuad.financial.support@nyu.edu Phone: 212-998-4488 (US) +971 02 628 5513 (UAE)"
+    },
+    {
+      "heading": "Additional Information",
+      "level": 2,
+      "heading_path": "Cost of Attendance > Additional Information",
+      "anchor": null,
+      "text": "- Tuition and Fees\n- Financial Aid"
+    }
+  ]
+}

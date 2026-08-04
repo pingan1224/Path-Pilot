@@ -1,0 +1,42 @@
+{
+  "slug": "graduate__engineering__cost-attendance__financial-aid",
+  "url": "https://bulletins.nyu.edu/graduate/engineering/cost-attendance/financial-aid/",
+  "title": "Financial Aid",
+  "school": "engineering",
+  "level": "graduate",
+  "topic": "financial",
+  "office": "financial_aid",
+  "scope": "comparison",
+  "fetched_at": "2026-08-04T16:06:57.432822+00:00",
+  "sha256": "4e1cff24e212b1492ab5a484346a45694b8f7984048a56b8985f61959eace68e",
+  "sections": [
+    {
+      "heading": "Graduate Scholarships",
+      "level": 2,
+      "heading_path": "Financial Aid > Graduate Scholarships",
+      "anchor": null,
+      "text": "Graduate scholarships are available for master’s students on a competitive basis. They are awarded at the time of admission and are primarily based on academic performance. All graduate scholarship recipients are required to maintain the academic terms listed in their award letter in order to continue scholarship awards beyond their first enrolled semester.\n\nStudents who are admitted to multiple graduate programs are eligible for only one offered scholarship; it is the policy of the NYU Tandon School of Engineering to not “stack” scholarship awards."
+    },
+    {
+      "heading": "William D. Ford Federal Direct Unsubsidized Loan",
+      "level": 2,
+      "heading_path": "Financial Aid > William D. Ford Federal Direct Unsubsidized Loan",
+      "anchor": null,
+      "text": "The Federal Direct Unsubsidized Loan is available to graduate students in the amount of $20,500 per academic year. Eligible students must (1) be U.S. Citizens or permanent residents, (2) matriculate and enroll in at least 4.5 credits per semester, (3) make satisfactory academic progress and (4) demonstrate financial need as determined by the Free Application for Federal Student Aid (FAFSA) .\n\nTo apply, students must complete a FAFSA each year. First time Direct Loan borrowers must also complete the Master Promissory Note and Entrance Counseling session (online).\n\nStudent borrowers who withdraw from the school or enroll less than half-time will be required to complete the Exit Counseling session (online). Borrowers must begin repaying the loan six months after graduating or withdrawing from school. Direct Lending offers many different repayment options, and deferments and forgiveness options are also available. Borrowers should contact Direct Lending regarding any of these options."
+    },
+    {
+      "heading": "Graduate Federal Direct Plus Loan",
+      "level": 2,
+      "heading_path": "Financial Aid > Graduate Federal Direct Plus Loan",
+      "anchor": null,
+      "text": "PLUS Loans are federal loans that graduate students may use to help pay for college expenses. Graduate students whose full cost of attendance is not covered by the William D. Ford Unsubsidized Direct Loan may apply for the Graduate Direct PLUS Loan. Students may apply for up to the full cost of attendance minus any financial aid. A FAFSA is required and the Unsubsidized Direct Loan must be accepted before applying for the PLUS Loan. The loan is not guaranteed and is subject to credit approval. Repayment can be deferred until graduation or withdrawal from the University. Contact the Office of Financial Aid or Federal Student Aid regarding interest rates and the application process."
+    },
+    {
+      "heading": "Bills, Payments and Refunds",
+      "level": 2,
+      "heading_path": "Financial Aid > Bills, Payments and Refunds",
+      "anchor": null,
+      "text": "The Office of the Bursar is the central billing and collection point for New York University. This office is responsible for managing the University's billing, collecting, refunding and cashiering functions."
+    }
+  ]
+}

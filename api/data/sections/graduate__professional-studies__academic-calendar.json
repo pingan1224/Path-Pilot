@@ -1,0 +1,49 @@
+{
+  "slug": "graduate__professional-studies__academic-calendar",
+  "url": "https://bulletins.nyu.edu/graduate/professional-studies/academic-calendar/",
+  "title": "Academic Calendar",
+  "school": "professional-studies",
+  "level": "graduate",
+  "topic": "calendar",
+  "office": "registrar",
+  "scope": "home",
+  "fetched_at": "2026-08-04T16:06:27.677932+00:00",
+  "sha256": "6cf173066141dbefc739c3f209f28a3982e3494cf96324b7f7b32fb57f0db5c7",
+  "sections": [
+    {
+      "heading": "2026-2027 Academic Calendar",
+      "level": 2,
+      "heading_path": "Academic Calendar > 2026-2027 Academic Calendar",
+      "anchor": null,
+      "text": "For additional key dates and deadlines, including course registration, withdrawals, and applying for graduation, see the Office of the Registrar's Academic Calendar .\n\nNotice: These dates are subject to change."
+    },
+    {
+      "heading": "Fall 2026",
+      "level": 3,
+      "heading_path": "Academic Calendar > 2026-2027 Academic Calendar > Fall 2026",
+      "anchor": null,
+      "text": "| Date | Event |\n| --- | --- |\n| September 2, 2026 | Fall semester classes begin |\n| September 7, 2026 | Labor Day - No classes scheduled |\n| October 12, 2026 | Fall Break - No classes scheduled |\n| October 14, 2026 | Legislative Day - Classes meet according to a Monday schedule |\n| November 26-27, 2026 | Thanksgiving Recess - No classes scheduled |\n| December 14, 2026 | Fall semester classes end |\n| December 16-22, 2026 | Final exam period |"
+    },
+    {
+      "heading": "January 2027",
+      "level": 3,
+      "heading_path": "Academic Calendar > 2026-2027 Academic Calendar > January 2027",
+      "anchor": null,
+      "text": "| Date | Event |\n| --- | --- |\n| January 4, 2027 | January term classes begin |\n| January 15, 2027 | Last day of January term classes |\n| January 18, 2027 | Martin Luther King, Jr. Day |"
+    },
+    {
+      "heading": "Spring 2027",
+      "level": 3,
+      "heading_path": "Academic Calendar > 2026-2027 Academic Calendar > Spring 2027",
+      "anchor": null,
+      "text": "| Date | Event |\n| --- | --- |\n| January 19, 2027 | Spring semester classes begin |\n| February 15, 2027 | Presidents Day - No classes scheduled |\n| February 16, 2027 | Legislative Day - Classes meet according to a Monday schedule |\n| March 15-19, 2027 | Spring Break - No classes scheduled |\n| May 4, 2027 | Spring semester classes end |\n| May 6-12, 2027 | Final exam period |"
+    },
+    {
+      "heading": "Summer 2027",
+      "level": 3,
+      "heading_path": "Academic Calendar > 2026-2027 Academic Calendar > Summer 2027",
+      "anchor": null,
+      "text": "| Date | Event |\n| --- | --- |\n| May 17, 2027 | Summer term classes begin |\n| May 31, 2027 | Memorial Day - No classes scheduled |\n| June 18, 2027 | No classes scheduled |\n| June 29, 2027 | Legislative Day - Classes meet according to a Friday schedule |\n| July 5, 2027 | Independence Day (observed) - No classes scheduled |\n| July 7, 2027 | Legislative Day - Classes meet according to a Monday schedule |\n| August 11, 2027 | Summer term classes end |"
+    }
+  ]
+}

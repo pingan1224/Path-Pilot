@@ -1,0 +1,21 @@
+{
+  "slug": "undergraduate__professional-studies__student-services__registration",
+  "url": "https://bulletins.nyu.edu/undergraduate/professional-studies/student-services/registration/",
+  "title": "Registration",
+  "school": "professional-studies",
+  "level": "undergraduate",
+  "topic": "registration",
+  "office": "registrar",
+  "scope": "home",
+  "fetched_at": "2026-08-04T16:06:45.880229+00:00",
+  "sha256": "cf13ac69045a25f6d999d9623ae88f94a06612f36f29d4cb298fdbaebc36d2eb",
+  "sections": [
+    {
+      "heading": "Registration",
+      "level": 1,
+      "heading_path": "Registration",
+      "anchor": null,
+      "text": "For information on registration, please refer to the Registration and Schedule Changes section on the SPS Academic Policies page for undergraduate students."
+    }
+  ]
+}

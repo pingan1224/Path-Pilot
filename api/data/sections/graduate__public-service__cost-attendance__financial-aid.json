@@ -1,0 +1,49 @@
+{
+  "slug": "graduate__public-service__cost-attendance__financial-aid",
+  "url": "https://bulletins.nyu.edu/graduate/public-service/cost-attendance/financial-aid/",
+  "title": "Financial Aid",
+  "school": "public-service",
+  "level": "graduate",
+  "topic": "financial",
+  "office": "financial_aid",
+  "scope": "comparison",
+  "fetched_at": "2026-08-04T16:07:02.385849+00:00",
+  "sha256": "d4a2a38734a84368e24c5dfa0e98e5e6ec0baaec314427251c7b2f9fc4d9f2aa",
+  "sections": [
+    {
+      "heading": "NYU Wagner Merit Scholarships",
+      "level": 2,
+      "heading_path": "Financial Aid > NYU Wagner Merit Scholarships",
+      "anchor": null,
+      "text": "We offer a number of competitive, merit-based scholarships to help you finance your degree. Approximately 60% of enrolling students are awarded scholarships. All full-time and part-time applicants are considered.\n\nStudents enrolled in dual master’s degree programs with other NYU schools are not eligible for NYU Wagner Named Fellowship programs. However, applicants may still be considered for one-time, merit-based scholarships, which are applied only during their period of residency at NYU Wagner. Current NYU undergraduates enrolled in our bachelor’s-to-master’s dual degree programs are eligible to apply for the Georgina and Charlotte Bloomberg Public Service Fellowship and will also be considered for merit-based scholarships. For a list of school-specific financial aid opportunities, please visit the Merit-Based Scholarships page ."
+    },
+    {
+      "heading": "Ellen Schall Experience Fund",
+      "level": 2,
+      "heading_path": "Financial Aid > Ellen Schall Experience Fund",
+      "anchor": null,
+      "text": "Each summer NYU Wagner will award 10 students $7,500 stipends to support unpaid, full-time public service internships. This funding empowers students to pursue meaningful opportunities aligned with their career goals—regardless of compensation or financial need. Awardees also participate in structured touchpoints designed to foster reflection, connection, and professional growth throughout the summer.\n\nPast ESEF recipients have interned with public, nonprofit, and private organizations around the world, working across a wide range of policy areas and industries. Through these experiences, more than 95% report clarifying their career goals, expanding their professional networks, strengthening key skills, and applying classroom learning in real-world settings.\n\nWhat could ESEF help you accomplish?"
+    },
+    {
+      "heading": "Conference and Competition Funding",
+      "level": 2,
+      "heading_path": "Financial Aid > Conference and Competition Funding",
+      "anchor": null,
+      "text": "Participating in professional conferences and case competitions can significantly enhance a student’s understanding of their industry and provide valuable networking opportunities. NYU Wagner prioritizes funding for professional development opportunities that include networking, engagement with industry leaders, experiential learning, and career advancement . Information on applying can be found on our Conference and Competition Funding page."
+    },
+    {
+      "heading": "Financial Support for Ph.D. Students",
+      "level": 2,
+      "heading_path": "Financial Aid > Financial Support for Ph.D. Students",
+      "anchor": null,
+      "text": "All Ph.D. students without alternate funding sources are eligible to receive a five-year research apprenticeship, which carries a stipend, health insurance, a $1000 start-up grant, and 100% tuition remission. Research apprentices work up to 20 hours a week with faculty members on research projects during the academic year. No additional application materials are required for consideration."
+    },
+    {
+      "heading": "Teaching Opportunities",
+      "level": 3,
+      "heading_path": "Financial Aid > Financial Support for Ph.D. Students > Teaching Opportunities",
+      "anchor": null,
+      "text": "An important feature of the program is the wide range of opportunities for Ph.D. students to obtain the skills and experience necessary to become effective teachers. There are many paid opportunities for Ph.D. students to work with full-time faculty as tutors, teaching assistants, and, eventually, as primary instructors in courses in the master's curriculum. For more information, please see our section on teaching experience.\n\nStudents are eligible for teaching assistantships when they demonstrate knowledge of the subject matter via significant experience or academic preparation in the subject. Students will be considered for teaching a course when they have successfully assisted in the teaching of a Wagner class, have sufficient credentials from previous academic degrees or professional work, or when they have successfully passed the comprehensive examination on the appropriate field. Faculty coordinating each school specialization will approve these decisions. Ph.D. students who are not in good academic standing are not eligible for teaching."
+    }
+  ]
+}

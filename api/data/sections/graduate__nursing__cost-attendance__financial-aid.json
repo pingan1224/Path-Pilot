@@ -1,0 +1,21 @@
+{
+  "slug": "graduate__nursing__cost-attendance__financial-aid",
+  "url": "https://bulletins.nyu.edu/graduate/nursing/cost-attendance/financial-aid/",
+  "title": "Financial Aid",
+  "school": "nursing",
+  "level": "graduate",
+  "topic": "financial",
+  "office": "financial_aid",
+  "scope": "comparison",
+  "fetched_at": "2026-08-04T16:07:10.664280+00:00",
+  "sha256": "68163cfa11dbc5f3d76f05d4e4c21ee62e5c983a242dc8cef98b9b55dd0f8705",
+  "sections": [
+    {
+      "heading": "Financial Aid",
+      "level": 1,
+      "heading_path": "Financial Aid",
+      "anchor": null,
+      "text": "To be considered for all financial aid opportunities, students must have a valid FAFSA (NYU School Code 002785) on file for the applicable academic year. It is strongly recommended that students file before receiving their offer of admission.\n\nGraduate students receiving NYU or NYU Langone tuition remission benefits and Doctoral-level students hired by NYU Rory Meyers as graduate assistants are not eligible for NYU scholarship aid.\n\nFor more information, please contact Julie Rubio, Scholarship Officer ."
+    }
+  ]
+}

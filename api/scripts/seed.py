@@ -1252,12 +1252,20 @@ def seed_documents(session: Session) -> None:
 TABLES_IN_DELETE_ORDER = [
     "case_events", "ai_interactions", "cases", "registration_attempts", "enrollments",
     "holds", "sections", "requirement_courses", "course_prerequisites", "requirements",
-    "students", "users", "courses", "programs", "terms", "document_chunks", "documents",
+    "students", "users", "courses", "programs", "terms",
     "source_freshness_policy",
 ]
 
 
 def reset(session: Session) -> None:
+    """Clear the fixture data this script owns — and only that.
+
+    `documents` and `document_chunks` are deliberately absent from the delete list. They
+    hold the ingested NYU corpus, which costs a full re-embed of ~2,800 chunks to rebuild;
+    wiping it as a side effect of reseeding students is an expensive surprise, and it
+    happened once before this guard existed. Only the synthetic fixtures this script
+    created are removed, matched on is_synthetic.
+    """
     from sqlalchemy import text
 
     # cases and ai_interactions reference each other, so break the link before deleting.
@@ -1265,6 +1273,14 @@ def reset(session: Session) -> None:
     for table in TABLES_IN_DELETE_ORDER:
         session.execute(text(f"DELETE FROM {table}"))
         session.execute(text(f"ALTER SEQUENCE IF EXISTS {table}_id_seq RESTART WITH 1"))
+
+    session.execute(
+        text(
+            "DELETE FROM document_chunks WHERE document_id IN "
+            "(SELECT id FROM documents WHERE is_synthetic)"
+        )
+    )
+    session.execute(text("DELETE FROM documents WHERE is_synthetic"))
     session.commit()
 
 

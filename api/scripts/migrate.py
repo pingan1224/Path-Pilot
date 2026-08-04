@@ -25,6 +25,10 @@ STATEMENTS = [
       ) STORED
     """,
     "CREATE INDEX IF NOT EXISTS ix_chunk_tsv ON document_chunks USING gin (tsv)",
+    # Authentication. Until now the API took the caller's role from the request body,
+    # which meant every permission check in the system was validating a claim the caller
+    # made about themselves.
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(256)",
 ]
 
 

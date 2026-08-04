@@ -33,6 +33,17 @@ class Settings(BaseSettings):
     # "vector" (dense only) or "hybrid" (dense + lexical, fused by RRF).
     retrieval_mode: str = "vector"
 
+    # Signs the session cookie. The default exists so local development runs without
+    # setup; it is deliberately obvious, and deployment must override it — a predictable
+    # signing key means anyone can mint a session for any role.
+    session_secret: str = "dev-only-insecure-change-me"
+    session_https_only: bool = False
+
+    # Passwords for the seeded demo accounts. Public by design — the whole point is that
+    # a reader can sign in as each role — but set from the environment so the deployed
+    # instance can rotate them without a code change.
+    demo_password: str = "uax-demo-2026"
+
     @property
     def allowed_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

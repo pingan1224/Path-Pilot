@@ -5,19 +5,23 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.models import Student, UserRole
 from app.services.agent import run_agent
+from app.services.auth import Identity, current_user
 from app.services.llm import LlmNotConfiguredError
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
 
 
 class AskRequest(BaseModel):
+    """The question, and nothing else.
+
+    `student_id` and `role` used to be fields here. They are gone on purpose: while the
+    caller supplied their own role, every permission check downstream — the retrieval
+    pre-filter, the tool layer's subject scoping — was validating a claim the caller made
+    about themselves. Identity now comes from the signed session and only from there.
+    """
+
     question: str = Field(min_length=2, max_length=2000)
-    # Demo-mode identity: replaced by the authenticated session in P5. The subject student
-    # is still resolved and scoped server-side — the model never receives an id parameter.
-    student_id: int | None = None
-    role: UserRole = UserRole.student
 
 
 class CitationOut(BaseModel):
@@ -40,16 +44,18 @@ class AskResponse(BaseModel):
 
 
 @router.post("/ask", response_model=AskResponse)
-def ask(payload: AskRequest, session: Session = Depends(get_session)) -> AskResponse:
-    if payload.student_id is not None and session.get(Student, payload.student_id) is None:
-        raise HTTPException(status_code=404, detail=f"No student with id {payload.student_id}")
-
+def ask(
+    payload: AskRequest,
+    identity: Identity = Depends(current_user),
+    session: Session = Depends(get_session),
+) -> AskResponse:
     try:
         result = run_agent(
             session,
             question=payload.question,
-            acting_role=payload.role,
-            subject_student_id=payload.student_id,
+            acting_role=identity.role,
+            subject_student_id=identity.subject_student_id,
+            user_id=identity.user.id,
         )
     except LlmNotConfiguredError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

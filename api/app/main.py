@@ -10,9 +10,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from starlette.middleware.sessions import SessionMiddleware
+
 from app.config import settings
 from app.db.session import DatabaseNotConfiguredError
-from app.routers import advisors, assistant, cases, health, registrar, students
+from app.routers import advisors, assistant, auth, cases, health, registrar, students
 
 app = FastAPI(
     title="UAX API",
@@ -26,6 +28,18 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# Identity lives in a signed cookie. `same_site="lax"` plus an explicit origin allowlist
+# in CORS is what keeps another site from riding the session; `https_only` follows the
+# deployment so local development over http still works.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.session_secret,
+    session_cookie="uax_session",
+    same_site="lax",
+    https_only=settings.session_https_only,
+    max_age=60 * 60 * 8,
 )
 
 STATUS_CODES = {
@@ -72,6 +86,7 @@ async def database_not_configured_handler(
 
 
 app.include_router(health.router, prefix="/api/v1")
+app.include_router(auth.router, prefix="/api/v1")
 app.include_router(students.router, prefix="/api/v1")
 app.include_router(advisors.router, prefix="/api/v1")
 app.include_router(registrar.router, prefix="/api/v1")

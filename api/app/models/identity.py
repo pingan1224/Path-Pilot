@@ -30,6 +30,9 @@ class User(Base, TimestampMixin):
     )
     office: Mapped[str | None] = mapped_column(String(64))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # scrypt, with parameters and salt encoded in the value. Null means the account
+    # cannot sign in at all, which is the right default for a record created by import.
+    password_hash: Mapped[str | None] = mapped_column(String(256))
 
     student_profile: Mapped[Student | None] = relationship(
         back_populates="user", foreign_keys="Student.user_id", uselist=False

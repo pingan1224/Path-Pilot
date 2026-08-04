@@ -20,7 +20,9 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db.session import get_sessionmaker
+from app.services.auth import hash_password
 from app.models import (
     ActorKind,
     AiInteraction,
@@ -55,6 +57,12 @@ from app.models import (
 )
 
 RNG = random.Random(20260803)
+
+# Every seeded account shares one password so a reader can sign in as any role and see
+# the permission boundaries from both sides. Hashed once here rather than per user:
+# scrypt is deliberately slow, and 53 accounts times ~100ms would add a minute to seeding
+# for no security benefit on fixture data.
+DEMO_PASSWORD_HASH = hash_password(settings.demo_password)
 
 # Anchored to the real clock, not a fixed date. Every timestamp below is expressed as an
 # offset from this, so a seed run in six months still produces a registration period that
@@ -378,7 +386,10 @@ def seed_staff(session: Session) -> dict[str, User]:
     ]
     staff: dict[str, User] = {}
     for email, name, role, office in people:
-        user = User(email=email, full_name=name, role=role, office=office)
+        user = User(
+            email=email, full_name=name, role=role, office=office,
+            password_hash=DEMO_PASSWORD_HASH,
+        )
         session.add(user)
         staff[email.split("@")[0]] = user
     session.flush()
@@ -397,7 +408,10 @@ def make_student(
     grad_term: str,
     registration_opens: date,
 ) -> Student:
-    user = User(email=email, full_name=name, role=UserRole.student)
+    user = User(
+        email=email, full_name=name, role=UserRole.student,
+        password_hash=DEMO_PASSWORD_HASH,
+    )
     session.add(user)
     session.flush()
 

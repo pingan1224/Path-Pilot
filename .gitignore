@@ -31,6 +31,10 @@ Thumbs.db
 api/data/raw/pages/
 api/data/raw/sitemap.xml
 
+# Chunks are deterministic from the committed sections plus ingest/chunk.py, and one
+# strategy file per arm runs to ~1.6MB. Regenerate with `python -m ingest.chunk --compare`.
+api/data/chunks/
+
 # Logs
 *.log
 npm-debug.log*

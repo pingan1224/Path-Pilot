@@ -1,0 +1,128 @@
+{
+  "fixed": {
+    "strategy": "fixed",
+    "recall_at_5": 0.6467,
+    "mrr": 0.4603,
+    "families": {
+      "course": {
+        "cases": 8,
+        "recall_at_5": 0.875,
+        "mrr": 0.65
+      },
+      "generic": {
+        "cases": 10,
+        "recall_at_5": 0.5,
+        "mrr": 0.3833
+      },
+      "home_scope": {
+        "cases": 12,
+        "recall_at_5": 0.5,
+        "mrr": 0.2847
+      },
+      "lexical": {
+        "cases": 6,
+        "recall_at_5": 1.0,
+        "mrr": 0.65
+      },
+      "multi": {
+        "cases": 2,
+        "recall_at_5": 0.1667,
+        "mrr": 0.25
+      },
+      "paraphrase": {
+        "cases": 8,
+        "recall_at_5": 0.5,
+        "mrr": 0.2708
+      },
+      "restricted": {
+        "cases": 4,
+        "recall_at_5": 1.0,
+        "mrr": 1.0
+      }
+    }
+  },
+  "section": {
+    "strategy": "section",
+    "recall_at_5": 0.7667,
+    "mrr": 0.5147,
+    "families": {
+      "course": {
+        "cases": 8,
+        "recall_at_5": 0.875,
+        "mrr": 0.7188
+      },
+      "generic": {
+        "cases": 10,
+        "recall_at_5": 1.0,
+        "mrr": 0.4367
+      },
+      "home_scope": {
+        "cases": 12,
+        "recall_at_5": 0.5833,
+        "mrr": 0.3819
+      },
+      "lexical": {
+        "cases": 6,
+        "recall_at_5": 1.0,
+        "mrr": 0.625
+      },
+      "multi": {
+        "cases": 2,
+        "recall_at_5": 0.1667,
+        "mrr": 0.1667
+      },
+      "paraphrase": {
+        "cases": 8,
+        "recall_at_5": 0.5,
+        "mrr": 0.3688
+      },
+      "restricted": {
+        "cases": 4,
+        "recall_at_5": 1.0,
+        "mrr": 1.0
+      }
+    }
+  },
+  "heading": {
+    "strategy": "heading",
+    "recall_at_5": 0.7367,
+    "mrr": 0.504,
+    "families": {
+      "course": {
+        "cases": 8,
+        "recall_at_5": 0.875,
+        "mrr": 0.7188
+      },
+      "generic": {
+        "cases": 10,
+        "recall_at_5": 1.0,
+        "mrr": 0.425
+      },
+      "home_scope": {
+        "cases": 12,
+        "recall_at_5": 0.5833,
+        "mrr": 0.3958
+      },
+      "lexical": {
+        "cases": 6,
+        "recall_at_5": 1.0,
+        "mrr": 0.7833
+      },
+      "multi": {
+        "cases": 2,
+        "recall_at_5": 0.1667,
+        "mrr": 0.25
+      },
+      "paraphrase": {
+        "cases": 8,
+        "recall_at_5": 0.3125,
+        "mrr": 0.1562
+      },
+      "restricted": {
+        "cases": 4,
+        "recall_at_5": 1.0,
+        "mrr": 1.0
+      }
+    }
+  }
+}

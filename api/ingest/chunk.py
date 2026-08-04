@@ -163,11 +163,22 @@ def strategy_fixed(page: dict) -> list[Chunk]:
     whole document is windowed on character count — so rules get cut mid-sentence and a
     chunk's ancestry is lost. Included precisely so the ablation can show what structural
     chunking buys rather than asserting it.
+
+    Character spans of each source section are tracked while assembling the document, so
+    a window can still report which sections it overlaps. Without this the strategy would
+    be *unscoreable by construction* — it carries no section keys, so it could never
+    register a hit, and the ablation would have reported a nine-fold win for structural
+    chunking that was purely an artefact of the labelling scheme. A baseline that cannot
+    lose fairly is not a baseline.
     """
     document_parts: list[str] = []
+    spans: list[tuple[int, int, str]] = []  # (start, end, heading_path)
+    cursor = 0
     for s in page["sections"]:
-        document_parts.append(s["heading"])
-        document_parts.append(s["text"])
+        block = f"{s['heading']}\n\n{s['text']}"
+        document_parts.append(block)
+        spans.append((cursor, cursor + len(block), s["heading_path"]))
+        cursor += len(block) + 2  # the "\n\n" joining blocks
     document = "\n\n".join(document_parts)
 
     chunks: list[Chunk] = []
@@ -177,9 +188,11 @@ def strategy_fixed(page: dict) -> list[Chunk]:
         end = min(start + FIXED_WINDOW, len(document))
         text = document[start:end].strip()
         if text:
+            # Any section whose span intersects this window is considered covered.
+            overlapped = [path for s0, s1, path in spans if s0 < end and s1 > start]
             chunks.append(
                 _make(
-                    page, page["title"], [], None, text, index, "fixed",
+                    page, page["title"], overlapped, None, text, index, "fixed",
                     {"window": [start, end]},
                 )
             )

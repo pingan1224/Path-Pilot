@@ -33,13 +33,27 @@ from sqlalchemy import select
 from app.config import settings
 from app.db.session import get_sessionmaker
 from app.models import DocumentChunk, ReadinessStatus, Student, User, UserRole
-from eval.golden import BEHAVIOR_CASES, RETRIEVAL_CASES
+from eval.golden import BEHAVIOR_CASES
+from eval.retrieval_cases import RETRIEVAL_CASES, family_counts
+from eval.retrieval_cases import validate as validate_labels
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "eval" / "results"
 
+# Retrieval floors are REGRESSION gates, not quality targets.
+#
+# The previous values (0.85 / 0.70) were calibrated against a 15-chunk hand-written
+# corpus where scoring 1.00 was trivial. Against ~1,000 chunks of real policy text the
+# same pipeline measures 0.7367 / 0.504, so keeping the old numbers would fail every run
+# for the wrong reason — and quietly lowering them to whatever passes is how an eval
+# becomes theatre. These sit just under the measured baseline: they catch a regression,
+# and they are explicitly NOT the target. Beating them is the job of the retrieval
+# improvements (metadata filtering, hybrid search, reranking), each of which has to show
+# its gain against this recorded baseline.
+#
+# Baseline, strategy=heading, 2026-08-04: recall@5 0.7367, MRR 0.504.
 GATE = {
-    "retrieval_recall_at_5": 0.85,
-    "retrieval_mrr": 0.70,
+    "retrieval_recall_at_5": 0.70,
+    "retrieval_mrr": 0.45,
     "high_stakes_escalation_recall": 0.90,  # the number the source RFP promised
     "leakage_failures": 0,                   # hard zero
     "over_escalation_rate_max": 0.40,
@@ -53,45 +67,68 @@ GATE = {
 # --------------------------------------------------------------------------------------
 
 
-def eval_retrieval(session) -> dict:
+def eval_retrieval(session, strategy: str | None = None) -> dict:
+    """Score retrieval against section-level labels.
+
+    A retrieved chunk counts as a hit when its `section_keys` cover an expected section.
+    Scoring on coverage rather than chunk identity is what lets one label set grade every
+    chunking strategy — boundaries are the variable under test, so they cannot also be the
+    unit of measurement.
+    """
     from app.services.retrieval import search_policy
 
-    heading_to_id = {
-        heading: chunk_id
-        for chunk_id, heading in session.execute(
-            select(DocumentChunk.id, DocumentChunk.heading_path)
-        ).all()
-    }
+    problems = validate_labels()
+    if problems:
+        raise SystemExit("Invalid retrieval labels:\n  " + "\n  ".join(problems))
 
     rows = []
     for case in RETRIEVAL_CASES:
-        expected_ids = {heading_to_id[h] for h in case.expected_headings}
-        missing = [h for h in case.expected_headings if h not in heading_to_id]
-        if missing:
-            raise SystemExit(f"{case.id}: heading not found in corpus: {missing}")
+        expected = set(case.expected)
+        result = search_policy(session, case.query, case.role, k=5, strategy=strategy)
 
-        result = search_policy(session, case.query, case.role, k=5)
-        got_ids = [c.chunk_id for c in result.chunks]
-        hit_ranks = [i + 1 for i, cid in enumerate(got_ids) if cid in expected_ids]
+        covered_by_rank = [set(c.section_keys) & expected for c in result.chunks]
+        hit_ranks = [i + 1 for i, hit in enumerate(covered_by_rank) if hit]
+        found = set().union(*covered_by_rank) if covered_by_rank else set()
 
         rows.append(
             {
                 "id": case.id,
+                "family": case.family,
                 "role": case.role,
                 "query": case.query,
-                "expected": sorted(expected_ids),
-                "got": got_ids,
+                "expected": sorted(expected),
+                "found": sorted(found),
+                "top_paths": [c.heading_path for c in result.chunks[:3]],
                 "first_hit_rank": hit_ranks[0] if hit_ranks else None,
-                "recall_at_5": len(set(got_ids) & expected_ids) / len(expected_ids),
+                "recall_at_5": len(found) / len(expected),
                 "degraded": result.degraded,
             }
         )
 
+    by_family: dict[str, list[dict]] = {}
+    for row in rows:
+        by_family.setdefault(row["family"], []).append(row)
+
+    families = {
+        name: {
+            "cases": len(group),
+            "recall_at_5": round(statistics.mean(r["recall_at_5"] for r in group), 4),
+            "mrr": round(
+                statistics.mean((1 / r["first_hit_rank"]) if r["first_hit_rank"] else 0.0 for r in group), 4
+            ),
+        }
+        for name, group in sorted(by_family.items())
+    }
+
     recall = statistics.mean(r["recall_at_5"] for r in rows)
-    mrr = statistics.mean(
-        (1 / r["first_hit_rank"]) if r["first_hit_rank"] else 0.0 for r in rows
-    )
-    return {"cases": rows, "recall_at_5": round(recall, 4), "mrr": round(mrr, 4)}
+    mrr = statistics.mean((1 / r["first_hit_rank"]) if r["first_hit_rank"] else 0.0 for r in rows)
+    return {
+        "cases": rows,
+        "strategy": strategy or settings.chunk_strategy,
+        "recall_at_5": round(recall, 4),
+        "mrr": round(mrr, 4),
+        "families": families,
+    }
 
 
 # --------------------------------------------------------------------------------------
@@ -298,18 +335,30 @@ def write_report(retrieval, behavior, consistency, gate_problems, elapsed_s) -> 
 
     if retrieval:
         lines += [
-            "## Retrieval (15 labelled queries)",
+            f"## Retrieval ({len(retrieval['cases'])} labelled queries · "
+            f"strategy `{retrieval['strategy']}`)",
             "",
-            f"| recall@5 | MRR |",
-            f"|---|---|",
+            "| recall@5 | MRR |",
+            "|---|---|",
             f"| {retrieval['recall_at_5']} | {retrieval['mrr']} |",
             "",
-            "| case | first hit rank | recall@5 |",
-            "|---|---|---|",
+            "### By family",
+            "",
+            "| family | cases | recall@5 | MRR |",
+            "|---|---|---|---|",
         ]
-        for r in retrieval["cases"]:
-            rank = r["first_hit_rank"] if r["first_hit_rank"] else "miss"
-            lines.append(f"| {r['id']} | {rank} | {r['recall_at_5']:.2f} |")
+        for name, stats in retrieval["families"].items():
+            lines.append(
+                f"| {name} | {stats['cases']} | {stats['recall_at_5']} | {stats['mrr']} |"
+            )
+        misses = [r for r in retrieval["cases"] if r["first_hit_rank"] is None]
+        lines += ["", f"### Misses ({len(misses)})", ""]
+        if not misses:
+            lines.append("None.")
+        for r in misses:
+            lines.append(f"- **{r['id']}** ({r['family']}) {r['query']!r}")
+            lines.append(f"  - wanted: {r['expected'][0]}")
+            lines.append(f"  - got: {r['top_paths']}")
         lines.append("")
 
     if behavior:
@@ -382,9 +431,11 @@ def main() -> None:
     only = set(args.only.split(",")) if args.only else None
 
     with get_sessionmaker()() as session:
-        print("part 1/3: retrieval ...")
+        print(f"part 1/3: retrieval ({len(RETRIEVAL_CASES)} cases, {family_counts()}) ...")
         retrieval = eval_retrieval(session)
         print(f"  recall@5={retrieval['recall_at_5']}  MRR={retrieval['mrr']}")
+        for name, stats in retrieval["families"].items():
+            print(f"    {name:<12} n={stats['cases']:<3} recall={stats['recall_at_5']:<8} mrr={stats['mrr']}")
 
         behavior = None
         if not args.skip_agent:

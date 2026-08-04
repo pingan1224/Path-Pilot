@@ -1,0 +1,137 @@
+{
+  "vector": {
+    "recall": 0.91,
+    "mrr": 0.8283,
+    "misses": [
+      "R24",
+      "R40",
+      "R42"
+    ],
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  "hybrid b=0": {
+    "recall": 0.6267,
+    "mrr": 0.3867,
+    "misses": [
+      "R01",
+      "R04",
+      "R05",
+      "R07",
+      "R09",
+      "R13",
+      "R14",
+      "R17",
+      "R18",
+      "R21",
+      "R30",
+      "R37",
+      "R38",
+      "R39",
+      "R40",
+      "R42",
+      "R43",
+      "R49"
+    ],
+    "families": {
+      "course": 0.875,
+      "generic": 0.5,
+      "home_scope": 0.5833,
+      "lexical": 1.0,
+      "multi": 0.1667,
+      "paraphrase": 0.25,
+      "restricted": 1.0
+    }
+  },
+  "hybrid b=.005": {
+    "recall": 0.7633,
+    "mrr": 0.597,
+    "misses": [
+      "R05",
+      "R09",
+      "R13",
+      "R14",
+      "R30",
+      "R38",
+      "R39",
+      "R40",
+      "R42",
+      "R43"
+    ],
+    "families": {
+      "course": 0.875,
+      "generic": 0.8,
+      "home_scope": 0.8333,
+      "lexical": 1.0,
+      "multi": 0.3333,
+      "paraphrase": 0.3125,
+      "restricted": 1.0
+    }
+  },
+  "hybrid b=.010": {
+    "recall": 0.7633,
+    "mrr": 0.6157,
+    "misses": [
+      "R05",
+      "R09",
+      "R13",
+      "R14",
+      "R30",
+      "R38",
+      "R39",
+      "R40",
+      "R42",
+      "R43"
+    ],
+    "families": {
+      "course": 0.875,
+      "generic": 0.8,
+      "home_scope": 0.8333,
+      "lexical": 1.0,
+      "multi": 0.3333,
+      "paraphrase": 0.3125,
+      "restricted": 1.0
+    }
+  },
+  "hybrid b=.020": {
+    "recall": 0.9233,
+    "mrr": 0.8057,
+    "misses": [
+      "R30",
+      "R42"
+    ],
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 1.0,
+      "lexical": 1.0,
+      "multi": 0.3333,
+      "paraphrase": 0.8125,
+      "restricted": 1.0
+    }
+  },
+  "hybrid b=.040": {
+    "recall": 0.9233,
+    "mrr": 0.8057,
+    "misses": [
+      "R30",
+      "R42"
+    ],
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 1.0,
+      "lexical": 1.0,
+      "multi": 0.3333,
+      "paraphrase": 0.8125,
+      "restricted": 1.0
+    }
+  }
+}

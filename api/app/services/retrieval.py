@@ -18,6 +18,95 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.services.embeddings import EmbeddingsUnavailableError, embed_one
 
+# Hybrid: dense retrieval fused with lexical retrieval by Reciprocal Rank Fusion.
+#
+# RRF over score normalisation on purpose. Cosine similarity sits around 0.5-0.7 while
+# ts_rank_cd is unbounded and corpus-dependent; any weighted sum of the two requires
+# inventing a normalisation that quietly becomes a tuning parameter nobody can defend.
+# RRF only reads positions, so the two systems never have to be made comparable.
+#
+# The lexical arm tries AND first and falls back to OR only when AND finds nothing.
+#
+# Measured, after getting it wrong the other way round. An all-OR arm looked safer — AND
+# seemed too strict for natural questions — but the numbers said the opposite: for
+# "MASY1-GC 2100 prerequisites" the AND query matches exactly one chunk, the right one,
+# while OR matches 67 whose top five tie at an identical rank because every MASY course
+# shares the terms `masy1-gc` and `prerequisit` and the discriminating `2100` carries no
+# extra weight. All-OR destroyed the very case hybrid retrieval was added to fix. It is
+# also indiscriminate on vague questions: a colloquial query matched 355 of 1,012 chunks,
+# a third of the corpus fed into the fusion with the same standing as dense results.
+#
+# Precision when it is available, recall only as a fallback.
+HYBRID_SQL = text(
+    """
+    WITH raw AS (
+        SELECT plainto_tsquery('english', :query) AS strict,
+               CAST(
+                 replace(plainto_tsquery('english', :query)::text, '&', '|') AS tsquery
+               ) AS loose
+    ),
+    q AS (
+        SELECT CASE
+                 WHEN EXISTS (
+                   SELECT 1 FROM document_chunks dc2
+                   WHERE dc2.strategy = :strategy AND dc2.tsv @@ raw.strict
+                 ) THEN raw.strict
+                 ELSE raw.loose
+               END AS lex
+        FROM raw
+    ),
+    vec AS (
+        SELECT dc.id, ROW_NUMBER() OVER (
+                   ORDER BY dc.embedding <=> CAST(:query_vec AS vector)
+               ) AS rank
+        FROM document_chunks dc
+        JOIN documents d ON d.id = dc.document_id
+        WHERE d.is_active
+          AND dc.strategy = :strategy
+          AND dc.embedding IS NOT NULL
+          AND dc.visible_to_roles @> ARRAY[:role]::varchar(16)[]
+        ORDER BY dc.embedding <=> CAST(:query_vec AS vector)
+        LIMIT :candidate_k
+    ),
+    lex AS (
+        SELECT dc.id, ROW_NUMBER() OVER (
+                   ORDER BY ts_rank_cd(dc.tsv, q.lex) DESC
+               ) AS rank
+        FROM document_chunks dc
+        JOIN documents d ON d.id = dc.document_id
+        CROSS JOIN q
+        WHERE d.is_active
+          AND dc.strategy = :strategy
+          AND dc.visible_to_roles @> ARRAY[:role]::varchar(16)[]
+          AND dc.tsv @@ q.lex
+        ORDER BY ts_rank_cd(dc.tsv, q.lex) DESC
+        LIMIT :candidate_k
+    ),
+    fused AS (
+        SELECT COALESCE(vec.id, lex.id) AS id,
+               COALESCE(1.0 / (:rrf_k + vec.rank), 0) AS vec_rrf,
+               COALESCE(1.0 / (:rrf_k + lex.rank), 0) AS lex_rrf
+        FROM vec FULL OUTER JOIN lex ON vec.id = lex.id
+    )
+    SELECT dc.id, dc.text, dc.heading_path, dc.section_keys,
+           d.title, d.url, d.office, d.fetched_at, d.school, d.level,
+           (f.vec_rrf + f.lex_rrf) AS raw_score,
+           f.vec_rrf + f.lex_rrf
+             + CASE WHEN d.school IS NULL
+                      OR d.school = CAST(:school AS varchar)
+                      OR d.school = 'synthetic'
+                    THEN CAST(:school_boost AS float) ELSE 0 END
+             + CASE WHEN d.level IS NULL OR d.level = CAST(:level AS varchar)
+                    THEN CAST(:level_boost AS float) ELSE 0 END
+             AS score
+    FROM fused f
+    JOIN document_chunks dc ON dc.id = f.id
+    JOIN documents d ON d.id = dc.document_id
+    ORDER BY score DESC
+    LIMIT :k
+    """
+)
+
 # Over-fetch on pure vector distance, then re-rank with a home-school boost.
 #
 # Boosting inside ORDER BY would make the expression non-indexable; fetching a wider
@@ -28,6 +117,13 @@ from app.services.embeddings import EmbeddingsUnavailableError, embed_one
 # A *soft* boost rather than a hard filter, deliberately. Some questions genuinely have no
 # home-school answer (the SPS registration page is a pointer to the university-wide rules),
 # and a hard filter would answer "nothing found" while the correct answer sat one row down.
+#
+# The boost also applies to unaffiliated documents, not only the home school. Only a *peer
+# school's* answer is the wrong answer; a university-wide policy is the right one for
+# everybody. Restricting the boost to the home school silently demoted every unaffiliated
+# document — invisible in cosine space where the boost is small beside the score, and
+# glaring once RRF shrank the scale: restricted-document recall fell 1.00 -> 0.00 because
+# those fixtures carry no school and were crowded out by boosted SPS chunks.
 VECTOR_SQL = text(
     """
     WITH candidates AS (
@@ -47,9 +143,11 @@ VECTOR_SQL = text(
     SELECT id, text, heading_path, section_keys, title, url, office, fetched_at,
            school, level, raw_score,
            raw_score
-             + CASE WHEN school = CAST(:school AS varchar)
+             + CASE WHEN school IS NULL
+                      OR school = CAST(:school AS varchar)
+                      OR school = 'synthetic'
                     THEN CAST(:school_boost AS float) ELSE 0 END
-             + CASE WHEN level = CAST(:level AS varchar)
+             + CASE WHEN level IS NULL OR level = CAST(:level AS varchar)
                     THEN CAST(:level_boost AS float) ELSE 0 END
              AS score
     FROM candidates
@@ -102,6 +200,13 @@ CANDIDATE_MULTIPLIER = 6
 DEFAULT_SCHOOL_BOOST = 0.12
 DEFAULT_LEVEL_BOOST = 0.04
 
+# RRF puts scores on a completely different scale: with k=60 a first-place hit contributes
+# 1/61 ≈ 0.016, so the 0.12 boost tuned for cosine space would swamp the fusion entirely.
+# Hybrid therefore carries its own pair, swept separately in scripts/ablate_hybrid.py.
+RRF_K = 60
+HYBRID_SCHOOL_BOOST = 0.010
+HYBRID_LEVEL_BOOST = 0.003
+
 
 @dataclass
 class RetrievalScope:
@@ -148,28 +253,36 @@ def search_policy(
     k: int = 5,
     strategy: str | None = None,
     scope: RetrievalScope | None = None,
-    school_boost: float = DEFAULT_SCHOOL_BOOST,
-    level_boost: float = DEFAULT_LEVEL_BOOST,
+    school_boost: float | None = None,
+    level_boost: float | None = None,
+    mode: str | None = None,
 ) -> RetrievalResult:
     active = strategy or settings.chunk_strategy
+    retrieval_mode = mode or settings.retrieval_mode
     scope = scope or RetrievalScope()
+
+    hybrid = retrieval_mode == "hybrid"
+    if school_boost is None:
+        school_boost = HYBRID_SCHOOL_BOOST if hybrid else DEFAULT_SCHOOL_BOOST
+    if level_boost is None:
+        level_boost = HYBRID_LEVEL_BOOST if hybrid else DEFAULT_LEVEL_BOOST
 
     try:
         vector = embed_one(query)
-        rows = session.execute(
-            VECTOR_SQL,
-            {
-                "query_vec": str(vector),
-                "role": role,
-                "k": k,
-                "candidate_k": k * CANDIDATE_MULTIPLIER,
-                "strategy": active,
-                "school": scope.school,
-                "level": scope.level,
-                "school_boost": school_boost,
-                "level_boost": level_boost,
-            },
-        ).all()
+        params = {
+            "query_vec": str(vector),
+            "role": role,
+            "k": k,
+            "candidate_k": k * CANDIDATE_MULTIPLIER,
+            "strategy": active,
+            "school": scope.school,
+            "level": scope.level,
+            "school_boost": school_boost,
+            "level_boost": level_boost,
+        }
+        if hybrid:
+            params |= {"query": query, "rrf_k": RRF_K}
+        rows = session.execute(HYBRID_SQL if hybrid else VECTOR_SQL, params).all()
         degraded = False
     except EmbeddingsUnavailableError:
         terms = [t for t in query.lower().split() if len(t) > 2][:8]

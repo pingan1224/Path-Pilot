@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     # so a chunking ablation is this one setting plus a re-run of the eval.
     chunk_strategy: str = "heading"
 
+    # "vector" (dense only) or "hybrid" (dense + lexical, fused by RRF).
+    retrieval_mode: str = "vector"
+
     @property
     def allowed_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

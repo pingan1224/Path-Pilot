@@ -24,6 +24,13 @@ dist-ssr/
 .DS_Store
 Thumbs.db
 
+# Ingestion cache. Raw HTML is a regenerable local cache and mostly boilerplate, so it
+# stays out of the repo. The manifest (provenance: url, sha256, fetched_at) and the
+# extracted text snapshot DO get committed — the eval labels reference that corpus, so
+# reproducibility depends on it being versioned rather than re-scraped.
+api/data/raw/pages/
+api/data/raw/sitemap.xml
+
 # Logs
 *.log
 npm-debug.log*

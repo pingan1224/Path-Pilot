@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     embedding_model: str = "text-embedding-3-small"
 
+    # Which chunking strategy retrieval reads. Every arm is embedded and stored at once,
+    # so a chunking ablation is this one setting plus a re-run of the eval.
+    chunk_strategy: str = "heading"
+
     @property
     def allowed_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

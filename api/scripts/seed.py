@@ -1123,130 +1123,17 @@ def seed_interactions(session: Session, heroes: dict[str, Student]) -> None:
 # --------------------------------------------------------------------------------------
 
 # (source_key, title, url, office, published, roles, [(heading, text), ...])
+#
+# Only the restricted-access fixtures live here. Public policy comes from the real ingested
+# corpus (`python -m ingest.load`), which carries ~1,000 chunks of actual NYU bulletins
+# text. Inventing public policy alongside real policy would let the assistant cite a rule
+# that does not exist — a direct violation of the citation-integrity rule these documents
+# are meant to protect.
+#
+# These two stay synthetic because the alternative is worse: no genuinely internal
+# university document would be appropriate to scrape, and the role pre-filter needs
+# something restricted to be tested against. They are flagged is_synthetic in the database.
 DOCUMENTS = [
-    (
-        "policy_doc",
-        "Registration Holds and How to Clear Them",
-        "https://example.edu/registrar/holds",
-        "registrar",
-        date(2026, 3, 14),
-        ALL_ROLES,
-        [
-            (
-                "Registration > Holds > Overview",
-                "A hold is a condition on your student record that may prevent registration, "
-                "transcript release, or diploma release. Each hold names the office that placed "
-                "it. Only that office can remove it. Holds are visible in Albert under Tasks.",
-            ),
-            (
-                "Registration > Holds > Financial holds",
-                "Financial holds are placed by the Bursar when a past-due balance remains on "
-                "your account. Payment posts to your account within one business day. The hold "
-                "is released automatically once the balance reaches zero; no separate request "
-                "is needed.",
-            ),
-            (
-                "Registration > Holds > Advising holds",
-                "An advising hold requires a planning meeting before you register. Your advisor "
-                "releases the hold at the end of the meeting. Advising holds are most often "
-                "placed when a degree audit shows a mismatch between remaining requirements and "
-                "your recorded expected graduation term.",
-            ),
-        ],
-    ),
-    (
-        "policy_doc",
-        "Prerequisite Enforcement Policy",
-        "https://example.edu/registrar/prerequisites",
-        "registrar",
-        date(2026, 1, 8),
-        ALL_ROLES,
-        [
-            (
-                "Enrollment > Prerequisites > Enforcement",
-                "Prerequisites are enforced at the moment of enrollment. If you have not "
-                "completed the prerequisite with the required minimum grade, the system will "
-                "reject the enrollment with error ERR_PREREQ. Courses in progress do not "
-                "satisfy a prerequisite unless the prerequisite is marked as allowing "
-                "concurrent enrollment.",
-            ),
-            (
-                "Enrollment > Prerequisites > Exceptions",
-                "A prerequisite waiver requires approval from the department offering the "
-                "course. Advisors cannot waive prerequisites on their own authority. Submit the "
-                "waiver request at least five business days before your registration window "
-                "opens.",
-            ),
-        ],
-    ),
-    (
-        "policy_doc",
-        "Enrollment Appointment Times",
-        "https://example.edu/registrar/appointments",
-        "registrar",
-        date(2026, 6, 2),
-        ALL_ROLES,
-        [
-            (
-                "Registration > Appointments",
-                "Your enrollment appointment is the earliest date and time you may register for "
-                "a term. Appointments are assigned by earned credit count, with continuing "
-                "students registering before newly admitted students. Attempting to enroll "
-                "before your appointment returns error ERR_APPT.",
-            ),
-            (
-                "Registration > Appointments > Holds interaction",
-                "An enrollment appointment does not override a hold. If you have a registration "
-                "hold when your appointment opens, you cannot register until the hold is "
-                "cleared, and seats are not reserved for you in the meantime.",
-            ),
-        ],
-    ),
-    (
-        "policy_doc",
-        "Financial Aid Verification Requirements",
-        "https://example.edu/financial-aid/verification",
-        "financial_aid",
-        date(2026, 5, 20),
-        ALL_ROLES,
-        [
-            (
-                "Aid > Verification > Required documents",
-                "Students selected for verification must submit a signed Verification Worksheet "
-                "and, in some cases, tax transcripts. Aid is not disbursed until verification "
-                "is complete. A registration hold is placed if verification is outstanding "
-                "within thirty days of the term start.",
-            ),
-            (
-                "Aid > Verification > Processing time",
-                "Documents are reviewed within two business days of upload. The document portal "
-                "shows a received timestamp once processing begins. Uploads made outside "
-                "business hours are timestamped the next business day.",
-            ),
-        ],
-    ),
-    (
-        "policy_doc",
-        "Waitlist Policy",
-        "https://example.edu/registrar/waitlists",
-        "registrar",
-        date(2026, 4, 30),
-        ALL_ROLES,
-        [
-            (
-                "Enrollment > Waitlists",
-                "Joining a waitlist does not guarantee a seat. Waitlists process automatically "
-                "each night until the add/drop deadline. You must have no registration holds "
-                "and no time conflicts for the waitlist to promote you into an open seat.",
-            ),
-            (
-                "Enrollment > Waitlists > Credit limits",
-                "Waitlisted credits count toward your maximum term credit load. If promotion "
-                "from a waitlist would exceed your credit limit, the promotion is skipped and "
-                "your position is forfeited.",
-            ),
-        ],
-    ),
     # --- Staff-only. This document is the concrete demonstration of rule 3: a student
     #     asking about overrides must never retrieve it, and the pre-filter is what
     #     guarantees that rather than a prompt instruction not to mention it.
@@ -1300,13 +1187,25 @@ DOCUMENTS = [
 
 
 def seed_documents(session: Session) -> None:
-    """Load the policy corpus. Embeddings stay null until P3 fills them in."""
+    """Load the synthetic restricted fixtures.
+
+    Written once per chunking strategy so that switching strategies for an ablation does
+    not silently drop the restricted documents from the candidate set — the leakage tests
+    have to run against every arm, not just the default one.
+    """
+    from ingest.chunk import STRATEGIES
+
     for source_key, title, url, office, published, roles, chunks in DOCUMENTS:
         document = Document(
             source_key=source_key,
             title=title,
             url=url,
             office=office,
+            school="synthetic",
+            level="graduate",
+            topic="policies",
+            scope="home",
+            is_synthetic=True,
             published_at=published,
             fetched_at=NOW - timedelta(days=2),
             content_hash=f"{abs(hash((title, len(chunks)))):016x}",
@@ -1315,17 +1214,20 @@ def seed_documents(session: Session) -> None:
         session.add(document)
         session.flush()
 
-        for ordinal, (heading, text) in enumerate(chunks):
-            session.add(
-                DocumentChunk(
-                    document_id=document.id,
-                    ordinal=ordinal,
-                    text=text,
-                    heading_path=heading,
-                    token_count=max(len(text) // 4, 1),
-                    visible_to_roles=list(roles),
+        for strategy in sorted(STRATEGIES):
+            for ordinal, (heading, text) in enumerate(chunks):
+                session.add(
+                    DocumentChunk(
+                        document_id=document.id,
+                        strategy=strategy,
+                        ordinal=ordinal,
+                        text=text,
+                        heading_path=heading,
+                        section_keys=[f"synthetic#{heading}"],
+                        token_count=max(len(text) // 4, 1),
+                        visible_to_roles=list(roles),
+                    )
                 )
-            )
     session.flush()
 
 

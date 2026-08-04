@@ -15,16 +15,18 @@ from dataclasses import dataclass
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.services.embeddings import EmbeddingsUnavailableError, embed_one
 
 VECTOR_SQL = text(
     """
-    SELECT dc.id, dc.text, dc.heading_path,
+    SELECT dc.id, dc.text, dc.heading_path, dc.section_keys,
            d.title, d.url, d.office, d.fetched_at,
            1 - (dc.embedding <=> CAST(:query_vec AS vector)) AS score
     FROM document_chunks dc
     JOIN documents d ON d.id = dc.document_id
     WHERE d.is_active
+      AND dc.strategy = :strategy
       AND dc.embedding IS NOT NULL
       AND dc.visible_to_roles @> ARRAY[:role]::varchar(16)[]
     ORDER BY dc.embedding <=> CAST(:query_vec AS vector)
@@ -36,7 +38,7 @@ VECTOR_SQL = text(
 # they are surfaced as-is so a degraded turn never masquerades as a normal one.
 KEYWORD_SQL = text(
     """
-    SELECT dc.id, dc.text, dc.heading_path,
+    SELECT dc.id, dc.text, dc.heading_path, dc.section_keys,
            d.title, d.url, d.office, d.fetched_at,
            (
              SELECT count(*) FROM unnest(:terms) AS term
@@ -46,6 +48,7 @@ KEYWORD_SQL = text(
     FROM document_chunks dc
     JOIN documents d ON d.id = dc.document_id
     WHERE d.is_active
+      AND dc.strategy = :strategy
       AND dc.visible_to_roles @> ARRAY[:role]::varchar(16)[]
     ORDER BY score DESC
     LIMIT :k
@@ -58,6 +61,9 @@ class RetrievedChunk:
     chunk_id: int
     text: str
     heading_path: str | None
+    # Source sections covered, so retrieval eval can score a hit without knowing how the
+    # active strategy drew its boundaries.
+    section_keys: list[str]
     document_title: str
     url: str
     office: str
@@ -73,18 +79,20 @@ class RetrievalResult:
 
 
 def search_policy(
-    session: Session, query: str, role: str, k: int = 5
+    session: Session, query: str, role: str, k: int = 5, strategy: str | None = None
 ) -> RetrievalResult:
+    active = strategy or settings.chunk_strategy
     try:
         vector = embed_one(query)
         rows = session.execute(
-            VECTOR_SQL, {"query_vec": str(vector), "role": role, "k": k}
+            VECTOR_SQL,
+            {"query_vec": str(vector), "role": role, "k": k, "strategy": active},
         ).all()
         degraded = False
     except EmbeddingsUnavailableError:
         terms = [t for t in query.lower().split() if len(t) > 2][:8]
         rows = session.execute(
-            KEYWORD_SQL, {"terms": terms, "role": role, "k": k}
+            KEYWORD_SQL, {"terms": terms, "role": role, "k": k, "strategy": active}
         ).all()
         rows = [r for r in rows if r.score > 0]
         degraded = True
@@ -94,6 +102,7 @@ def search_policy(
             chunk_id=row.id,
             text=row.text,
             heading_path=row.heading_path,
+            section_keys=list(row.section_keys or []),
             document_title=row.title,
             url=row.url,
             office=row.office,

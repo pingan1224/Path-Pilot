@@ -43,6 +43,20 @@ class Document(Base, TimestampMixin):
     url: Mapped[str] = mapped_column(String(1024), nullable=False)
     office: Mapped[str] = mapped_column(String(64), nullable=False)
 
+    # Corpus facets, carried from the ingestion seed list. `scope` separates the home
+    # school from the peer schools whose near-identical policy pages exist to make
+    # retrieval discriminate rather than merely match.
+    school: Mapped[str | None] = mapped_column(String(64), index=True)
+    level: Mapped[str | None] = mapped_column(String(16))
+    topic: Mapped[str | None] = mapped_column(String(32), index=True)
+    scope: Mapped[str] = mapped_column(String(16), default="home", nullable=False)
+
+    # True for documents we authored rather than fetched. Only the restricted-access
+    # fixtures behind the leakage tests are synthetic: no genuinely internal university
+    # document would be appropriate to scrape, and inventing public policy alongside real
+    # policy would let the assistant cite a rule that does not exist.
+    is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, index=True)
+
     published_at: Mapped[date | None] = mapped_column(Date)
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     # Detects upstream edits without re-embedding unchanged documents on every crawl.
@@ -67,7 +81,7 @@ class DocumentChunk(Base):
 
     __tablename__ = "document_chunks"
     __table_args__ = (
-        UniqueConstraint("document_id", "ordinal", name="uq_chunk_position"),
+        UniqueConstraint("document_id", "strategy", "ordinal", name="uq_chunk_position"),
         # GIN index makes the role pre-filter cheap enough to apply before ranking.
         Index("ix_chunk_roles", "visible_to_roles", postgresql_using="gin"),
     )
@@ -77,6 +91,18 @@ class DocumentChunk(Base):
         ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True
     )
     ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # Which chunking strategy produced this row. All arms of an ablation live in the
+    # table at once and retrieval filters on the active one, so comparing strategies is a
+    # config flip rather than a reload-and-re-embed cycle.
+    strategy: Mapped[str] = mapped_column(String(24), default="heading", nullable=False, index=True)
+
+    # Source sections this chunk covers, as `slug#heading_path`. Eval labels point here
+    # rather than at chunk ids: an ablation changes chunk boundaries by definition, so
+    # id-based labels would break on every run.
+    section_keys: Mapped[list[str]] = mapped_column(
+        ARRAY(String(512)), nullable=False, server_default="{}"
+    )
 
     text: Mapped[str] = mapped_column(Text, nullable=False)
     # Breadcrumb of the headings this passage sat under, e.g.

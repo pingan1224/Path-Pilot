@@ -1,0 +1,100 @@
+[
+  {
+    "school_boost": 0.0,
+    "recall": 0.7367,
+    "mrr": 0.504,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.5833,
+      "lexical": 1.0,
+      "multi": 0.1667,
+      "paraphrase": 0.3125,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.02,
+    "recall": 0.8067,
+    "mrr": 0.6123,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.75,
+      "lexical": 1.0,
+      "multi": 0.1667,
+      "paraphrase": 0.5,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.04,
+    "recall": 0.8533,
+    "mrr": 0.699,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.875,
+      "lexical": 1.0,
+      "multi": 0.3333,
+      "paraphrase": 0.5625,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.06,
+    "recall": 0.86,
+    "mrr": 0.7633,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.875,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.5625,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.08,
+    "recall": 0.9,
+    "mrr": 0.8267,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.6875,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.12,
+    "recall": 0.91,
+    "mrr": 0.8383,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.2,
+    "recall": 0.9167,
+    "mrr": 0.825,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.6667,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  }
+]

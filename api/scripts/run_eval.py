@@ -50,10 +50,12 @@ RESULTS_DIR = Path(__file__).resolve().parent.parent / "eval" / "results"
 # improvements (metadata filtering, hybrid search, reranking), each of which has to show
 # its gain against this recorded baseline.
 #
-# Baseline, strategy=heading, 2026-08-04: recall@5 0.7367, MRR 0.504.
+# Baselines, strategy=heading, 2026-08-04:
+#   no scoping        recall@5 0.7367  MRR 0.504
+#   home-school boost recall@5 0.9100  MRR 0.8383   <- current, floors set under this
 GATE = {
-    "retrieval_recall_at_5": 0.70,
-    "retrieval_mrr": 0.45,
+    "retrieval_recall_at_5": 0.85,
+    "retrieval_mrr": 0.75,
     "high_stakes_escalation_recall": 0.90,  # the number the source RFP promised
     "leakage_failures": 0,                   # hard zero
     "over_escalation_rate_max": 0.40,
@@ -75,16 +77,23 @@ def eval_retrieval(session, strategy: str | None = None) -> dict:
     chunking strategy — boundaries are the variable under test, so they cannot also be the
     unit of measurement.
     """
-    from app.services.retrieval import search_policy
+    from app.services.retrieval import RetrievalScope, search_policy
 
     problems = validate_labels()
     if problems:
         raise SystemExit("Invalid retrieval labels:\n  " + "\n  ".join(problems))
 
+    # The scope the running system supplies for the demo population: every labelled query
+    # is asked by a graduate student at the School of Professional Studies. Passing it here
+    # measures the pipeline as deployed rather than a version of it nobody runs.
+    scope = RetrievalScope(school="professional-studies", level="graduate")
+
     rows = []
     for case in RETRIEVAL_CASES:
         expected = set(case.expected)
-        result = search_policy(session, case.query, case.role, k=5, strategy=strategy)
+        result = search_policy(
+            session, case.query, case.role, k=5, strategy=strategy, scope=scope
+        )
 
         covered_by_rank = [set(c.section_keys) & expected for c in result.chunks]
         hit_ranks = [i + 1 for i, hit in enumerate(covered_by_rank) if hit]
@@ -99,6 +108,7 @@ def eval_retrieval(session, strategy: str | None = None) -> dict:
                 "expected": sorted(expected),
                 "found": sorted(found),
                 "top_paths": [c.heading_path for c in result.chunks[:3]],
+                "retrieved_section_counts": [len(c.section_keys) for c in result.chunks],
                 "first_hit_rank": hit_ranks[0] if hit_ranks else None,
                 "recall_at_5": len(found) / len(expected),
                 "degraded": result.degraded,
@@ -122,11 +132,18 @@ def eval_retrieval(session, strategy: str | None = None) -> dict:
 
     recall = statistics.mean(r["recall_at_5"] for r in rows)
     mrr = statistics.mean((1 / r["first_hit_rank"]) if r["first_hit_rank"] else 0.0 for r in rows)
+
+    # How many source sections an average retrieved chunk covers. Coverage-based labels
+    # give a wide chunk more chances to contain the target, so this number is needed to
+    # read recall@5 across strategies without being fooled by chunk width.
+    breadth = [n for r in rows for n in r["retrieved_section_counts"]]
+
     return {
         "cases": rows,
         "strategy": strategy or settings.chunk_strategy,
         "recall_at_5": round(recall, 4),
         "mrr": round(mrr, 4),
+        "sections_per_chunk": round(statistics.mean(breadth), 2) if breadth else 0.0,
         "families": families,
     }
 

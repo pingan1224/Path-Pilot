@@ -30,12 +30,23 @@ def main() -> None:
     print(f"\n{'=' * 74}")
     print(f"Chunking ablation — 50 labelled queries, {family_counts()}")
     print("=" * 74)
-    print(f"\n{'strategy':<10}{'recall@5':>10}{'MRR':>8}{'misses':>9}")
-    print("-" * 37)
+    print(f"\n{'strategy':<10}{'recall@5':>10}{'MRR':>8}{'misses':>9}{'sec/chunk':>11}")
+    print("-" * 48)
     for strategy in STRATEGIES:
         r = results[strategy]
         misses = sum(1 for c in r["cases"] if c["first_hit_rank"] is None)
-        print(f"{strategy:<10}{r['recall_at_5']:>10}{r['mrr']:>8}{misses:>9}")
+        print(
+            f"{strategy:<10}{r['recall_at_5']:>10}{r['mrr']:>8}{misses:>9}"
+            f"{r['sections_per_chunk']:>11}"
+        )
+
+    print(
+        "\nsec/chunk is the confound to read this table against: coverage-based labels"
+        "\nscore a hit when a retrieved chunk *contains* the target section, so a wider"
+        "\nchunk gets more chances per slot. Recall@5 therefore rewards chunk size as much"
+        "\nas chunk quality. MRR is less exposed — it asks where the first hit landed, not"
+        "\nhow many the window swept up."
+    )
 
     families = sorted(results[STRATEGIES[0]]["families"])
     print(f"\nrecall@5 by family\n{'family':<13}" + "".join(f"{s:>10}" for s in STRATEGIES))

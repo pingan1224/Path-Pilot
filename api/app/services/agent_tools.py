@@ -31,7 +31,17 @@ from app.models import (
 )
 from app.services.freshness import FreshnessPolicies, humanize_age
 from app.services.readiness import compute_readiness
-from app.services.retrieval import search_policy
+from app.services.retrieval import RetrievalScope, search_policy
+
+# Maps a program's school to the corpus slug its policies were ingested under.
+#
+# A column on `programs` would be the right home for this in a system with more than one
+# program; as a single-program demo, a stated mapping beats a schema migration plus a
+# full re-embed of 2,836 chunks. Unmapped programs simply get no scope boost, which
+# degrades to the previous behaviour rather than to a wrong answer.
+SCHOOL_TO_CORPUS_SLUG = {
+    "School of Professional Studies": "professional-studies",
+}
 
 MAX_SECTIONS = 6
 MAX_ATTEMPTS = 5
@@ -57,8 +67,23 @@ class ToolContext:
 # --------------------------------------------------------------------------------------
 
 
+def _scope_for(ctx: ToolContext) -> RetrievalScope:
+    """The asker's own school and level, so their policies outrank a peer school's."""
+    if ctx.subject_student_id is None:
+        return RetrievalScope()
+    student = ctx.session.get(Student, ctx.subject_student_id)
+    if student is None or student.program is None:
+        return RetrievalScope()
+    return RetrievalScope(
+        school=SCHOOL_TO_CORPUS_SLUG.get(student.program.school),
+        level="graduate" if student.program.degree in ("MS", "MA", "PhD") else "undergraduate",
+    )
+
+
 def tool_search_policy(ctx: ToolContext, query: str) -> dict[str, Any]:
-    result = search_policy(ctx.session, query, ctx.acting_role.value, k=5)
+    result = search_policy(
+        ctx.session, query, ctx.acting_role.value, k=5, scope=_scope_for(ctx)
+    )
     if result.degraded:
         ctx.degraded_modes.add("keyword_fallback")
 

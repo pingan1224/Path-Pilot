@@ -1,5 +1,5 @@
 {
-  "stamp": "20260804-163838",
+  "stamp": "20260804-164932",
   "model": "kimi-k2.7-code-highspeed",
   "retrieval": {
     "cases": [
@@ -11,14 +11,16 @@
         "expected": [
           "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Enrollment Status > Full-Time, Part-Time, and Half-Time Status"
         ],
-        "found": [],
-        "top_paths": [
-          "Registration > Permitted Course Loads",
-          "Academic Policies > Full-Time or Half-Time Equivalency",
-          "Academic Policies > Student Status > Certification of Full-time and Half-Time Status"
+        "found": [
+          "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Enrollment Status > Full-Time, Part-Time, and Half-Time Status"
         ],
-        "first_hit_rank": null,
-        "recall_at_5": 0.0,
+        "top_paths": [
+          "Academic Policies > Academic Standing and Progress > Enrollment Status > Full-Time, Part-Time, and Half-Time Status",
+          "Academic Policies > Academic Standing and Progress > Enrollment Status > Full-Time Equivalency and Half-Time Equivalency",
+          "Registration > Permitted Course Loads"
+        ],
+        "first_hit_rank": 1,
+        "recall_at_5": 1.0,
         "degraded": false
       },
       {
@@ -33,11 +35,11 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Enrollment Status > Full-Time Equivalency and Half-Time Equivalency"
         ],
         "top_paths": [
-          "Academic Policies > Registration and Enrollment > Maintenance of Matriculation and Equivalency > Equivalency",
           "Academic Policies > Academic Standing and Progress > Enrollment Status > Full-Time Equivalency and Half-Time Equivalency",
+          "Academic Policies > Registration and Enrollment > Maintenance of Matriculation and Equivalency > Equivalency",
           "Academic Policies > Academic Standing and Progress > PhD > Full-Time Status"
         ],
-        "first_hit_rank": 2,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -53,11 +55,11 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Time to Complete a Graduate Program"
         ],
         "top_paths": [
-          "Academic Policies > Academic Standing and Progress > Time to Completion Requirement",
           "Academic Policies > Academic Standing and Progress > Time to Complete a Graduate Program",
+          "Academic Policies > Academic Standing and Progress > Time to Completion Requirement",
           "Academic Policies > Academic Standing and Progress > Maximum Allowed Time to Degree Completion"
         ],
-        "first_hit_rank": 2,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -69,14 +71,16 @@
         "expected": [
           "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Satisfactory Academic Progress > Good Academic Standing"
         ],
-        "found": [],
+        "found": [
+          "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Satisfactory Academic Progress > Good Academic Standing"
+        ],
         "top_paths": [
-          "Academic Policies > Academic Concern",
-          "Academic Policies > Academic Standing and Progress > Academic Good Standing",
+          "Academic Policies > Academic Standing and Progress > Academic Concern > Criteria of Academic Concern",
+          "Academic Policies > Academic Standing and Progress > Satisfactory Academic Progress > Good Academic Standing",
           "Academic Policies > Academic Standing and Progress > Satisfactory Academic Progress > Good Academic Standing"
         ],
-        "first_hit_rank": null,
-        "recall_at_5": 0.0,
+        "first_hit_rank": 3,
+        "recall_at_5": 1.0,
         "degraded": false
       },
       {
@@ -88,14 +92,16 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Leave of Absence",
           "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Maintenance of Matriculation"
         ],
-        "found": [],
+        "found": [
+          "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Leave of Absence"
+        ],
         "top_paths": [
           "Academic Policies > Academic Standing and Progress > Leave of Absence > Voluntary Leave",
-          "Academic Policies > Refunds and Withdrawals > Important Notes on Withdrawals",
-          "Academic Policies > Leave of Absence > Voluntary Leave of Absence"
+          "Academic Policies > Withdrawals > Semester Withdrawals",
+          "Academic Policies > Academic Standing and Progress > Leave of Absence"
         ],
-        "first_hit_rank": null,
-        "recall_at_5": 0.0,
+        "first_hit_rank": 3,
+        "recall_at_5": 0.5,
         "degraded": false
       },
       {
@@ -106,14 +112,16 @@
         "expected": [
           "graduate__professional-studies__academic-policies#Academic Policies > Residency Requirements > Master's Programs"
         ],
-        "found": [],
-        "top_paths": [
-          "Academic Policies > Transfer and Articulation Agreements > External Transfer Credit",
-          "Academic Policies > Transfer Credit and Articulation Agreements",
-          "Academic Policies > Residency Requirements > Bachelor's Programs"
+        "found": [
+          "graduate__professional-studies__academic-policies#Academic Policies > Residency Requirements > Master's Programs"
         ],
-        "first_hit_rank": null,
-        "recall_at_5": 0.0,
+        "top_paths": [
+          "Academic Policies > Residency Requirements > Master's Programs",
+          "Academic Policies > Residency Requirements > Bachelor's Programs",
+          "Academic Policies > Advanced Standing > Transfer Credits"
+        ],
+        "first_hit_rank": 1,
+        "recall_at_5": 1.0,
         "degraded": false
       },
       {
@@ -124,14 +132,16 @@
         "expected": [
           "graduate__professional-studies__academic-policies#Academic Policies > Grading > Graduate Grading Scale"
         ],
-        "found": [],
-        "top_paths": [
-          "Academic Policies > Grading",
-          "Academic Policies > Grading > Master's and Advanced Certificate",
-          "Academic Policies > Grading Policies"
+        "found": [
+          "graduate__professional-studies__academic-policies#Academic Policies > Grading > Graduate Grading Scale"
         ],
-        "first_hit_rank": null,
-        "recall_at_5": 0.0,
+        "top_paths": [
+          "Academic Policies > Grading > Graduate Grading Scale",
+          "Academic Policies > Grading",
+          "Academic Policies > Grading"
+        ],
+        "first_hit_rank": 1,
+        "recall_at_5": 1.0,
         "degraded": false
       },
       {
@@ -146,11 +156,11 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Residency Requirements > Course Substitutions"
         ],
         "top_paths": [
-          "Academic Policies > Degrees and Advanced Certificates > Modifications to Curricula",
           "Academic Policies > Residency Requirements",
-          "Academic Policies > Master's Program Policies (MSW) > Academic Guidelines > Waiving Required Courses"
+          "Academic Policies > Degrees and Advanced Certificates > Modifications to Curricula",
+          "Academic Policies > Academic Standing and Progress > Enrollment Status > Full-Time Equivalency and Half-Time Equivalency"
         ],
-        "first_hit_rank": 2,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -168,7 +178,7 @@
         "top_paths": [
           "Academic Policies > Graduation",
           "Academic Policies > Graduation",
-          "Academic Policies > Graduation > Final Transcript and Diploma"
+          "Academic Policies > Academic Standing and Progress > Satisfactory Academic Progress > Good Academic Standing"
         ],
         "first_hit_rank": 1,
         "recall_at_5": 1.0,
@@ -206,11 +216,11 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Attendance Policy"
         ],
         "top_paths": [
-          "Academic Policies > Master's Program Policies (MSW) > Academic Guidelines > Expectations for Attendance",
-          "Academic Policies > Grading > Grades > Attendance Policy for Full-Time MBA Core Classes",
-          "Academic Policies > Attendance Policy"
+          "Academic Policies > Attendance Policy",
+          "Academic Policies > Attendance Policy",
+          "Academic Policies > Registration and Schedule Changes > Dropping / Withdrawing from Courses"
         ],
-        "first_hit_rank": 4,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -227,8 +237,8 @@
         ],
         "top_paths": [
           "Academic Policies > Academic Standing and Progress > Leave of Absence > Leave of Absence Policies for International Students",
-          "Academic Policies > Academic Standing and Leave of Absence > Leaves of Absence and Readmission > Leave of Absence",
-          "Academic Policies > Leave of Absence > Applying for a Leave of Absence"
+          "Academic Policies > Academic Standing and Progress > Leave of Absence",
+          "Academic Policies > Academic Standing and Progress > Leave of Absence"
         ],
         "first_hit_rank": 1,
         "recall_at_5": 1.0,
@@ -246,11 +256,11 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Registration and Schedule Changes > Dropping / Withdrawing from Courses"
         ],
         "top_paths": [
-          "Academic Policies > Registration and Schedule Changes > Dropping/Withdrawing from Courses",
           "Academic Policies > Registration and Schedule Changes > Late Registration",
-          "Academic Policies > Withdrawals > Withdrawing from Classes after the Add/Drop Deadline"
+          "Academic Policies > Registration and Schedule Changes > Dropping/Withdrawing from Courses",
+          "Academic Policies > Registration and Schedule Changes > Dropping / Withdrawing from Courses"
         ],
-        "first_hit_rank": 4,
+        "first_hit_rank": 3,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -267,8 +277,8 @@
         ],
         "top_paths": [
           "Academic Policies > Registration and Schedule Changes > Late Registration",
-          "Registration > Registration > Continuing MBA Students",
-          "Academic Policies > Academic Standing and Progress > PhD > Registration"
+          "Student Services > Additional Information",
+          "Academic Policies > Registration and Schedule Changes > Registering for Courses"
         ],
         "first_hit_rank": 1,
         "recall_at_5": 1.0,
@@ -286,11 +296,11 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Registration and Schedule Changes > Registering for Courses"
         ],
         "top_paths": [
+          "Academic Policies > Registration and Schedule Changes > Registering for Courses",
           "Registration > Registration > Course Registration",
-          "Registration > Registration Resources",
-          "Academic Policies > Registration and Schedule Changes > Registering for Courses"
+          "Advising > Academic Advising > How Advising Works"
         ],
-        "first_hit_rank": 3,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -306,11 +316,11 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Withdrawals > Semester Withdrawals"
         ],
         "top_paths": [
-          "Academic Policies > Withdrawals > Complete Withdrawals",
-          "Academic Policies > Refunds and Withdrawals > Important Notes on Withdrawals",
-          "Academic Policies > Withdrawals > Semester Withdrawals"
+          "Academic Policies > Withdrawals > Semester Withdrawals",
+          "Academic Policies > Registration and Schedule Changes > Dropping / Withdrawing from Courses",
+          "Academic Policies > Withdrawals > Complete Withdrawals"
         ],
-        "first_hit_rank": 3,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -326,11 +336,11 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Grading > Computing the Grade Point Average"
         ],
         "top_paths": [
-          "Academic Policies > Grades and Grading Policies > Calculating the Grade Point Average",
           "Academic Policies > Grading > Computing the Grade Point Average",
-          "Academic Policies > Grading > Computing the Grade Point Average"
+          "Academic Policies > Grading > Computing the Grade Point Average",
+          "Academic Policies > Grades and Grading Policies > Calculating the Grade Point Average"
         ],
-        "first_hit_rank": 3,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -346,11 +356,11 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Academic Integrity Policy"
         ],
         "top_paths": [
-          "Academic Policies > Tisch Policy on Academic Integrity > Definitions",
-          "Academic Policies > Standards of Conduct and Disciplinary Measures > Academic Integrity",
-          "Academic Policies > Standards of Conduct > Charges of Academic Dishonesty"
+          "Academic Policies > Academic Integrity Policy",
+          "Academic Policies > Academic Integrity Policy > Academic Offenses",
+          "Academic Policies > Academic Integrity Policy > Academic Offenses > Level 3 Offense Sample Violations"
         ],
-        "first_hit_rank": 4,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -367,10 +377,10 @@
         ],
         "top_paths": [
           "Academic Policies > Academic Integrity Policy > Academic Offenses > Level 3 Offense Sample Violations",
-          "Academic Policies > Academic Integrity Policy > Academic Offenses > Level 3 Offense Sample Violations",
-          "Academic Policies > Academic Integrity Policy > Academic Offenses"
+          "Academic Policies > Academic Integrity Policy > Academic Offenses",
+          "Academic Policies > Academic Integrity Policy > Academic Offenses > Level 3 Offense Sample Violations"
         ],
-        "first_hit_rank": 2,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -387,10 +397,10 @@
         ],
         "top_paths": [
           "Academic Policies > Redress of Grievances > Formal Complaint",
-          "Academic Policies > Redress of Grievances > Formal Complaint",
-          "Academic Policies > Redress of Grievances > Informal Resolution"
+          "Academic Policies > Redress of Grievances > Informal Resolution",
+          "Academic Policies > Redress of Grievances > Formal Complaint"
         ],
-        "first_hit_rank": 2,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -406,11 +416,11 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Internships"
         ],
         "top_paths": [
+          "Academic Policies > Internships",
           "Academic Policies > Grades and Grading Policies > ​Internships Receiving Academic Credit",
-          "Academic Policies > Internships > Number of Credits, Meeting Hours, and Grading",
-          "Academic Policies > Internships"
+          "Academic Policies > Internships > Number of Credits, Meeting Hours, and Grading"
         ],
-        "first_hit_rank": 4,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -430,7 +440,7 @@
           "Academic Calendar > 2026-2027 Academic Calendar > Fall 2026",
           "Academic Calendar > 2026-2027 Academic Calendar"
         ],
-        "first_hit_rank": 2,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -505,8 +515,8 @@
         ],
         "top_paths": [
           "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 1800 Emerging Technologies",
-          "Academic Policies > Graduate Registration Policies > 50% In-Person Enrollment Requirement > Exemptions",
-          "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 3310 Strategic Management of Technological Innovation"
+          "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 3310 Strategic Management of Technological Innovation",
+          "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 2100 Advanced Business Analytics"
         ],
         "first_hit_rank": 1,
         "recall_at_5": 1.0,
@@ -604,11 +614,11 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Maintenance of Matriculation"
         ],
         "top_paths": [
+          "Academic Policies > Academic Standing and Progress > Maintenance of Matriculation",
           "Academic Policies > Registration and Enrollment > Maintenance of Matriculation and Equivalency > Maintenance of Matriculation",
-          "Academic Policies > Registration and Enrollment > Maintenance of Matriculation and Equivalency > Special Note on Maintenance of Matriculation in General",
-          "Academic Policies > Maintenance of Matriculation (MoM)"
+          "Academic Policies > Registration and Enrollment > Maintenance of Matriculation and Equivalency > Special Note on Maintenance of Matriculation in General"
         ],
-        "first_hit_rank": 5,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -626,7 +636,7 @@
         "top_paths": [
           "Academic Policies > Grading > Incomplete Pass/Incomplete Fail (IP/IF)",
           "Academic Policies > Grading > Incomplete Grades",
-          "Academic Policies > Grading > Incomplete Grades"
+          "Academic Policies > Grading > Graduate Grading Scale"
         ],
         "first_hit_rank": 1,
         "recall_at_5": 1.0,
@@ -664,11 +674,11 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Grading > Pass/Fail (P/F)"
         ],
         "top_paths": [
-          "Academic Policies > Grading > Pass/Fail Grades (P/F)",
           "Academic Policies > Grading > Pass/Fail (P/F)",
-          "Academic Policies > Grading > Pass/Fail Option"
+          "Academic Policies > Grading > Pass/Fail Option",
+          "Academic Policies > Grading > Incomplete Pass/Incomplete Fail (IP/IF)"
         ],
-        "first_hit_rank": 2,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -686,7 +696,7 @@
         "top_paths": [
           "Academic Policies > Grading > Withdrawal (W)",
           "Academic Policies > Grading > Withdrawal (W)",
-          "Academic Policies > Withdrawals"
+          "Academic Policies > Grading > Graduate Grading Scale"
         ],
         "first_hit_rank": 1,
         "recall_at_5": 1.0,
@@ -722,15 +732,16 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Grading > Grade Changes and Appeals > Level 1: Faculty"
         ],
         "found": [
+          "graduate__professional-studies__academic-policies#Academic Policies > Grading > Grade Changes and Appeals",
           "graduate__professional-studies__academic-policies#Academic Policies > Grading > Grade Changes and Appeals > Level 1: Faculty"
         ],
         "top_paths": [
-          "Academic Policies > Redress of Grievances > Grievances Concerning Grades",
-          "Academic Policies > Redress of Grievances > Grievances Concerning Grades",
+          "Academic Policies > Grading > Grade Changes and Appeals > Level 1: Faculty",
+          "Academic Policies > Grading > Grade Changes and Appeals",
           "Academic Policies > Grading > Grade Changes and Appeals > Level 1: Faculty"
         ],
-        "first_hit_rank": 4,
-        "recall_at_5": 0.5,
+        "first_hit_rank": 1,
+        "recall_at_5": 1.0,
         "degraded": false
       },
       {
@@ -741,14 +752,16 @@
         "expected": [
           "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Academic Dismissal > Appeal of Academic Dismissal"
         ],
-        "found": [],
-        "top_paths": [
-          "Academic Policies > Disciplinary Measures > Definition of Penalties",
-          "Academic Policies > Redress of Grievances > Grievances Concerning Grades > Steps for Academic Appeal of Dismissal",
-          "Academic Policies > Process for Filing Formal Complaints > Steps for Academic Appeal of Dismissal"
+        "found": [
+          "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Academic Dismissal > Appeal of Academic Dismissal"
         ],
-        "first_hit_rank": null,
-        "recall_at_5": 0.0,
+        "top_paths": [
+          "Academic Policies > Academic Standing and Progress > Academic Dismissal",
+          "Academic Policies > Grading > Grade Changes and Appeals > Level 2: Written Appeal to the Director of Your Program",
+          "Academic Policies > Academic Standing and Progress > Academic Dismissal > Appeal of Academic Dismissal"
+        ],
+        "first_hit_rank": 3,
+        "recall_at_5": 1.0,
         "degraded": false
       },
       {
@@ -760,14 +773,17 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Academic Concern",
           "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Academic Concern > Criteria of Academic Concern"
         ],
-        "found": [],
-        "top_paths": [
-          "Academic Policies > Disciplinary Measures > Definition of Penalties > Warning",
-          "Academic Policies > Academic Standing and Progress > Academic Concern",
-          "Academic Policies > Academic Standing and Progress > Academic Concern"
+        "found": [
+          "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Academic Concern",
+          "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Academic Concern > Criteria of Academic Concern"
         ],
-        "first_hit_rank": null,
-        "recall_at_5": 0.0,
+        "top_paths": [
+          "Academic Policies > Academic Standing and Progress > Academic Concern",
+          "Academic Policies > Grading > Withdrawal (W)",
+          "Academic Policies > Academic Standing and Progress > Academic Concern > Criteria of Academic Concern"
+        ],
+        "first_hit_rank": 3,
+        "recall_at_5": 1.0,
         "degraded": false
       },
       {
@@ -781,8 +797,8 @@
         "found": [],
         "top_paths": [
           "Academic Policies > Grading > Graduate Grading Scale",
-          "Academic Policies > Grading > Incomplete Grades",
-          "Academic Policies > Grades and Grading Policies > Incompletes and Extensions"
+          "Academic Policies > Grading",
+          "Academic Policies > Grading > Incomplete Grades"
         ],
         "first_hit_rank": null,
         "recall_at_5": 0.0,
@@ -796,14 +812,16 @@
         "expected": [
           "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Academic Concern > Restrictions While on Notice of Academic Concern"
         ],
-        "found": [],
-        "top_paths": [
-          "Academic Policies > Disciplinary Measures > Definition of Penalties > Warning",
-          "Academic Policies > Academic Standing and Progress > Academic Review Process",
-          "Academic Policies > Academic Standing and Progress > Academic Probation"
+        "found": [
+          "graduate__professional-studies__academic-policies#Academic Policies > Academic Standing and Progress > Academic Concern > Restrictions While on Notice of Academic Concern"
         ],
-        "first_hit_rank": null,
-        "recall_at_5": 0.0,
+        "top_paths": [
+          "Academic Policies > Academic Standing and Progress > Academic Concern",
+          "Academic Policies > Academic Standing and Progress > Academic Concern > Criteria of Academic Concern",
+          "Academic Policies > Academic Standing and Progress > Academic Dismissal"
+        ],
+        "first_hit_rank": 1,
+        "recall_at_5": 1.0,
         "degraded": false
       },
       {
@@ -838,9 +856,9 @@
         "top_paths": [
           "Academic Policies > Redress of Grievances > Informal Resolution",
           "Academic Policies > Redress of Grievances > Informal Resolution",
-          "Academic Policies > Master's Program Policies (MSW) > Redress of Grievances > Feedback Protocols"
+          "Academic Policies > Redress of Grievances > Formal Complaint"
         ],
-        "first_hit_rank": 2,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -856,11 +874,11 @@
           "graduate__professional-studies__cost-attendance__financial-aid-scholarships#Financial Aid > Explore Your Options > Loans and Payment Plans > Employer Tuition Reimbursement"
         ],
         "top_paths": [
-          "Financial Aid > Other Financial Aid-Federal, State, and Private Programs > Employee Education Plans",
+          "Financial Aid > Explore Your Options > Loans and Payment Plans",
           "Financial Aid > Explore Your Options > Loans and Payment Plans",
           "Financial Aid > Financial Aid > Loans and Payment Plans"
         ],
-        "first_hit_rank": 2,
+        "first_hit_rank": 1,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -877,8 +895,8 @@
         ],
         "top_paths": [
           "Internal > Overrides > Authority",
-          "Academic Policies > Transfer and Articulation Agreements > Graduate Elective Substitutions",
-          "Internal > Overrides > Escalation thresholds"
+          "Academic Policies > Registration and Schedule Changes > Registering for Courses",
+          "Academic Policies > Academic Integrity Policy > Academic Integrity Judiciary Process"
         ],
         "first_hit_rank": 1,
         "recall_at_5": 1.0,
@@ -897,8 +915,8 @@
         ],
         "top_paths": [
           "Internal > Overrides > Escalation thresholds",
-          "Internal > Overrides > Authority",
-          "Academic Policies > Master's Program Policies (MSW) > Academic Guidelines > Request to Switch Practice I-II"
+          "Academic Policies > Grading > Grade Changes and Appeals > Level 2: Written Appeal to the Director of Your Program",
+          "Internal > Overrides > Authority"
         ],
         "first_hit_rank": 1,
         "recall_at_5": 1.0,
@@ -917,7 +935,7 @@
         ],
         "top_paths": [
           "Bursar > Payment plans > Eligibility",
-          "Bursar > Payment plans > Missed installments",
+          "Financial Aid > Explore Your Options > Loans and Payment Plans",
           "Financial Aid > Financial Aid > Loans and Payment Plans"
         ],
         "first_hit_rank": 1,
@@ -938,7 +956,7 @@
         "top_paths": [
           "Bursar > Payment plans > Missed installments",
           "Bursar > Payment plans > Eligibility",
-          "Financial Aid > Financial Aid > Loans and Payment Plans"
+          "Financial Aid > Explore Your Options > Loans and Payment Plans"
         ],
         "first_hit_rank": 1,
         "recall_at_5": 1.0,
@@ -954,14 +972,17 @@
           "graduate__professional-studies__academic-policies#Academic Policies > Grading > Grade Changes and Appeals > Level 2: Written Appeal to the Director of Your Program",
           "graduate__professional-studies__academic-policies#Academic Policies > Grading > Grade Changes and Appeals > Level 3: Written Appeal to the Associate Dean/Divisional Dean"
         ],
-        "found": [],
-        "top_paths": [
-          "Academic Policies > Grading > Grades > Appealing a Grade",
-          "Academic Policies > Grading > Grade Appeals",
-          "Academic Policies > Grading > Grade Appeals > Step 3"
+        "found": [
+          "graduate__professional-studies__academic-policies#Academic Policies > Grading > Grade Changes and Appeals > Level 2: Written Appeal to the Director of Your Program",
+          "graduate__professional-studies__academic-policies#Academic Policies > Grading > Grade Changes and Appeals > Level 3: Written Appeal to the Associate Dean/Divisional Dean"
         ],
-        "first_hit_rank": null,
-        "recall_at_5": 0.0,
+        "top_paths": [
+          "Academic Policies > Grading > Grade Changes and Appeals",
+          "Academic Policies > Grading > Grade Changes and Appeals > Level 3: Written Appeal to the Associate Dean/Divisional Dean",
+          "Academic Policies > Grading > Grade Changes and Appeals > Level 2: Written Appeal to the Director of Your Program"
+        ],
+        "first_hit_rank": 2,
+        "recall_at_5": 0.6666666666666666,
         "degraded": false
       },
       {
@@ -978,18 +999,18 @@
           "graduate__professional-studies__cost-attendance__financial-aid-scholarships#Financial Aid > Explore Your Options > Loans and Payment Plans"
         ],
         "top_paths": [
-          "Bursar > Payment plans > Eligibility",
           "Financial Aid > Explore Your Options > Loans and Payment Plans",
-          "Financial Aid > Explore Your Options > Loans and Payment Plans"
+          "Financial Aid > Explore Your Options > Loans and Payment Plans",
+          "Cost of Attendance > Consider Your Indirect Expenses > Indirect Expenses for Traditional Programs"
         ],
-        "first_hit_rank": 2,
+        "first_hit_rank": 1,
         "recall_at_5": 0.3333333333333333,
         "degraded": false
       }
     ],
     "strategy": "heading",
-    "recall_at_5": 0.7367,
-    "mrr": 0.504,
+    "recall_at_5": 0.91,
+    "mrr": 0.8383,
     "families": {
       "course": {
         "cases": 8,
@@ -999,27 +1020,27 @@
       "generic": {
         "cases": 10,
         "recall_at_5": 1.0,
-        "mrr": 0.425
+        "mrr": 0.9333
       },
       "home_scope": {
         "cases": 12,
-        "recall_at_5": 0.5833,
-        "mrr": 0.3958
+        "recall_at_5": 0.9583,
+        "mrr": 0.8889
       },
       "lexical": {
         "cases": 6,
         "recall_at_5": 1.0,
-        "mrr": 0.7833
+        "mrr": 1.0
       },
       "multi": {
         "cases": 2,
-        "recall_at_5": 0.1667,
-        "mrr": 0.25
+        "recall_at_5": 0.5,
+        "mrr": 0.75
       },
       "paraphrase": {
         "cases": 8,
-        "recall_at_5": 0.3125,
-        "mrr": 0.1562
+        "recall_at_5": 0.75,
+        "mrr": 0.5833
       },
       "restricted": {
         "cases": 4,
@@ -1033,8 +1054,5 @@
     "students": 48,
     "mismatches": []
   },
-  "gate_problems": [
-    "recall@5 0.7367 < 0.85",
-    "MRR 0.504 < 0.7"
-  ]
+  "gate_problems": []
 }

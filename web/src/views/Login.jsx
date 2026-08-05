@@ -2,35 +2,30 @@ import { useState } from "react";
 import { api } from "../api";
 
 /**
- * Sign-in. The demo credentials are printed on the page on purpose: every account is
- * fictional, and the point of the demo is that a visitor can see each role's view and
- * verify the permission boundaries from both sides.
+ * The real sign-in page.
+ *
+ * No demo accounts and no printed password here. Those live at /demo, because a page that
+ * offers a real student "click here to become Alex Chen" reads as untrustworthy, and
+ * mixing fictional identities into the same entry point as real ones is a bad habit to
+ * start with. The demo is a separate door, clearly labelled.
  */
-
-const DEMO_ACCOUNTS = [
-  { label: "Student", email: "alex.chen@uax.example.edu", hint: "aid hold blocking registration" },
-  { label: "Student", email: "diego.morales@uax.example.edu", hint: "credits that don't all count" },
-  { label: "Advisor", email: "maya.patel@uax.example.edu", hint: "triage queue of 25 advisees" },
-  { label: "Registrar", email: "jordan.lee@uax.example.edu", hint: "capacity and failure dashboard" },
-];
-
-const DEMO_PASSWORD = "uax-demo-2026";
-
-export default function Login({ onLogin }) {
+export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  async function submit(emailValue, passwordValue) {
+  async function submit(event) {
+    event.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const me = await api.login(emailValue, passwordValue);
-      onLogin(me);
+      await api.login(email, password);
+      // Full reload so the app re-bootstraps from /auth/me — one source of truth for
+      // identity rather than threading the login response through component state.
+      window.location.assign("/");
     } catch (err) {
       setError(err.message);
-    } finally {
       setBusy(false);
     }
   }
@@ -47,17 +42,11 @@ export default function Login({ onLogin }) {
         </div>
 
         <p className="login__pitch">
-          A registration-readiness and academic-planning demo. All data is fictional; this
-          is a personal project, not an NYU system.
+          Registration readiness and academic planning for NYU SPS graduate students.
+          An independent, read-only tool — Albert remains authoritative.
         </p>
 
-        <form
-          className="login__form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit(email, password);
-          }}
-        >
+        <form className="login__form" onSubmit={submit}>
           <label className="login__field">
             <span>Email</span>
             <input
@@ -88,27 +77,14 @@ export default function Login({ onLogin }) {
           </button>
         </form>
 
-        <div className="login__demo">
-          <p className="login__demo-title">
-            Demo accounts — password <code>{DEMO_PASSWORD}</code>
-          </p>
-          <ul>
-            {DEMO_ACCOUNTS.map((account) => (
-              <li key={account.email}>
-                <button
-                  type="button"
-                  className="login__demo-btn"
-                  disabled={busy}
-                  onClick={() => submit(account.email, DEMO_PASSWORD)}
-                >
-                  <strong>{account.label}</strong>
-                  <span className="mono">{account.email}</span>
-                  <span className="muted">{account.hint}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <p className="login__alt">
+          Just looking around? <a href="/demo">Open the demo</a> — fictional data, no
+          account needed.
+        </p>
+
+        <p className="login__legal">
+          Not affiliated with New York University. Independent personal project.
+        </p>
       </section>
     </main>
   );

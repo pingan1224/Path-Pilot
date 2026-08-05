@@ -4,6 +4,7 @@ import { api, UnauthenticatedError } from "./api";
 import { ErrorState, Loading } from "./components";
 import AdvisorView from "./views/AdvisorView";
 import AskAlbert from "./views/AskAlbert";
+import DemoLogin from "./views/DemoLogin";
 import Login from "./views/Login";
 import RegistrarView from "./views/RegistrarView";
 import StudentView from "./views/StudentView";
@@ -63,8 +64,12 @@ export default function App() {
     );
   }
 
+  // Signed out: two doors. `/demo` is the portfolio entrance with seeded roles; anything
+  // else is the real sign-in. A router would be three routes' worth of dependency for a
+  // decision that is one string comparison — the links between the two pages are plain
+  // navigations, which is correct behaviour for a login screen anyway.
   if (!me) {
-    return <Login onLogin={setMe} />;
+    return window.location.pathname.startsWith("/demo") ? <DemoLogin /> : <Login />;
   }
 
   return (

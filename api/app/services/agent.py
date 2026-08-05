@@ -43,7 +43,7 @@ from app.models import (
     Student,
     UserRole,
 )
-from app.services.agent_tools import TOOL_IMPLS, TOOL_SCHEMAS, ToolContext
+from app.services.agent_tools import ToolContext, schemas_for, tools_for
 from app.services.llm import chat
 
 MAX_ITERATIONS = 6
@@ -142,6 +142,29 @@ When lookups are independent — e.g. holds, attempts, and a policy search — r
 as multiple tool calls in the SAME turn rather than one per turn; latency matters."""
 
 
+LIVE_MODE_RULES = """
+
+LIVE MODE — this is a real student, and the constraints are different.
+
+UAX has no connection to Albert. You cannot see holds, registration errors, enrollment
+appointment dates, seat counts, official grades, balances, or aid status. Not "the query
+returned nothing" — you have no access at all.
+
+9. Everything you know about this student's coursework is what they typed into UAX
+   themselves. Call it what it is: "based on what you have entered". Never present it as
+   an official record or a degree audit.
+10. For anything only Albert knows, call albert_checklist and relay where to look. Never
+   say a record is clear, never say there are no holds, never infer from silence. An
+   absent record here means no access, not no problem — and a student who believes
+   otherwise skips the one check that mattered.
+11. When the planner marks a finding unverifiable or conditional, keep it that way. Those
+   are the parts a human has to settle, and smoothing them into a confident answer is the
+   most damaging thing you can do here.
+12. Escalation does not open a case in live mode — there is no staff queue behind this
+   product. Instead, tell the student to take it to their advisor, and point them at the
+   handoff summary on the planner page, which they can copy into an email."""
+
+
 @dataclass
 class AgentResult:
     answer: str
@@ -179,10 +202,15 @@ def run_agent(
     acting_role: UserRole,
     subject_student_id: int | None,
     user_id: int | None = None,
+    mode: str = "demo",
 ) -> AgentResult:
     started = time.monotonic()
     ctx = ToolContext(
-        session=session, acting_role=acting_role, subject_student_id=subject_student_id
+        session=session,
+        acting_role=acting_role,
+        subject_student_id=subject_student_id,
+        user_id=user_id,
+        mode=mode,
     )
 
     subject_line = "no specific student (policy questions only)"
@@ -190,6 +218,11 @@ def run_agent(
         student = session.get(Student, subject_student_id)
         if student is not None:
             subject_line = f"student {student.display_name} ({student.student_number})"
+    elif ctx.is_live:
+        subject_line = (
+            "the signed-in student. You can see only the courses they entered themselves; "
+            "you have no access to their official record"
+        )
 
     messages: list[dict[str, Any]] = [
         {
@@ -198,12 +231,13 @@ def run_agent(
                 subject_line=subject_line,
                 role=acting_role.value,
                 today=datetime.now(UTC).strftime("%Y-%m-%d"),
-            ),
+            )
+            + (LIVE_MODE_RULES if ctx.is_live else ""),
         },
         {"role": "user", "content": question},
     ]
 
-    tools = TOOL_SCHEMAS + [SUBMIT_ANSWER_SCHEMA]
+    tools = schemas_for(ctx) + [SUBMIT_ANSWER_SCHEMA]
     tool_trace: list[dict[str, Any]] = []
     payload: dict[str, Any] | None = None
     citation_retry_used = False
@@ -339,7 +373,7 @@ def run_agent(
                 finished = True
                 break
 
-            impl = TOOL_IMPLS.get(name)
+            impl = tools_for(ctx).get(name)
             if impl is None:
                 result: dict[str, Any] = {"error": f"unknown tool {name!r}"}
             else:
@@ -383,7 +417,10 @@ def run_agent(
     case_number: str | None = None
     case_id: int | None = None
     now = datetime.now(UTC)
-    if payload.get("escalate") and subject_student_id is not None:
+    # Live mode escalates to the student's own advisor, not into a queue. Opening a case
+    # here would promise a staff workflow that does not exist behind this product — the
+    # student would wait for a reply that is never coming.
+    if payload.get("escalate") and subject_student_id is not None and not ctx.is_live:
         escalation = payload.get("escalation") or {
             "category": CaseCategory.general_support.value,
             "title": "Assistant escalation",

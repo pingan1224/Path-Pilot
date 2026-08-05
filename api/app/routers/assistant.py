@@ -49,6 +49,11 @@ def ask(
     identity: Identity = Depends(current_user),
     session: Session = Depends(get_session),
 ) -> AskResponse:
+    # A seeded fixture student has invented-but-consistent holds and registration history,
+    # so the record tools answer meaningfully. A real account has none of that, and the
+    # same tools would answer emptily — which reads as "your record is clear".
+    mode = "demo" if identity.subject_student_id is not None else "live"
+
     try:
         result = run_agent(
             session,
@@ -56,6 +61,7 @@ def ask(
             acting_role=identity.role,
             subject_student_id=identity.subject_student_id,
             user_id=identity.user.id,
+            mode=mode,
         )
     except LlmNotConfiguredError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

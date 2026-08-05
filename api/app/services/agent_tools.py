@@ -54,12 +54,31 @@ class ToolContext:
     session: Session
     acting_role: UserRole
     subject_student_id: int | None
+    # The signed-in account. Live mode plans against this user's self-reported record;
+    # there is no student fixture to read from.
+    user_id: int | None = None
     # Every source id handed to the model this turn; citations are validated against it.
     seen_source_ids: set[str] = field(default_factory=set)
     # Degradations that occurred while serving tools (e.g. keyword_fallback).
     degraded_modes: set[str] = field(default_factory=set)
     # Raw retrieval hits for the audit log.
     retrieval_trace: list[dict[str, Any]] = field(default_factory=list)
+
+    # Which world this conversation lives in.
+    #
+    # `demo` — a seeded fixture student. Holds, registration attempts, and enrollments are
+    #   invented but internally consistent, so the record tools answer meaningfully.
+    # `live` — a real signed-in user. UAX has no Albert access, so there is no hold data,
+    #   no registration history, and no official transcript. The record tools do not
+    #   degrade gracefully here; they answer *emptily*, which is worse. "You have no
+    #   holds" is a claim about the registrar's system that this product is in no position
+    #   to make, and a student who believes it may skip the one check that mattered.
+    #   In live mode those tools are withdrawn and replaced by ones that say where to look.
+    mode: str = "demo"
+
+    @property
+    def is_live(self) -> bool:
+        return self.mode == "live"
 
 
 # --------------------------------------------------------------------------------------
@@ -315,13 +334,185 @@ def tool_get_course_info(ctx: ToolContext, course_code: str) -> dict[str, Any]:
 # Registry and OpenAI-format schemas
 # --------------------------------------------------------------------------------------
 
-TOOL_IMPLS = {
+def tool_get_my_plan(ctx: ToolContext) -> dict[str, Any]:
+    """The live-mode replacement for get_degree_progress.
+
+    Runs the deterministic planner over what the student entered, and labels the result as
+    self-reported at every level so the model cannot narrate it as an official audit.
+    """
+    from app.services.profile import plan_for_user
+
+    result, meta = plan_for_user(ctx.session, ctx.user_id)
+    source_id = f"selfreport:plan:{ctx.user_id}"
+    ctx.seen_source_ids.add(source_id)
+
+    return {
+        "source_id": source_id,
+        "basis": (
+            "Computed from courses the student entered themselves, checked against the "
+            "published program requirements. Not an official degree audit."
+        ),
+        "program": meta["program_name"],
+        "rules_source": meta["program_source_url"],
+        "rules_verified_on": meta["rules_verified_on"],
+        "courses_the_student_reported": meta["courses_stated"],
+        "record_last_updated_by_student": meta["profile_last_updated"],
+        "record_age_days": meta["profile_age_days"],
+        "credits": {
+            "completed": result.credits_completed,
+            "in_progress": result.credits_in_progress,
+            "planned": result.credits_planned,
+            "required": result.credits_required,
+        },
+        "findings": [
+            {
+                "verdict": f.verdict.value,
+                "summary": f.summary,
+                "detail": f.detail,
+                "next_step": f.next_step,
+                "must_check_in_albert": f.check_in_albert,
+            }
+            for f in result.findings
+        ],
+        "note": (
+            "Findings marked unverifiable or conditional are the ones this tool cannot "
+            "settle. Say so plainly rather than resolving them."
+            if result.needs_human
+            else None
+        ),
+    }
+
+
+# Questions whose answer lives only in Albert. Each maps to where the student should look
+# instead — because "I cannot see that" is only half an answer.
+ALBERT_ONLY_TOPICS = {
+    "holds": (
+        "Holds on your record",
+        "Albert home page, under Tasks / Holds",
+        "A hold names the office that placed it, and only that office can remove it.",
+    ),
+    "registration_errors": (
+        "Why a registration attempt failed",
+        "The error message Albert showed when you clicked Enroll",
+        "The error code identifies the cause: prerequisites, a hold, a time conflict, a "
+        "reserved seat, or your enrollment appointment not having opened.",
+    ),
+    "enrollment_appointment": (
+        "When your registration window opens",
+        "Albert, under Enrollment Dates",
+        "Appointments are assigned by earned credits; a hold does not move the date and "
+        "seats are not reserved while you resolve one.",
+    ),
+    "seats": (
+        "Whether a section has seats",
+        "Albert course search for the term",
+        "Seat counts move quickly during registration, and reserved-seat rules can make a "
+        "section unavailable to you even when it shows open seats.",
+    ),
+    "official_transcript": (
+        "Your official grades and credits",
+        "Albert, under Academic Records",
+        "UAX only knows the courses you typed in yourself.",
+    ),
+    "financial": (
+        "Balances, aid status, and payment holds",
+        "Albert and the Bursar / Financial Aid portals",
+        "Financial status is not visible to this tool at all.",
+    ),
+}
+
+
+def tool_albert_checklist(ctx: ToolContext, topic: str) -> dict[str, Any]:
+    """Live-mode answer for anything only the student information system knows.
+
+    Returns where to look and what to look for. The alternative — a record tool that
+    queries nothing and returns nothing — would let the assistant answer "you have no
+    holds", which is a claim about the registrar's system that this product cannot make.
+    """
+    key = topic.strip().lower()
+    entry = ALBERT_ONLY_TOPICS.get(key)
+    if entry is None:
+        return {
+            "error": f"unknown topic {topic!r}",
+            "available_topics": sorted(ALBERT_ONLY_TOPICS),
+        }
+
+    title, where, why = entry
+    source_id = f"checklist:{key}"
+    ctx.seen_source_ids.add(source_id)
+    return {
+        "source_id": source_id,
+        "topic": title,
+        "uax_can_see_this": False,
+        "where_to_look": where,
+        "what_to_know": why,
+        "instruction": (
+            "State that UAX cannot see this and point the student to where it lives. Do "
+            "not guess, and do not say the record is clear — an empty result here means "
+            "no access, not no problem."
+        ),
+    }
+
+
+DEMO_TOOL_IMPLS = {
     "search_policy": tool_search_policy,
     "get_holds": tool_get_holds,
     "get_degree_progress": tool_get_degree_progress,
     "get_registration_attempts": tool_get_registration_attempts,
     "get_course_info": tool_get_course_info,
 }
+
+LIVE_TOOL_IMPLS = {
+    "search_policy": tool_search_policy,
+    "get_course_info": tool_get_course_info,
+    "get_my_plan": tool_get_my_plan,
+    "albert_checklist": tool_albert_checklist,
+}
+
+# Kept for callers that predate the split; demo remains the default world.
+TOOL_IMPLS = DEMO_TOOL_IMPLS
+
+
+def tools_for(ctx: ToolContext) -> dict[str, Any]:
+    return LIVE_TOOL_IMPLS if ctx.is_live else DEMO_TOOL_IMPLS
+
+LIVE_ONLY_SCHEMAS: list[dict[str, Any]] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_my_plan",
+            "description": (
+                "The student's degree progress, computed from the courses they entered "
+                "themselves and checked against published program requirements. This is "
+                "self-reported, not an official audit — say so when you use it."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "albert_checklist",
+            "description": (
+                "Use for anything only the university's student information system knows: "
+                "holds, why a registration attempt failed, enrollment appointment dates, "
+                "seat availability, official grades, balances and aid. Returns where the "
+                "student should look. You have no access to any of this — never state or "
+                "imply that a record is clear."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "topic": {
+                        "type": "string",
+                        "enum": sorted(ALBERT_ONLY_TOPICS),
+                    }
+                },
+                "required": ["topic"],
+            },
+        },
+    },
+]
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -382,3 +573,15 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         },
     },
 ]
+
+# Live mode withdraws the record tools entirely rather than letting them return empty.
+# A tool the model cannot call is a claim the model cannot make.
+_DEMO_ONLY = {"get_holds", "get_degree_progress", "get_registration_attempts"}
+
+LIVE_TOOL_SCHEMAS: list[dict[str, Any]] = [
+    schema for schema in TOOL_SCHEMAS if schema["function"]["name"] not in _DEMO_ONLY
+] + LIVE_ONLY_SCHEMAS
+
+
+def schemas_for(ctx: ToolContext) -> list[dict[str, Any]]:
+    return LIVE_TOOL_SCHEMAS if ctx.is_live else TOOL_SCHEMAS

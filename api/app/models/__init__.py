@@ -38,6 +38,7 @@ from app.models.enums import (
 from app.models.governance import AiInteraction, SourceFreshnessPolicy
 from app.models.identity import Student, User
 from app.models.knowledge import EMBEDDING_DIM, Document, DocumentChunk
+from app.models.profile import ProfileCourse
 
 __all__ = [
     "EMBEDDING_DIM",
@@ -60,6 +61,7 @@ __all__ = [
     "Intent",
     "InteractionDecision",
     "Office",
+    "ProfileCourse",
     "Program",
     "ReadinessStatus",
     "RegistrationAttempt",

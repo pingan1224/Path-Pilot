@@ -73,6 +73,27 @@ STATEMENTS = [
            course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
            PRIMARY KEY (track_id, course_id)
        )""",
+    # A real user's academic record. There is no Albert integration and there will not be
+    # one, so this is what the student told us — stored as a claim, never as a fact.
+    #
+    # `course_code` is text rather than a foreign key on purpose: students take courses
+    # outside the loaded catalog (the cross-school elective), and a constraint that
+    # rejected those would force the product to pretend they do not exist.
+    """CREATE TABLE IF NOT EXISTS profile_courses (
+           id SERIAL PRIMARY KEY,
+           user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+           course_code VARCHAR(24) NOT NULL,
+           state VARCHAR(16) NOT NULL,
+           term VARCHAR(16),
+           grade VARCHAR(4),
+           created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+           updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+           UNIQUE (user_id, course_code)
+       )""",
+    "CREATE INDEX IF NOT EXISTS ix_profile_courses_user ON profile_courses (user_id)",
+    # Which encoded program the student says they are in. Planning needs it, and it is a
+    # claim like everything else here.
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS stated_program_code VARCHAR(24)",
 ]
 
 

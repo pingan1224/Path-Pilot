@@ -14,7 +14,16 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import settings
 from app.db.session import DatabaseNotConfiguredError
-from app.routers import advisors, assistant, auth, cases, health, registrar, students
+from app.routers import (
+    advisors,
+    assistant,
+    auth,
+    cases,
+    health,
+    profile,
+    registrar,
+    students,
+)
 
 app = FastAPI(
     title="UAX API",
@@ -92,3 +101,4 @@ app.include_router(advisors.router, prefix="/api/v1")
 app.include_router(registrar.router, prefix="/api/v1")
 app.include_router(cases.router, prefix="/api/v1")
 app.include_router(assistant.router, prefix="/api/v1")
+app.include_router(profile.router, prefix="/api/v1")

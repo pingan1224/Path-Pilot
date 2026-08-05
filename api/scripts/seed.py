@@ -15,6 +15,8 @@ All people are fictional and all identifiers are invented.
 
 import argparse
 import random
+import subprocess
+import sys
 from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import select
@@ -706,6 +708,10 @@ def seed_background_students(
         last = LAST_NAMES[(i * 7 + 3) % len(LAST_NAMES)]
         email = f"{first.lower()}.{last.lower()}{i}@uax.example.edu"
 
+        # No password: background students exist to give the registrar aggregates and the
+        # advisor queue realistic volume, and nobody signs in as them. A null hash means
+        # the account cannot authenticate at all, which is the correct default for a
+        # record that represents a person rather than a user.
         user = User(email=email, full_name=f"{first} {last}", role=UserRole.student)
         session.add(user)
         session.flush()
@@ -1313,6 +1319,12 @@ def main() -> None:
         seed_interactions(session, heroes)
         seed_documents(session)
         session.commit()
+
+    # The synthetic restricted documents are recreated with null embeddings, and retrieval
+    # skips unembedded chunks — so without this the leakage tests would pass by silently
+    # retrieving nothing at all. Found by counting rows after a reseed.
+    print("embedding synthetic fixtures ...")
+    subprocess.run([sys.executable, "-m", "scripts.embed_corpus"], check=True)
 
     print("done.")
 

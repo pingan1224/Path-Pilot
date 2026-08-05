@@ -1,42 +1,49 @@
 # UAX — Unified Academic Experience
 
-An AI-enhanced redesign of a university student information system, built from a graduate
-coursework RFP response into a running, measured system.
+A registration-readiness and academic-planning tool for NYU SPS graduate students, built
+from a graduate coursework RFP response into a running, measured system.
 
-> **This is a personal portfolio project.** It is not affiliated with, deployed at, or
-> endorsed by NYU, and it contains no real student data. All records are fictional.
+> **Not an NYU system.** This is an independent personal project, not affiliated with,
+> endorsed by, or connected to New York University. It has no access to Albert and cannot
+> see your real record. Every student, hold, and case in the demo is fictional. Policy text
+> is quoted from the public NYU Bulletins with a source link and a fetch date beside it.
+> **Albert is always authoritative** — treat anything here as a prompt to go check, never
+> as the answer.
 
-## Why this exists
+## Why it exists
 
 The original deliverable was a design proposal — diagrams and specifications, no code. It
 promised specific numbers: *90% escalation accuracy for high-stakes cases*, an *85%
 confidence threshold*. Those were design judgments with nothing behind them.
 
-This project implements that proposal and then **measures whether it actually hits those
-numbers**. The evaluation harness is the centerpiece, not a footnote.
+This project implements the proposal and then **measures whether it hits those numbers**.
+The evaluation harness is the centrepiece, not a footnote — and it has repaid the effort by
+catching real defects, several of them in code that had already shipped.
 
 ## What it does
 
-Four roles, each answering a different question against the same data, scoped by
-permission:
+Signing in decides what you see; there is no role switcher.
 
-| Role | Question it answers |
+| Role | The question it answers |
 |---|---|
 | Student | Am I ready to register, and will I graduate on time? |
 | Advisor | Which of my advisees needs me this week? |
 | Registrar | Where is enrollment pressure building? |
 | Finance | Which financial holds are blocking registration? |
 
-Plus a grounded AI assistant that explains registration blockers in plain language, cites
-where every fact came from and when it was last verified, and escalates to a human — with
-a case number — whenever it cannot verify an answer.
+Plus a grounded assistant that explains registration blockers in plain language, cites
+where every fact came from and when it was last verified, and escalates to a human — with a
+case number — whenever it cannot verify an answer.
+
+**Try it:** `/demo` signs you in as any role with one click. Everything there is fictional,
+and each role is blocked from the others' data — which you are invited to test.
 
 ## Design rules that shape the architecture
 
 1. The AI layer never queries the database directly; student data arrives through a
-   permission-checked tool layer.
-2. Every factual claim carries a source and a timestamp, enforced by output schema rather
-   than by prompt instruction.
+   permission-checked tool layer, and **no tool accepts a student id from the model**.
+2. Every factual claim carries a source and a timestamp, enforced by output schema and
+   validated server-side against what the tools actually returned.
 3. Permission filtering happens *before* retrieval, so out-of-scope data never enters the
    candidate set.
 4. Stale data is disclosed, never presented as current.
@@ -47,12 +54,51 @@ a case number — whenever it cannot verify an answer.
 
 Full detail in [CLAUDE.md](CLAUDE.md).
 
+## Measured
+
+Latest full run — see `api/eval/results/` for the reports.
+
+| Metric | Value | Gate |
+|---|---|---|
+| Agent behaviour cases passed | 35/35 | — |
+| High-stakes escalation recall | 1.00 | ≥ 0.90 *(the RFP's promise)* |
+| Over-escalation rate | 0.00 | ≤ 0.40 |
+| Citation coverage on answers | 0.91 | ≥ 0.90 |
+| Restricted-document leakage | 0 | = 0 |
+| Retrieval recall@5 / MRR | 0.91 / 0.815 | ≥ 0.85 / 0.75 |
+| Authorization boundary checks | 27/27 | all |
+| Readiness consistency (two implementations) | 48/48 | 0 mismatches |
+| Assistant latency p50 / p95 | 4.7s / 17.2s | reported |
+
+Two ablations, both reported as measured rather than as hoped:
+
+- **Home-school scope boost** — recall@5 0.7367 → 0.9100, MRR 0.504 → 0.8383. Nine of
+  twelve retrieval misses had returned the semantically correct section from the wrong
+  school. Boost value chosen at the MRR peak of a sweep, not by feel.
+- **Hybrid BM25 + vector via RRF** — a wash (0.9233/0.8057 against 0.9100/0.8283). It fixes
+  two cases and costs ranking quality, so it ships behind a flag with its numbers recorded
+  rather than being adopted because hybrid is fashionable.
+
+## Data
+
+| Source | What |
+|---|---|
+| NYU Bulletins (35 pages) | 1,252 policy chunks, embedded, cited with fetch dates |
+| MASY1-GC catalog | 57 real courses, 21 prerequisite edges, parsed |
+| Management & Analytics (MS) | 5 encoded degree requirements, 4 concentration tracks |
+| Seeded fixtures | 48 fictional students for the demo scenarios |
+
+Real catalog data and demo fixtures coexist and are kept strictly separate by a `source`
+column: planning for a real student must never traverse an invented course.
+
 ## Stack
 
-React + Vite · FastAPI (Python 3.13) · Postgres + pgvector · Anthropic Claude API
+React + Vite · FastAPI (Python 3.13) · Postgres + pgvector · Moonshot Kimi · OpenAI
+embeddings · GitHub Actions
 
 No RAG framework. Chunking, retrieval, and prompt assembly are written directly so each
-behavior is inspectable and testable.
+behaviour is inspectable and testable — and because the ablations above are only possible
+when you own the pipeline.
 
 ## Local development
 
@@ -62,83 +108,12 @@ behavior is inspectable and testable.
 cd api
 python -m venv .venv
 .venv/Scripts/pip install -r requirements.txt
-cp .env.example .env
+cp .env.example .env          # fill in DATABASE_URL and the API keys
+.venv/Scripts/python -m scripts.init_db
+.venv/Scripts/python -m scripts.migrate
+.venv/Scripts/python -m scripts.seed --reset
 .venv/Scripts/uvicorn app.main:app --reload
 ```
-
-Serves on `http://127.0.0.1:8000`. Check `GET /api/v1/health/ready` — it reports which
-dependencies are configured and which are missing.
-
-**Database**
-
-```bash
-.venv/Scripts/python -m scripts.init_db
-.venv/Scripts/python -m scripts.seed --reset
-.venv/Scripts/python -m scripts.data_report
-```
-
-`init_db` creates the pgvector extension and every table. `seed` loads three hand-authored
-student scenarios plus ~45 generated students for aggregate volume; all timestamps are
-offsets from the moment you run it, so the demo is always a live registration period.
-`data_report` runs the queries the dashboards depend on and prints the results — the
-fastest way to confirm the schema still answers the questions the product asks of it.
-
-`scripts/schema_sql.py` prints the full DDL without connecting to anything, and
-`scripts/smoke.py` exercises every endpoint in-process.
-
-## API
-
-| Endpoint | Answers |
-|---|---|
-| `GET /students/{id}/readiness` | Will this student graduate on time, and what is the gap? |
-| `GET /students/{id}/blockers` | What is stopping them registering, and what do they do about it? |
-| `GET /advisors/{id}/queue` | Which advisees need attention, grouped by triage urgency? |
-| `GET /registrar/pressure` | Where is capacity tightening and why are registrations failing? |
-| `GET|POST /cases`, `PATCH /cases/{id}` | Escalations to humans |
-| `POST /assistant/ask` | The bounded agent: cited answers or a case number, never a guess |
-
-Every mirrored fact in these responses carries a `provenance` object — source, owning
-office, age, and whether it has exceeded that source's freshness tolerance. A client cannot
-render a value from this API without also being handed its age, which is the point.
-
-## Evaluation
-
-The original RFP promised *"90% escalation accuracy for high-stakes cases"* as a design
-target with nothing behind it. This repo measures it. A 50-case golden set
-([api/eval/golden.py](api/eval/golden.py)) runs against the live system:
-
-```bash
-cd api
-.venv/Scripts/python -m scripts.run_eval --gate   # exit 1 if any threshold fails
-```
-
-Latest full run (`kimi-k2.7-code-highspeed`, 2026-08-03, 230s):
-
-| metric | measured | gate |
-|---|---|---|
-| behavior cases passed | 35/35 | — |
-| **high-stakes escalation recall** | **1.00** | ≥ 0.90 (the RFP number) |
-| over-escalation rate | 0.00 | ≤ 0.40 |
-| citation coverage on answered | 0.91 | ≥ 0.90 |
-| restricted-document leakage | 0 | = 0 |
-| retrieval recall@5 / MRR | 1.00 / 1.00 | ≥ 0.85 / ≥ 0.70 |
-| readiness batch-vs-single mismatches | 0 / 48 | = 0 |
-| latency p50 / p95 | 4.7s / 17.2s | reported |
-
-The first run scored 31/35 and caught three real defects, which is the harness earning
-its keep: a provider 400 that crashed the request instead of degrading (Moonshot's
-thinking mode rejects a named `tool_choice`), a prompt that over-escalated routine
-hold questions three times, and — after fixing that overshot into a safety regression
-the controls caught — a tool-contract gap where *"you have no active holds"* had no
-citable source, so a model correctly following the cite-everything rule could only
-escalate it. Absence needs provenance too.
-
-Honesty notes: the corpus is 15 chunks, so perfect retrieval scores say little yet;
-the behavior fixes were tuned against these same 35 cases, so the set now serves as a
-regression gate rather than proof of generalization; and the exam's difficulty is
-ours — the measurements are real, the fixtures are authored. CI runs the free checks
-on every push and the full gated eval on manual dispatch with a `chat_model` input for
-model comparisons ([.github/workflows/eval.yml](.github/workflows/eval.yml)).
 
 **Web**
 
@@ -148,19 +123,59 @@ npm install
 npm run dev
 ```
 
-Serves on `http://localhost:5173`.
+Both must run: the dev server proxies `/api` so the browser and API stay same-origin, which
+is what lets the session cookie work.
+
+**Corpus** (optional — the repo ships the extracted snapshot)
+
+```bash
+cd api
+.venv/Scripts/python -m ingest.fetch          # polite, cached, respects robots.txt
+.venv/Scripts/python -m ingest.extract
+.venv/Scripts/python -m ingest.chunk --compare
+.venv/Scripts/python -m ingest.load --all --embed
+.venv/Scripts/python -m ingest.catalog        # course + prerequisite graph
+.venv/Scripts/python -m ingest.requirements   # degree rules, validated before write
+```
+
+## Testing
+
+```bash
+cd api
+.venv/Scripts/python -m scripts.authz_probe   # 27 adversarial permission checks
+.venv/Scripts/python -m scripts.smoke         # authenticated happy path
+.venv/Scripts/python -m scripts.run_eval --gate   # full eval, ~4 min, calls the LLM
+```
+
+`authz_probe` is the one to read: 16 of its 27 checks assert that a **forbidden** action
+fails. A permissions test that only confirms allowed actions succeed proves nothing about
+the claim being made.
+
+Ablations: `scripts.ablate_chunking`, `scripts.ablate_scope`, `scripts.ablate_hybrid`.
 
 ## Roadmap
 
 | Phase | Scope | Status |
 |---|---|---|
-| P0 | Workspace, scaffolds, health checks | ✅ Done |
-| P1 | Postgres schema and seed data | ✅ Done |
-| P2 | API layer, frontend wired to real data | ✅ Done |
-| P3 | Bounded agent with forced citation and escalation | ✅ Done |
-| P4 | Eval harness — retrieval, citation, tool-choice, and escalation metrics | ✅ Done |
-| P5 | Role-based access control and audit log | ◻ Next |
-| P6 | Case study, demo video, deployment | ◻ |
+| P0–P4 | Scaffold, schema, API, bounded agent, eval harness | ✅ |
+| RAG | Real corpus, chunking/scope/hybrid ablations | ✅ |
+| P5 / M1 | Server-side identity, role-scoped APIs, login, real catalog + degree rules | ✅ |
+| M2 | Self-reported profile, deterministic planning rule engine | ◻ Next |
+| M3 | Student portal, what-if planner, advisor handoff | ◻ |
+| M4 | Invite-only beta, rate limits, deployment | ◻ |
+
+## Honest limitations
+
+- **No Albert integration, by design and by necessity.** A real user's completed courses
+  are self-reported. The product is "tell me what you have taken and I will tell you how
+  the published rules apply", not "I can see your record".
+- **High-confidence planning covers one program.** Other SPS programs get policy answers
+  and registration guidance, not a degree audit.
+- **Agent behaviour was tuned against its 35 eval cases.** That set is a regression gate,
+  not proof of generalization; held-out cases are needed for that claim.
+- **The corpus is a dated snapshot.** Every citation carries its fetch date, and the
+  staleness machinery says so, but the bulletin can change underneath it.
+- **Model comparison is indicative, n=1 per scenario.** Not a benchmark.
 
 ## License
 

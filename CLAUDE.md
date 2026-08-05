@@ -105,7 +105,36 @@ From the RFP's UI/UX section. Applies to every screen.
 `P0` scaffold · `P1` schema + seed · `P2` API + wire frontend · `P3` RAG bot ·
 `P4` eval harness · `P5` RBAC + audit · `P6` case study + demo
 
-Current phase: **P4 done → P5 (RBAC + audit surfacing)**
+Current phase: **M1 done → M2 (self-reported profile + deterministic planning engine)**
+
+## Product direction (as of 2026-08)
+
+UAX is becoming a real, read-only planning tool for NYU SPS graduate students, not only a
+portfolio demo. Consequences that shape every decision from here:
+
+- **There is no Albert integration and there will not be one.** A real user's completed
+  courses are self-reported. The product promise is "tell me what you have taken and I will
+  tell you how the published rules apply" — never "I can see your record". Tools that read
+  holds or registration attempts exist for demo fixtures only; for real users those
+  questions become policy answers plus an Albert self-check list.
+- **Planning verdicts are computed by a deterministic rule engine, never by the model.**
+  The LLM narrates results and cites sources. A rule engine that is wrong can be fixed and
+  regression-tested at one point; a model that miscalculates is wrong probabilistically,
+  which is unacceptable for a student acting on the answer.
+- **Real catalog data and demo fixtures are strictly separated** by `courses.source` and
+  `programs.source`. Planning for a real student must never traverse an invented course.
+- **`/` is the real sign-in, `/demo` is the portfolio entrance.** Fictional identities do
+  not share a door with real ones.
+- **Disclaimers live where the advice is**, not only in a footer — the assistant panel
+  carries one, because that is the text a student screenshots and acts on.
+
+## Data layers
+
+- `documents` / `document_chunks` — 35 ingested bulletin pages, ~1,250 chunks per strategy
+- `courses` where `source='catalog'` — 57 real MASY1-GC courses, 21 prerequisite edges
+- `requirements` where the program is `source='catalog'` — 5 encoded degree rules with
+  `rule` in (all_of, credits, one_track) and 4 concentration tracks
+- everything `source='demo'` — the seeded scenarios the eval and screenshots depend on
 
 P4 facts: golden set in api/eval/golden.py (15 retrieval + 35 behavior cases); runner is
 scripts/run_eval.py (--gate for thresholds, --only for subsets, --reseed to restore the

@@ -86,17 +86,22 @@ export default function AskAlbert() {
         aria-controls="ask-albert-panel"
         onClick={() => setOpen((v) => !v)}
       >
-        {open ? "Close assistant" : "Ask Albert AI"}
+        {open ? "Close assistant" : "Ask UAX"}
       </button>
 
       {open ? (
         <section id="ask-albert-panel" className="chat" aria-label="Ask Albert AI assistant">
           <header className="chat__head">
             <div>
-              <strong>Albert AI</strong>
+              <strong>Ask UAX</strong>
               <p className="chat__sub">
-                Answers come from your record and official policy, with sources. High-stakes
-                questions go to a human.
+                Answers cite your record and published policy. High-stakes questions go to a
+                human.
+              </p>
+              {/* The disclaimer belongs where the advice is, not only in a footer. This is
+                  the text a student screenshots and acts on. */}
+              <p className="chat__disclaimer">
+                Not an NYU system. Verify anything that affects registration in Albert.
               </p>
             </div>
           </header>

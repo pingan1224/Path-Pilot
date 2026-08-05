@@ -976,6 +976,15 @@
   color: var(--ink-3);
   margin-top: 0.15rem;
 }
+.chat__disclaimer {
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-radius: 5px;
+  padding: 0.35rem 0.5rem;
+}
 
 .chat__scroll {
   flex: 1;

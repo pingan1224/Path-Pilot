@@ -146,6 +146,50 @@ def main() -> None:
     r = registrar.get("/api/v1/advisors/queue")
     check("registrar CANNOT open an advising queue", r.status_code == 403, f"got {r.status_code}")
 
+    # --- cases
+    r = student.post(
+        "/api/v1/cases",
+        json={"category": "general_support", "title": "Probe case", "message": "from authz_probe"},
+    )
+    ok = r.status_code == 201
+    probe_case_id = r.json()["id"] if ok else None
+    check("student opens a case about self", ok, f"got {r.status_code}")
+
+    if probe_case_id:
+        r = student.patch(f"/api/v1/cases/{probe_case_id}", json={"status": "resolved"})
+        check("student CANNOT change case status", r.status_code == 403, f"got {r.status_code}")
+
+        r = advisor.patch(f"/api/v1/cases/{probe_case_id}", json={"status": "in_review"})
+        check("advisor moves an own-caseload case", r.status_code == 200, f"got {r.status_code}")
+
+    # Diego's advisor is Tom Becker; his seeded case must be invisible and untouchable
+    # to Maya. Find it as registrar (institution-wide read).
+    r = registrar.get("/api/v1/cases")
+    diego_case = next(
+        (c for c in r.json() if c["student_id"] == diego_id), None
+    ) if r.status_code == 200 else None
+    if diego_case:
+        r = advisor.patch(f"/api/v1/cases/{diego_case['id']}", json={"status": "in_review"})
+        check(
+            "advisor CANNOT touch a colleague's advisee's case",
+            r.status_code == 403,
+            f"got {r.status_code}",
+        )
+        r = advisor.get("/api/v1/cases")
+        leaked = any(c["student_id"] == diego_id for c in r.json()) if r.status_code == 200 else True
+        check("advisor case list excludes other caseloads", not leaked, "scoped" if not leaked else "LEAKED")
+
+    finance = client_for("sam.okafor@uax.example.edu")
+    r = finance.get("/api/v1/cases")
+    ok = r.status_code == 200
+    if ok:
+        categories = {c["category"] for c in r.json()}
+        ok = categories <= {"financial_hold", "aid_dispute"}
+        detail = f"categories seen: {sorted(categories)}"
+    else:
+        detail = f"got {r.status_code}"
+    check("finance sees financial categories only", ok, detail)
+
     # --- session hygiene
     student.post("/api/v1/auth/logout")
     r = student.get(f"/api/v1/students/{alex_id}/readiness")

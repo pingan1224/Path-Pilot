@@ -1,4 +1,9 @@
-const BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000/api/v1";
+// Relative by default: the dev server and the production platform both proxy /api to the
+// backend, keeping the session cookie same-origin. See vite.config.js.
+const BASE = import.meta.env.VITE_API_BASE ?? "/api/v1";
+
+/** Thrown on 401 so views can distinguish "signed out" from other failures. */
+export class UnauthenticatedError extends Error {}
 
 /**
  * Every response from this API is either data or `{ error: { code, message } }`.
@@ -10,14 +15,19 @@ async function request(path, options) {
   try {
     response = await fetch(`${BASE}${path}`, {
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       ...options,
     });
   } catch {
-    throw new Error("Cannot reach the API. Is the server running on port 8000?");
+    throw new Error("Cannot reach the API. Is the server running?");
   }
 
+  if (response.status === 204) return null;
   const body = await response.json().catch(() => null);
 
+  if (response.status === 401) {
+    throw new UnauthenticatedError(body?.error?.message ?? "Not signed in.");
+  }
   if (!response.ok) {
     throw new Error(body?.error?.message ?? `Request failed (${response.status})`);
   }
@@ -26,11 +36,16 @@ async function request(path, options) {
 
 export const api = {
   ready: () => request("/health/ready"),
+  // auth
+  login: (email, password) =>
+    request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  logout: () => request("/auth/logout", { method: "POST" }),
+  me: () => request("/auth/me"),
+  // data — all scoped server-side by the session
   students: () => request("/students"),
   readiness: (id) => request(`/students/${id}/readiness`),
   blockers: (id) => request(`/students/${id}/blockers`),
-  advisors: () => request("/advisors"),
-  advisorQueue: (id) => request(`/advisors/${id}/queue`),
+  advisorQueue: () => request("/advisors/queue"),
   registrarPressure: () => request("/registrar/pressure"),
   cases: (params = {}) => {
     const query = new URLSearchParams(params).toString();
@@ -40,8 +55,8 @@ export const api = {
     request("/cases", { method: "POST", body: JSON.stringify(payload) }),
   updateCase: (id, payload) =>
     request(`/cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
-  ask: (payload) =>
-    request("/assistant/ask", { method: "POST", body: JSON.stringify(payload) }),
+  ask: (question) =>
+    request("/assistant/ask", { method: "POST", body: JSON.stringify({ question }) }),
 };
 
 /** "3 hours ago" — the API gives us seconds, the UI needs words. */

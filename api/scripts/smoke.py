@@ -1,147 +1,90 @@
-"""Exercise every endpoint against a running API and print a condensed result.
+"""Exercise every endpoint as a signed-in caller and print a condensed result.
 
     .venv/Scripts/python -m scripts.smoke
 
-Uses FastAPI's in-process test client, so no server needs to be running. This is a smoke
-test, not a test suite — it confirms the wiring holds end to end and prints enough of each
-payload to eyeball. Real assertions arrive with the P4 harness.
+In-process TestClient, one session per role, demo credentials from settings. This is the
+happy-path sweep; the adversarial counterpart is scripts/authz_probe.py, and the pair is
+the point — this file proves the allowed paths work, the probe proves the forbidden ones
+fail.
 
-Caveat worth fixing before P4: the write-path checks create a real case in whatever
-database DATABASE_URL points at, so running this against the demo database leaves a stray
-"Smoke test case" behind. Re-run `scripts.seed --reset` afterwards, or point the tests at a
-separate database once one exists.
+Writes one probe case into whatever database DATABASE_URL points at; re-run
+`scripts.seed --reset` for a pristine demo state.
 """
 
 import json
 
 from fastapi.testclient import TestClient
 
+from app.config import settings
 from app.main import app
 
-client = TestClient(app)
+
+def login(email: str) -> TestClient:
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/auth/login", json={"email": email, "password": settings.demo_password}
+    )
+    assert response.status_code == 200, f"{email}: {response.status_code} {response.text[:150]}"
+    return client
 
 
-def call(method: str, path: str, **kwargs) -> tuple[int, object]:
-    response = getattr(client, method)(path, **kwargs)
+def show(title: str, response, keys: list[str] | None = None, expect: int = 200) -> None:
+    ok = response.status_code == expect
+    print(f"\n[{'ok  ' if ok else 'FAIL'}] {response.status_code}  {title}")
     try:
-        return response.status_code, response.json()
+        body = response.json()
     except ValueError:
-        return response.status_code, response.text
-
-
-def show(
-    title: str, status: int, body: object, keys: list[str] | None = None, expect: int = 0
-) -> None:
-    # `expect` exists because the error-contract checks are supposed to return 4xx. Marking
-    # them FAIL made a passing run look broken.
-    ok = status == expect if expect else status < 400
-    flag = "ok  " if ok else "FAIL"
-    print(f"\n[{flag}] {status}  {title}")
+        return
     if keys and isinstance(body, dict):
         for key in keys:
-            print(f"       {key} = {json.dumps(body.get(key), default=str)[:150]}")
+            print(f"       {key} = {json.dumps(body.get(key), default=str)[:140]}")
     elif isinstance(body, list):
         print(f"       {len(body)} items")
-        if body:
-            print(f"       first = {json.dumps(body[0], default=str)[:220]}")
-    else:
-        print(f"       {json.dumps(body, default=str)[:220]}")
 
 
 def main() -> None:
-    status, body = call("get", "/api/v1/health/ready")
-    show("health/ready", status, body, ["status", "checks"])
+    student = login("alex.chen@uax.example.edu")
+    advisor = login("maya.patel@uax.example.edu")
+    registrar = login("jordan.lee@uax.example.edu")
 
-    status, students = call("get", "/api/v1/students")
-    show("students", status, students)
+    me = student.get("/api/v1/auth/me")
+    show("auth/me (student)", me, ["full_name", "role", "student_id"])
+    student_id = me.json()["student_id"]
 
-    by_name = {s["full_name"]: s["id"] for s in students} if isinstance(students, list) else {}
+    show(
+        "own readiness",
+        student.get(f"/api/v1/students/{student_id}/readiness"),
+        ["status", "status_reason", "credits_applied", "percent_complete"],
+    )
+    show("own blockers", student.get(f"/api/v1/students/{student_id}/blockers"))
+    show("own cases", student.get("/api/v1/cases"))
 
-    for name in ("Alex Chen", "Priya Raman", "Diego Morales"):
-        student_id = by_name.get(name)
-        if student_id is None:
-            print(f"\n[FAIL] {name} not found in roster")
-            continue
+    created = student.post(
+        "/api/v1/cases",
+        json={"category": "registration_issue", "title": "Smoke test case", "message": "from smoke.py"},
+    )
+    show("create case (self)", created, ["case_number", "status_label"], expect=201)
 
-        status, body = call("get", f"/api/v1/students/{student_id}/readiness")
+    show(
+        "advisor queue",
+        advisor.get("/api/v1/advisors/queue"),
+        ["advisor_name", "caseload", "at_risk_count", "open_escalations"],
+    )
+    show("advisor roster (caseload-scoped)", advisor.get("/api/v1/students"))
+    if created.status_code == 201:
         show(
-            f"readiness — {name}",
-            status,
-            body,
-            ["status", "status_label", "status_action", "status_reason",
-             "credits_applied", "credits_unapplied", "percent_complete",
-             "terms_required", "terms_remaining"],
+            "advisor patches the new case",
+            advisor.patch(f"/api/v1/cases/{created.json()['id']}", json={"status": "in_review"}),
+            ["case_number", "status_label"],
         )
 
-        status, body = call("get", f"/api/v1/students/{student_id}/blockers")
-        show(f"blockers — {name}", status, body)
-
-    status, advisors = call("get", "/api/v1/advisors")
-    show("advisors", status, advisors)
-
-    if isinstance(advisors, list) and advisors:
-        advisor_id = advisors[0]["id"]
-        status, body = call("get", f"/api/v1/advisors/{advisor_id}/queue")
-        show(
-            f"advisor queue — {advisors[0]['full_name']}",
-            status,
-            body,
-            ["caseload", "at_risk_count", "open_escalations", "resolved_this_week"],
-        )
-        if isinstance(body, dict):
-            groups: dict[str, int] = {}
-            for entry in body.get("entries", []):
-                groups[entry["group"]] = groups.get(entry["group"], 0) + 1
-            print(f"       groups = {json.dumps(groups)}")
-
-    status, body = call("get", "/api/v1/registrar/pressure")
     show(
         "registrar pressure",
-        status,
-        body,
-        ["term_name", "total_attempts", "failed_attempts", "failure_rate_percent",
-         "sections_at_capacity", "students_with_blocking_holds"],
+        registrar.get("/api/v1/registrar/pressure"),
+        ["term_name", "total_attempts", "failure_rate_percent", "sections_at_capacity"],
     )
-    if isinstance(body, dict):
-        top = body.get("failure_breakdown", [])[:3]
-        print(f"       top reasons = {json.dumps([(b['label'], b['attempts']) for b in top])}")
 
-    status, body = call("get", "/api/v1/cases")
-    show("cases", status, body)
-
-    # --- Write path: create a case, then move it forward.
-    student_id = by_name.get("Priya Raman")
-    status, created = call(
-        "post",
-        "/api/v1/cases",
-        json={
-            "student_id": student_id,
-            "category": "registration_issue",
-            "title": "Smoke test case",
-            "message": "Created by scripts/smoke.py",
-        },
-    )
-    show("create case", status, created, ["case_number", "status", "status_label"])
-
-    if status == 201 and isinstance(created, dict):
-        status, updated = call(
-            "patch",
-            f"/api/v1/cases/{created['id']}",
-            json={"status": "in_review", "note": "Picked up by smoke test"},
-        )
-        show("patch case", status, updated, ["case_number", "status", "status_label"])
-        if isinstance(updated, dict):
-            print(f"       events = {len(updated.get('events', []))}")
-
-    # --- Error contract.
-    status, body = call("get", "/api/v1/students/999999/readiness")
-    show("404 shape (expected)", status, body, expect=404)
-
-    status, body = call(
-        "post", "/api/v1/cases", json={"student_id": 1, "category": "nope", "title": "x", "message": ""}
-    )
-    show("422 shape (expected)", status, body, expect=422)
-
+    show("health/ready", TestClient(app).get("/api/v1/health/ready"), ["status", "checks"])
     print()
 
 

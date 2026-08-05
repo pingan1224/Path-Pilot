@@ -116,15 +116,16 @@ def get_case(session: Session, case_id: int) -> CaseOut:
     return _to_out(case)
 
 
-def create_case(session: Session, payload: CaseCreate) -> CaseOut:
-    student = session.get(Student, payload.student_id)
+def create_case(session: Session, payload: CaseCreate, student_id: int) -> CaseOut:
+    """Open a case about `student_id` — always the session's own student in V1."""
+    student = session.get(Student, student_id)
     if student is None:
-        raise LookupError(f"No student with id {payload.student_id}")
+        raise LookupError(f"No student with id {student_id}")
 
     now = datetime.now(UTC)
     case = Case(
         case_number=_next_case_number(session),
-        student_id=payload.student_id,
+        student_id=student_id,
         owner_user_id=student.advisor_id,
         category=payload.category,
         status=CaseStatus.new,
@@ -151,7 +152,9 @@ def create_case(session: Session, payload: CaseCreate) -> CaseOut:
     return get_case(session, case.id)
 
 
-def update_case(session: Session, case_id: int, payload: CaseUpdate) -> CaseOut:
+def update_case(
+    session: Session, case_id: int, payload: CaseUpdate, actor_user_id: int
+) -> CaseOut:
     case = session.get(Case, case_id)
     if case is None:
         raise CaseNotFoundError(f"No case with id {case_id}")
@@ -167,15 +170,14 @@ def update_case(session: Session, case_id: int, payload: CaseUpdate) -> CaseOut:
     if payload.status != CaseStatus.resolved:
         case.resolved_at = None
 
-    actor = session.get(User, payload.actor_user_id) if payload.actor_user_id else None
     session.add(
         CaseEvent(
             case_id=case.id,
             # Rule 8: only a human closes a case. Anything arriving through this endpoint is
             # a staff action, recorded as such, so the audit trail never shows the assistant
-            # resolving its own escalation.
+            # resolving its own escalation. The actor is the session holder, not a field.
             actor_kind=ActorKind.staff,
-            actor_user_id=actor.id if actor else None,
+            actor_user_id=actor_user_id,
             action=ACTION_FOR_STATUS[payload.status],
             note=payload.note,
             from_status=previous,

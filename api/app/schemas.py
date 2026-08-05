@@ -222,7 +222,8 @@ class CaseOut(BaseModel):
 
 
 class CaseCreate(BaseModel):
-    student_id: int
+    # No student_id: a student opens cases about themselves, and the subject comes from
+    # the session. Staff-opened cases go through their own scoped flows.
     category: CaseCategory
     title: str = Field(min_length=4, max_length=200)
     message: str = Field(min_length=1)
@@ -233,9 +234,8 @@ class CaseUpdate(BaseModel):
     status: CaseStatus
     note: str | None = None
     owner_user_id: int | None = None
-    # Who is making the change. Replaced by the authenticated identity in P5; until then it
-    # is explicit rather than assumed, so the audit trail is never silently wrong.
-    actor_user_id: int | None = None
+    # actor_user_id is gone: the actor is whoever holds the session. A writable actor
+    # field was one more place the caller could claim an identity for the audit trail.
 
 
 # --------------------------------------------------------------------------------------

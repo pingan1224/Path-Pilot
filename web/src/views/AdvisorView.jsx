@@ -4,7 +4,7 @@ import { Empty, ErrorState, Loading, Stat, StatusPill } from "../components";
 
 const STATUS_TONE = { on_track: "good", watchlist: "warn", at_risk: "danger" };
 
-export default function AdvisorView({ advisorId, onOpenStudent }) {
+export default function AdvisorView({ onOpenStudent }) {
   const [queue, setQueue] = useState(null);
   const [cases, setCases] = useState([]);
   const [error, setError] = useState(null);
@@ -15,10 +15,9 @@ export default function AdvisorView({ advisorId, onOpenStudent }) {
     setLoading(true);
     setError(null);
     try {
-      const [q, c] = await Promise.all([
-        api.advisorQueue(advisorId),
-        api.cases({ advisor_id: advisorId }),
-      ]);
+      // Both endpoints scope to the signed-in advisor server-side; there is nothing to
+      // pass and nothing a client could pass to see a colleague's caseload.
+      const [q, c] = await Promise.all([api.advisorQueue(), api.cases()]);
       setQueue(q);
       setCases(c);
     } catch (err) {
@@ -31,12 +30,12 @@ export default function AdvisorView({ advisorId, onOpenStudent }) {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [advisorId]);
+  }, []);
 
   async function advance(caseId, status) {
     setBusyCase(caseId);
     try {
-      await api.updateCase(caseId, { status, actor_user_id: advisorId });
+      await api.updateCase(caseId, { status });
       await load();
     } catch (err) {
       setError(err.message);

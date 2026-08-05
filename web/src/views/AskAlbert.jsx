@@ -49,15 +49,12 @@ function Thinking() {
   );
 }
 
-export default function AskAlbert({ studentId }) {
+export default function AskAlbert() {
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [busy, setBusy] = useState(false);
   const [thread, setThread] = useState([]);
   const scrollRef = useRef(null);
-
-  // A different student is a different conversation.
-  useEffect(() => setThread([]), [studentId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -70,7 +67,8 @@ export default function AskAlbert({ studentId }) {
     setThread((t) => [...t, { kind: "user", text: trimmed }]);
     setBusy(true);
     try {
-      const result = await api.ask({ question: trimmed, student_id: studentId });
+      // Who is asking — and whose record the tools may read — comes from the session.
+      const result = await api.ask(trimmed);
       setThread((t) => [...t, { kind: "assistant", result }]);
     } catch (err) {
       setThread((t) => [...t, { kind: "error", text: err.message }]);

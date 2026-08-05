@@ -10,9 +10,12 @@ from app.models.academic import (
     Enrollment,
     Program,
     Requirement,
+    RequirementRule,
+    RequirementTrack,
     Section,
     Term,
     requirement_courses,
+    requirement_track_courses,
 )
 from app.models.blockers import Hold, RegistrationAttempt
 from app.models.cases import Case, CaseEvent
@@ -63,10 +66,13 @@ __all__ = [
     "RegistrationOutcome",
     "Requirement",
     "RequirementKind",
+    "RequirementRule",
+    "RequirementTrack",
     "Section",
     "SourceFreshnessPolicy",
     "Student",
     "Term",
     "User",
     "requirement_courses",
+    "requirement_track_courses",
 ]

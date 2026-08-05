@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import enum
 from datetime import date, datetime
 
 from sqlalchemy import (
@@ -32,6 +33,45 @@ requirement_courses = Table(
     Column("course_id", ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True),
 )
 
+requirement_track_courses = Table(
+    "requirement_track_courses",
+    Base.metadata,
+    Column("track_id", ForeignKey("requirement_tracks.id", ondelete="CASCADE"), primary_key=True),
+    Column("course_id", ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class RequirementRule(str, enum.Enum):
+    """How a requirement is satisfied.
+
+    `credits` — accumulate the minimum from any listed course.
+    `all_of`  — every listed course is required.
+    `one_track` — choose exactly one track and complete it. Credit counting answers this
+        one wrong: a student holding one course from each of two concentrations has the
+        credits and has completed neither.
+    """
+
+    credits = "credits"
+    all_of = "all_of"
+    one_track = "one_track"
+
+
+class RequirementTrack(Base):
+    """One mutually exclusive option inside a `one_track` requirement."""
+
+    __tablename__ = "requirement_tracks"
+    __table_args__ = (UniqueConstraint("requirement_id", "name", name="uq_track_name"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    requirement_id: Mapped[int] = mapped_column(
+        ForeignKey("requirements.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    requirement: Mapped["Requirement"] = relationship(back_populates="tracks")
+    courses: Mapped[list["Course"]] = relationship(secondary=requirement_track_courses)
+
 
 class Term(Base, TimestampMixin):
     __tablename__ = "terms"
@@ -54,6 +94,10 @@ class Program(Base, TimestampMixin):
     degree: Mapped[str] = mapped_column(String(24), nullable=False)
     school: Mapped[str] = mapped_column(String(120), nullable=False)
     total_credits_required: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    source: Mapped[str] = mapped_column(String(16), default="demo", nullable=False)
+    catalog_url: Mapped[str | None] = mapped_column(String(1024))
+    catalog_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     requirements: Mapped[list[Requirement]] = relationship(
         back_populates="program", cascade="all, delete-orphan", order_by="Requirement.sort_order"
@@ -79,9 +123,24 @@ class Requirement(Base, TimestampMixin):
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)
 
+    rule: Mapped[RequirementRule] = mapped_column(
+        String(24), default=RequirementRule.credits, nullable=False
+    )
+    # Conditions the bulletin states that the engine cannot evaluate — approval gates,
+    # eligibility thresholds, the scope of an open choice. Surfaced verbatim rather than
+    # dropped, because a rule the tool cannot check is exactly what a student needs told.
+    caveat: Mapped[str | None] = mapped_column(Text)
+    source_url: Mapped[str | None] = mapped_column(String(1024))
+    source_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     program: Mapped[Program] = relationship(back_populates="requirements")
     courses: Mapped[list[Course]] = relationship(
         secondary=requirement_courses, back_populates="requirements"
+    )
+    tracks: Mapped[list[RequirementTrack]] = relationship(
+        back_populates="requirement",
+        cascade="all, delete-orphan",
+        order_by="RequirementTrack.sort_order",
     )
 
 

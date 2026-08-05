@@ -6,6 +6,7 @@ import AdvisorView from "./views/AdvisorView";
 import AskAlbert from "./views/AskAlbert";
 import DemoLogin from "./views/DemoLogin";
 import Login from "./views/Login";
+import PlannerView from "./views/PlannerView";
 import RegistrarView from "./views/RegistrarView";
 import StudentView from "./views/StudentView";
 
@@ -28,6 +29,9 @@ export default function App() {
   const [error, setError] = useState(null);
   // Advisor drill-down into one advisee; null means "own home view".
   const [viewStudentId, setViewStudentId] = useState(null);
+  // Student tabs. The planner is the product; the dashboard shows the seeded demo record
+  // and only exists for accounts that have one.
+  const [studentTab, setStudentTab] = useState("planner");
 
   useEffect(() => {
     api
@@ -107,6 +111,24 @@ export default function App() {
       <div className="subbar">
         <div className="subbar__inner">
           <p className="subbar__question">{ROLE_QUESTIONS[me.role] ?? ""}</p>
+          {me.role === "student" && me.student_id ? (
+            <nav className="roles" aria-label="Student views">
+              {[
+                ["planner", "Degree planner"],
+                ["dashboard", "Dashboard (demo)"],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={`role ${studentTab === id ? "role--active" : ""}`}
+                  aria-current={studentTab === id ? "page" : undefined}
+                  onClick={() => setStudentTab(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+          ) : null}
           {viewStudentId ? (
             <button type="button" className="btn" onClick={() => setViewStudentId(null)}>
               ← Back to my queue
@@ -116,8 +138,12 @@ export default function App() {
       </div>
 
       <main id="main" className="main">
-        {me.role === "student" && me.student_id ? (
-          <StudentView studentId={me.student_id} />
+        {me.role === "student" ? (
+          me.student_id && studentTab === "dashboard" ? (
+            <StudentView studentId={me.student_id} />
+          ) : (
+            <PlannerView />
+          )
         ) : null}
 
         {me.role === "advisor" ? (

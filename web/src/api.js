@@ -57,6 +57,17 @@ export const api = {
     request(`/cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   ask: (question) =>
     request("/assistant/ask", { method: "POST", body: JSON.stringify({ question }) }),
+  // planner — always the signed-in user's own record
+  catalogSearch: (q) => request(`/catalog/courses?q=${encodeURIComponent(q)}`),
+  profileCourses: () => request("/profile/courses"),
+  profilePut: (payload) =>
+    request("/profile/courses", { method: "PUT", body: JSON.stringify(payload) }),
+  profileDelete: (code) =>
+    request(`/profile/courses/${encodeURIComponent(code)}`, { method: "DELETE" }),
+  plan: (includePlanned) =>
+    request(`/profile/plan?include_planned=${includePlanned ? "true" : "false"}`),
+  whatIf: (courses) =>
+    request("/profile/plan/what-if", { method: "POST", body: JSON.stringify({ courses }) }),
 };
 
 /** "3 hours ago" — the API gives us seconds, the UI needs words. */

@@ -19,6 +19,7 @@ from app.routers import (
     assistant,
     auth,
     cases,
+    catalog,
     health,
     profile,
     registrar,
@@ -102,3 +103,4 @@ app.include_router(registrar.router, prefix="/api/v1")
 app.include_router(cases.router, prefix="/api/v1")
 app.include_router(assistant.router, prefix="/api/v1")
 app.include_router(profile.router, prefix="/api/v1")
+app.include_router(catalog.router, prefix="/api/v1")

@@ -88,6 +88,10 @@ SPS_GRADUATE = [
     _sps("/graduate/professional-studies/cost-attendance/tuition-fees/", "financial", "bursar"),
     _sps("/graduate/professional-studies/cost-attendance/financial-aid-scholarships/", "financial", "financial_aid"),
     _sps("/graduate/professional-studies/courses/masy1-gc/", "courses", "department"),
+    # Degree requirements for the program the planner supports. The bulletin has no
+    # "Management and Systems MS" page; MASY1-GC coursework belongs to Management
+    # Analytics, which is the page that states the credit structure.
+    _sps("/graduate/professional-studies/programs/management-analytics-ms/", "requirements", "registrar"),
 ]
 
 # --- Same school, different level. Graduate and undergraduate policies diverge on credit

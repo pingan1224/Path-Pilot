@@ -169,6 +169,167 @@
       "level": 2,
       "heading_path": "Student Services > Additional Information",
       "anchor": null,
+      "text": "- Advising\n- Registration\n\nWhile NYU-SPS has many resources unique to the school, the University also provides outstanding services. Here you will find an introduction to many of the important offices and staff that are available to assist you as a student."
+    },
+    {
+      "heading": "Office of Student Affairs",
+      "level": 2,
+      "heading_path": "Student Services > Office of Student Affairs",
+      "anchor": null,
+      "text": "The Office of Student Affairs (OSA) strives to ensure student success by creating and supporting a diverse range of student-life activities, student governance, academic and conduct policies, academic enhancement through specially designed programs and workshops, and leadership programs and events. Serving as a liaison between the School's academic program areas and offices throughout the University, the OSA connects students to critical resources and services.\n\nStudents are encouraged to participate fully in School and University life - from club events to workshops and public dialogues - the opportunities are limitless. You will find supportive environments conducive to learning and to building enduring personal and professional relationships with the resources and encouragement you need to succeed."
+    },
+    {
+      "heading": "Student Resources",
+      "level": 2,
+      "heading_path": "Student Services > Student Resources",
+      "anchor": null,
+      "text": "We have compiled many of our most popular resources, but this list is not exhaustive."
+    },
+    {
+      "heading": "Academic Services",
+      "level": 3,
+      "heading_path": "Student Services > Student Resources > Academic Services",
+      "anchor": null,
+      "text": "Many excellent services are in place to enhance your academic experience and help you to fully embrace university life while addressing challenges and concerns.\n\n- Student Services\n- Safety, Health, and Wellness\n- Policies and Procedures\n- Financial Information\n- Diversity, Equity and Inclusion"
+    },
+    {
+      "heading": "Academic Advising",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Academic Services > Academic Advising",
+      "anchor": null,
+      "text": "Your advisor is your most important connection at the University. Advisors can either answer your questions directly or connect you with those who can.\n\nGet to Know Your Advisor"
+    },
+    {
+      "heading": "Tutoring",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Academic Services > Tutoring",
+      "anchor": null,
+      "text": "One-on-one tutoring can be the key to mastering material you find challenging or strengthening your skills in a particular subject area.\n\nLearn More"
+    },
+    {
+      "heading": "Academic Enhancement Workshops",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Academic Services > Academic Enhancement Workshops",
+      "anchor": null,
+      "text": "Take workshops in Excel and PowerPoint to round out your skills and enhance coursework presentations.\n\nWorkshops"
+    },
+    {
+      "heading": "NYU Library Services",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Academic Services > NYU Library Services",
+      "anchor": null,
+      "text": "The NYU Elmer Holmes Bobst Library resources and services are comprehensive; from research-related assistance to the Digital Studio and much more, you will find unparalleled support for a successful academic experience.\n\nLearn More"
+    },
+    {
+      "heading": "Study Abroad",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Academic Services > Study Abroad",
+      "anchor": null,
+      "text": "NYU offers study away experiences in various locations around the globe. Take a summer or a semester to immerse yourself in the lifestyle of a culture that is new to you.\n\nLearn More"
+    },
+    {
+      "heading": "Moses Center for Accessibility",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Academic Services > Moses Center for Accessibility",
+      "anchor": null,
+      "text": "NYU is committed to providing equal educational opportunities for students with disabilities. The Moses Center works with students to determine appropriate accommodations.\n\nLearn More"
+    },
+    {
+      "heading": "University Learning Center",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Academic Services > University Learning Center",
+      "anchor": null,
+      "text": "Academic tutors at the Learning Center are current NYU undergraduates who offer both one-on-one and group tutoring in a variety of courses.\n\nLearn More"
+    },
+    {
+      "heading": "Student Services",
+      "level": 3,
+      "heading_path": "Student Services > Student Resources > Student Services",
+      "anchor": null,
+      "text": "Student services are extensive at NYU. As you move through your academic career, you will find the support and resources you need at every turn. See below and get started."
+    },
+    {
+      "heading": "Wasserman Center for Career Development",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Student Services > Wasserman Center for Career Development",
+      "anchor": null,
+      "text": "The Wasserman Center for Career Development at NYUSPS guides students in the creation of customized career action plans to help them achieve their professional, career, and personal goals.\n\nLearn More"
+    },
+    {
+      "heading": "Transportation",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Student Services > Transportation",
+      "anchor": null,
+      "text": "Many options are available to get around New York City. Public transportation systems are extensive and run 24/7. University transportation services also run between the major academic building locations.\n\nLearn More"
+    },
+    {
+      "heading": "IT Services",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Student Services > IT Services",
+      "anchor": null,
+      "text": "NYU Information Technology (NYU IT) provides technology- based services and support for NYU students and all members of the University community.\n\nLearn More"
+    },
+    {
+      "heading": "SPS Student Business Cards",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Student Services > SPS Student Business Cards",
+      "anchor": null,
+      "text": "Students can order student business cards while studying at NYUSPS by completing the online application form. Once approved, your cards will be ready to be picked up in two to three weeks.\n\nComplete the Application"
+    },
+    {
+      "heading": "Students in the Military and Veterans",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Student Services > Students in the Military and Veterans",
+      "anchor": null,
+      "text": "NYU and SPS are committed to providing an environment for veterans to work toward achieving their academic and personal goals, and be involved in campus life.\n\nLearn More"
+    },
+    {
+      "heading": "Safety, Health, and Wellness",
+      "level": 3,
+      "heading_path": "Student Services > Student Resources > Safety, Health, and Wellness",
+      "anchor": null,
+      "text": "NYU is committed to safety, wellness education, and outstanding health care for all members of the University community. The Student Health Center offers routine and walk-in Primary Care and Women's Health Services at either no cost or very reduced cost to all matriculated students. Wellness, Short-term Counseling (talk therapy) and Crisis services are free of charge."
+    },
+    {
+      "heading": "Wellness and Health Services",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Safety, Health, and Wellness > Wellness and Health Services",
+      "anchor": null,
+      "text": "NYU provides extensive health and wellness services that address both physical and mental health concerns. From same-day appointments to mindfulness and relaxation techniques, the NYU Health Center can either take care of your needs directly or refer you to appropriate resources.\n\nLearn More"
+    },
+    {
+      "heading": "Campus Safety",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Safety, Health, and Wellness > Campus Safety",
+      "anchor": null,
+      "text": "The Department of Campus Safety is dedicated to preserving the safety and security of the NYU community. Assistance is available 24/7.\n\nLearn More"
+    },
+    {
+      "heading": "Spiritual Life",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Safety, Health, and Wellness > Spiritual Life",
+      "anchor": null,
+      "text": "The Office of Global Spiritual Life at NYU offers students the opportunity to engage in open and authentic conversations about religion and spirituality. Students share their experiences, connect with others, and participate in transformative, multi-faith encounters.\n\nLearn More"
+    },
+    {
+      "heading": "Athletic Facilities",
+      "level": 4,
+      "heading_path": "Student Services > Student Resources > Safety, Health, and Wellness > Athletic Facilities",
+      "anchor": null,
+      "text": "NYU has three state-of-the-art athletic facilities – the Palladium and 404 Fitness in Greenwich Village and the Brooklyn Athletic Center on the Brooklyn campus. Students and athletes at NYU engage in sports and fitness in a variety of ways.\n\nLearn More"
+    },
+    {
+      "heading": "Additional Information",
+      "level": 2,
+      "heading_path": "Student Services > Additional Information",
+      "anchor": null,
+      "text": "- Advising\n- Registration"
+    },
+    {
+      "heading": "Additional Information",
+      "level": 2,
+      "heading_path": "Student Services > Additional Information",
+      "anchor": null,
       "text": "- Advising\n- Registration"
     }
   ]

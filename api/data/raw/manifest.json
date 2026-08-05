@@ -263,6 +263,18 @@
     "topic": "courses",
     "url": "https://bulletins.nyu.edu/graduate/professional-studies/courses/masy1-gc/"
   },
+  "graduate__professional-studies__programs__management-analytics-ms": {
+    "bytes": 59367,
+    "fetched_at": "2026-08-05T18:37:07.828246+00:00",
+    "level": "graduate",
+    "office": "registrar",
+    "school": "professional-studies",
+    "scope": "home",
+    "sha256": "a8e82b10cf3e19893bc571bda58bb4e7ee82ab23d164d08f0725d391aa0c5473",
+    "status": 200,
+    "topic": "requirements",
+    "url": "https://bulletins.nyu.edu/graduate/professional-studies/programs/management-analytics-ms/"
+  },
   "graduate__professional-studies__student-services": {
     "bytes": 29973,
     "fetched_at": "2026-08-04T16:06:30.963238+00:00",

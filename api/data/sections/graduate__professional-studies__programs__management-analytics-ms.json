@@ -1,0 +1,98 @@
+{
+  "slug": "graduate__professional-studies__programs__management-analytics-ms",
+  "url": "https://bulletins.nyu.edu/graduate/professional-studies/programs/management-analytics-ms/",
+  "title": "Management and Analytics (MS)",
+  "school": "professional-studies",
+  "level": "graduate",
+  "topic": "requirements",
+  "office": "registrar",
+  "scope": "home",
+  "fetched_at": "2026-08-05T18:37:07.828246+00:00",
+  "sha256": "a8e82b10cf3e19893bc571bda58bb4e7ee82ab23d164d08f0725d391aa0c5473",
+  "sections": [
+    {
+      "heading": "Management and Analytics (MS)",
+      "level": 1,
+      "heading_path": "Management and Analytics (MS)",
+      "anchor": null,
+      "text": "NYSED: 90193 HEGIS: 0506.00 CIP: 11.1099\n\nNotice: Students in the Management and Systems (MS) program should consult the 2023-2024 edition of the bulletin for program requirements."
+    },
+    {
+      "heading": "Program Description",
+      "level": 2,
+      "heading_path": "Management and Analytics (MS) > Program Description",
+      "anchor": null,
+      "text": "The Master of Science in Management and Analytics degree provides students with a solid foundation of management and technical knowledge in the core curriculum. Students select a concentration to ensure depth of knowledge and skill-building in a content area that will be a differentiator in the workplace. The Business Analytics concentration equips students with the analytical skills to interpret complex data and drive informed decisions across various functions and industries. In the Risk Analytics concentration, students focus on assessing and managing potential risks across the organization in order to safeguard and optimize operations and services. Students in the Business Informatics concentration develop skills to build business information systems that support organizational decision-making . Lastly, the Applied Research concentration offers students strategies and techniques to apply research methods to solve real-world business challenges.\n\nStudents complete the Master of Science in Management and Analytics on-site at our Manhattan campus. With courses offered during the day and evening by experienced, engaging faculty, the degree may be completed in two years of full-time study or up to five years of part-time study. This allows maximum flexibility for both busy senior managers and directors, as well as for recent college graduates who are just beginning their careers. The program combines rigorous coursework with real-world challenges, industry case studies, and simulations to provide students with a variety of valuable learning opportunities and experiences."
+    },
+    {
+      "heading": "Admissions",
+      "level": 2,
+      "heading_path": "Management and Analytics (MS) > Admissions",
+      "anchor": null,
+      "text": "Admission to master’s programs at the NYU School of Professional Studies requires the completion of a U.S. bachelor's degree or its international equivalent. Admissions decisions are made through a holistic review process. Visit the SPS Admissions website for detailed application requirements and deadlines."
+    },
+    {
+      "heading": "Program Requirements",
+      "level": 2,
+      "heading_path": "Management and Analytics (MS) > Program Requirements",
+      "anchor": null,
+      "text": "| Course | Title | Credits |\n| --- | --- | --- |\n| Management Core |  |  |\n| MASY1-GC 1015 | Quantitative Methods for Business Analysis | 3 |\n| MASY1-GC 1115 | Management Skills for Technology Professionals | 3 |\n| MASY1-GC 1215 | Data-Driven Decision-Making | 3 |\n| MASY1-GC 1315 | Managing Change and Innovation | 3 |\n| Technical Core |  |  |\n| MASY1-GC 1500 | Database Management | 3 |\n| MASY1-GC 1600 | Managing Technical Projects | 3 |\n| MASY1-GC 1700 | Organizational Risk Management and Information Security | 3 |\n| MASY1-GC 1800 | Emerging Technologies | 3 |\n| Concentration |  |  |\n| Students are required to select one of the following concentrations: | 6 |  |\n| Business Analytics |  |  |\n| MASY1-GC 2000 | Foundations of Business Analytics |  |\n| MASY1-GC 2100 | Advanced Business Analytics |  |\n| Risk Analytics |  |  |\n| MASY1-GC 2200 | Foundations of Risk Analytics |  |\n| MASY1-GC 2300 | Advanced Risk Analytics |  |\n| Business Informatics |  |  |\n| MASY1-GC 2400 | Foundations of Business Informatics |  |\n| MASY1-GC 2500 | Advanced Business Informatics |  |\n| Applied Research |  |  |\n| MASY1-GC 2600 | Research Process and Methods |  |\n| MASY1-GC 2700 | Applied Research Thesis |  |\n| Electives |  |  |\n| Select one of the following: 1 | 3 |  |\n| MASY1-GC 3030 | Syntax Language Programming |  |\n| MASY1-GC 3100 | Application-Based Programming |  |\n| MASY1-GC 3260 | Advanced Data Warehousing Applications |  |\n| MASY1-GC 3415 | Special Topics in Management and Analytics |  |\n| MASY1-GC 3910 | Internship 2 |  |\n| Capstone |  |  |\n| MASY1-GC 4115 | Applied Technical Project | 3 |\n| Total Credits | 36 |  |\n\n**1**\nStudents select one elective course. They may select a foundational course from any of the other concentrations or from any of the courses listed in this elective category, including the Internship course. Additionally, students may select a course offered within other graduate programs within the Division of Programs in Business, or the Real World Course (RWLD1-GC 3050).\n**2**\nStudents must complete a minimum of 18 credits and have a minimum GPA of 3.0 to be eligible to apply for the internship course (MASY1-GC 3910)."
+    },
+    {
+      "heading": "Business Analytics",
+      "level": 3,
+      "heading_path": "Management and Analytics (MS) > Sample Plan of Study > Business Analytics",
+      "anchor": null,
+      "text": "| 1st Semester/Term | Credits |  |\n| --- | --- | --- |\n| MASY1-GC 1015 | Quantitative Methods for Business Analysis | 3 |\n| MASY1-GC 1500 | Database Management | 3 |\n| MASY1-GC 1600 | Managing Technical Projects | 3 |\n| MASY1-GC 1700 | Organizational Risk Management and Information Security | 3 |\n|  | Credits | 12 |\n| 2nd Semester/Term |  |  |\n| MASY1-GC 1115 | Management Skills for Technology Professionals | 3 |\n| MASY1-GC 1215 | Data-Driven Decision-Making | 3 |\n| MASY1-GC 1315 | Managing Change and Innovation | 3 |\n| MASY1-GC 2000 | Foundations of Business Analytics | 3 |\n|  | Credits | 12 |\n| 3rd Semester/Term |  |  |\n| MASY1-GC 1800 | Emerging Technologies | 3 |\n| MASY1-GC 2100 | Advanced Business Analytics | 3 |\n| MASY1-GC 3100 | Application-Based Programming | 3 |\n| MASY1-GC 4115 | Applied Technical Project | 3 |\n|  | Credits | 12 |\n|  | Total Credits | 36 |"
+    },
+    {
+      "heading": "Risk Analytics",
+      "level": 3,
+      "heading_path": "Management and Analytics (MS) > Sample Plan of Study > Risk Analytics",
+      "anchor": null,
+      "text": "| 1st Semester/Term | Credits |  |\n| --- | --- | --- |\n| MASY1-GC 1015 | Quantitative Methods for Business Analysis | 3 |\n| MASY1-GC 1500 | Database Management | 3 |\n| MASY1-GC 1600 | Managing Technical Projects | 3 |\n| MASY1-GC 1700 | Organizational Risk Management and Information Security | 3 |\n|  | Credits | 12 |\n| 2nd Semester/Term |  |  |\n| MASY1-GC 1115 | Management Skills for Technology Professionals | 3 |\n| MASY1-GC 1215 | Data-Driven Decision-Making | 3 |\n| MASY1-GC 1315 | Managing Change and Innovation | 3 |\n| MASY1-GC 2200 | Foundations of Risk Analytics | 3 |\n|  | Credits | 12 |\n| 3rd Semester/Term |  |  |\n| MASY1-GC 1800 | Emerging Technologies | 3 |\n| MASY1-GC 2300 | Advanced Risk Analytics | 3 |\n| MASY1-GC 3030 | Syntax Language Programming | 3 |\n| MASY1-GC 4115 | Applied Technical Project | 3 |\n|  | Credits | 12 |\n|  | Total Credits | 36 |"
+    },
+    {
+      "heading": "Business Informatics",
+      "level": 3,
+      "heading_path": "Management and Analytics (MS) > Sample Plan of Study > Business Informatics",
+      "anchor": null,
+      "text": "| 1st Semester/Term | Credits |  |\n| --- | --- | --- |\n| MASY1-GC 1015 | Quantitative Methods for Business Analysis | 3 |\n| MASY1-GC 1500 | Database Management | 3 |\n| MASY1-GC 1600 | Managing Technical Projects | 3 |\n| MASY1-GC 1700 | Organizational Risk Management and Information Security | 3 |\n|  | Credits | 12 |\n| 2nd Semester/Term |  |  |\n| MASY1-GC 1115 | Management Skills for Technology Professionals | 3 |\n| MASY1-GC 1215 | Data-Driven Decision-Making | 3 |\n| MASY1-GC 1315 | Managing Change and Innovation | 3 |\n| MASY1-GC 2400 | Foundations of Business Informatics | 3 |\n|  | Credits | 12 |\n| 3rd Semester/Term |  |  |\n| MASY1-GC 1800 | Emerging Technologies | 3 |\n| MASY1-GC 2500 | Advanced Business Informatics | 3 |\n| MASY1-GC 3260 | Advanced Data Warehousing Applications | 3 |\n| MASY1-GC 4115 | Applied Technical Project | 3 |\n|  | Credits | 12 |\n|  | Total Credits | 36 |"
+    },
+    {
+      "heading": "Applied Research",
+      "level": 3,
+      "heading_path": "Management and Analytics (MS) > Sample Plan of Study > Applied Research",
+      "anchor": null,
+      "text": "| 1st Semester/Term | Credits |  |\n| --- | --- | --- |\n| MASY1-GC 1015 | Quantitative Methods for Business Analysis | 3 |\n| MASY1-GC 1500 | Database Management | 3 |\n| MASY1-GC 1600 | Managing Technical Projects | 3 |\n| MASY1-GC 1700 | Organizational Risk Management and Information Security | 3 |\n|  | Credits | 12 |\n| 2nd Semester/Term |  |  |\n| MASY1-GC 1115 | Management Skills for Technology Professionals | 3 |\n| MASY1-GC 1215 | Data-Driven Decision-Making | 3 |\n| MASY1-GC 1315 | Managing Change and Innovation | 3 |\n| MASY1-GC 2600 | Research Process and Methods | 3 |\n|  | Credits | 12 |\n| 3rd Semester/Term |  |  |\n| MASY1-GC 1800 | Emerging Technologies | 3 |\n| MASY1-GC 2700 | Applied Research Thesis | 3 |\n| MASY1-GC 3100 | Application-Based Programming | 3 |\n| MASY1-GC 4115 | Applied Technical Project | 3 |\n|  | Credits | 12 |\n|  | Total Credits | 36 |"
+    },
+    {
+      "heading": "Learning Outcomes",
+      "level": 2,
+      "heading_path": "Management and Analytics (MS) > Learning Outcomes",
+      "anchor": null,
+      "text": "Upon successful completion of the program, graduates will:\n\n- Integrate analytics and measurement to support the business strategy.\n- Create data frameworks to drive business decisions.\n- Analyze organizational risk management environment needs.\n- Design technology solutions to manage organizational risk.\n- Apply project management practices to manage technical projects.\n- Manage stakeholder involvement in business processes."
+    },
+    {
+      "heading": "NYU Policies",
+      "level": 3,
+      "heading_path": "Management and Analytics (MS) > Policies > NYU Policies",
+      "anchor": null,
+      "text": "University-wide policies can be found on the New York University Policy pages ."
+    },
+    {
+      "heading": "School of Professional Studies Policies",
+      "level": 3,
+      "heading_path": "Management and Analytics (MS) > Policies > School of Professional Studies Policies",
+      "anchor": null,
+      "text": "Additional academic policies can be found on the School of Professional Studies academic policy pag e ."
+    },
+    {
+      "heading": "Internship Course Policy",
+      "level": 3,
+      "heading_path": "Management and Analytics (MS) > Policies > Internship Course Policy",
+      "anchor": null,
+      "text": "Students must complete a minimum of 18 credits and have a minimum GPA of 3.0 to be eligible to apply for the internship course."
+    }
+  ]
+}

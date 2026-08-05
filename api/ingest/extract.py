@@ -184,14 +184,22 @@ def extract_sections(html: str, page_title_fallback: str) -> tuple[str, list[dic
     title_node = soup.select_one("h1.page-title") or soup.select_one("h1")
     page_title = clean_text(title_node.get_text(" ", strip=True)) if title_node else page_title_fallback
 
-    container = soup.select_one("#textcontainer") or soup.select_one("main#contentarea") or soup.body
-    if container is None:
+    # Program pages are tabbed: `#textcontainer` is only the first panel, and the degree
+    # requirements live in sibling `.page_content` containers. Reading one container
+    # silently returned the overview and dropped the requirements table — the extractor
+    # produced a plausible-looking three-section page instead of failing.
+    containers = soup.select("#textcontainer, .page_content") or [
+        soup.select_one("main#contentarea") or soup.body
+    ]
+    containers = [c for c in containers if c is not None]
+    if not containers:
         return page_title, []
 
     # Course catalogs carry no headings; dispatch on structure rather than on the URL, so
     # any page built from course blocks is handled the same way.
-    if container.select_one(".courseblock"):
-        return page_title, extract_course_blocks(container, page_title)
+    for container in containers:
+        if container.select_one(".courseblock"):
+            return page_title, extract_course_blocks(container, page_title)
 
     sections: list[dict] = []
     # Heading stack: index 0 -> h1, 1 -> h2, ... Used to build the ancestry path.
@@ -211,7 +219,10 @@ def extract_sections(html: str, page_title_fallback: str) -> tuple[str, list[dic
                 }
             )
 
-    for node in container.descendants:
+    # Walk every panel in document order; headings continue the same ancestry stack, so a
+    # requirements table in tab two nests under the page title exactly as it reads.
+    descendants = (node for container in containers for node in container.descendants)
+    for node in descendants:
         if isinstance(node, NavigableString) or not isinstance(node, Tag):
             continue
 

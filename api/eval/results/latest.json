@@ -1,5 +1,5 @@
 {
-  "stamp": "20260805-183348",
+  "stamp": "20260805-184033",
   "model": "kimi-k2.7-code-highspeed",
   "retrieval": {
     "cases": [
@@ -234,7 +234,7 @@
         "top_paths": [
           "Academic Policies > Graduation",
           "Academic Policies > Graduation",
-          "Academic Policies > Academic Standing and Progress > Satisfactory Academic Progress > Good Academic Standing"
+          "Academic Policies > Graduation > Final Transcript and Diploma"
         ],
         "retrieved_section_counts": [
           1,
@@ -373,7 +373,7 @@
         ],
         "retrieved_section_counts": [
           1,
-          1,
+          2,
           1,
           1,
           1
@@ -402,8 +402,8 @@
           1,
           1,
           2,
-          1,
-          1
+          2,
+          2
         ],
         "first_hit_rank": 1,
         "recall_at_5": 1.0,
@@ -636,8 +636,8 @@
         "found": [],
         "top_paths": [
           "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 2500 Advanced Business Informatics",
-          "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 2600 Research Process and Methods",
-          "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 3100 Application-Based Programming"
+          "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 3100 Application-Based Programming",
+          "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 2600 Research Process and Methods"
         ],
         "retrieved_section_counts": [
           1,
@@ -662,9 +662,9 @@
           "graduate__professional-studies__courses__masy1-gc#Management & Systems MA/GC (MASY1-GC) > MASY1-GC 2000 Foundations of Business Analytics"
         ],
         "top_paths": [
+          "Management and Analytics (MS) > Sample Plan of Study > Business Analytics",
           "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 2000 Foundations of Business Analytics",
-          "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 1015 Quantitative Methods for Business Analysis",
-          "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 2400 Foundations of Business Informatics"
+          "Management and Analytics (MS) > Sample Plan of Study > Business Informatics"
         ],
         "retrieved_section_counts": [
           1,
@@ -673,7 +673,7 @@
           1,
           1
         ],
-        "first_hit_rank": 1,
+        "first_hit_rank": 2,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -797,9 +797,9 @@
           "graduate__professional-studies__courses__masy1-gc#Management & Systems MA/GC (MASY1-GC) > MASY1-GC 2100 Advanced Business Analytics"
         ],
         "top_paths": [
+          "Management and Analytics (MS) > Sample Plan of Study > Business Analytics",
           "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 2000 Foundations of Business Analytics",
-          "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 2100 Advanced Business Analytics",
-          "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 3260 Advanced Data Warehousing Applications"
+          "Management & Systems MA/GC (MASY1-GC) > MASY1-GC 2100 Advanced Business Analytics"
         ],
         "retrieved_section_counts": [
           1,
@@ -808,7 +808,7 @@
           1,
           1
         ],
-        "first_hit_rank": 2,
+        "first_hit_rank": 3,
         "recall_at_5": 1.0,
         "degraded": false
       },
@@ -934,7 +934,7 @@
         "top_paths": [
           "Academic Policies > Grading > Withdrawal (W)",
           "Academic Policies > Grading > Withdrawal (W)",
-          "Academic Policies > Grading > Graduate Grading Scale"
+          "Academic Policies > Grading > Withdrawal (W)"
         ],
         "retrieved_section_counts": [
           1,
@@ -1122,14 +1122,14 @@
         "found": [],
         "top_paths": [
           "Advising > Academic Advisement",
-          "Student Services > Student Resources > Academic Services",
-          "Academic Policies > Registration and Schedule Changes > Registering for Courses"
+          "Advising > Academic Advisement",
+          "Student Services > Student Resources > Academic Services"
         ],
         "retrieved_section_counts": [
           1,
+          1,
           2,
-          1,
-          1,
+          2,
           1
         ],
         "first_hit_rank": null,
@@ -1360,13 +1360,13 @@
     ],
     "strategy": "heading",
     "recall_at_5": 0.91,
-    "mrr": 0.8283,
-    "sections_per_chunk": 1.15,
+    "mrr": 0.815,
+    "sections_per_chunk": 1.16,
     "families": {
       "course": {
         "cases": 8,
         "recall_at_5": 0.875,
-        "mrr": 0.7188
+        "mrr": 0.6354
       },
       "generic": {
         "cases": 10,

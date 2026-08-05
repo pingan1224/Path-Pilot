@@ -95,6 +95,14 @@ class Course(Base, TimestampMixin):
     department: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
 
+    # "demo" for the invented courses the seeded scenarios run on, "catalog" for records
+    # parsed from the published bulletin. Planning for a real student must only ever
+    # traverse catalog rows; mixing the two would let it cite a course that does not exist.
+    source: Mapped[str] = mapped_column(String(16), default="demo", nullable=False, index=True)
+    catalog_url: Mapped[str | None] = mapped_column(String(1024))
+    typically_offered: Mapped[str | None] = mapped_column(String(120))
+    catalog_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     requirements: Mapped[list[Requirement]] = relationship(
         secondary=requirement_courses, back_populates="courses"
     )
@@ -126,6 +134,13 @@ class CoursePrerequisite(Base):
     )
     min_grade: Mapped[str | None] = mapped_column(String(4))
     can_be_concurrent: Mapped[bool] = mapped_column(default=False, nullable=False)
+
+    # Rows sharing a group_index are alternatives (satisfy any one); distinct groups must
+    # all be satisfied. Flat AND is the degenerate case of one row per group.
+    group_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # The bulletin's own sentence, carried so a planner verdict can quote the source
+    # instead of asking the student to trust a parse they cannot see.
+    raw_text: Mapped[str | None] = mapped_column(String(512))
 
     course: Mapped[Course] = relationship(back_populates="prerequisites", foreign_keys=[course_id])
     prerequisite: Mapped[Course] = relationship(foreign_keys=[prerequisite_id])

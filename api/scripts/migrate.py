@@ -29,6 +29,21 @@ STATEMENTS = [
     # which meant every permission check in the system was validating a claim the caller
     # made about themselves.
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(256)",
+    # Real catalog data alongside the fictional demo courses. `source` keeps them
+    # distinguishable: a planner answering a real student must never reason over an
+    # invented course, and the demo scenarios must keep working.
+    "ALTER TABLE courses ADD COLUMN IF NOT EXISTS source VARCHAR(16) NOT NULL DEFAULT 'demo'",
+    "ALTER TABLE courses ADD COLUMN IF NOT EXISTS catalog_url VARCHAR(1024)",
+    "ALTER TABLE courses ADD COLUMN IF NOT EXISTS typically_offered VARCHAR(120)",
+    "ALTER TABLE courses ADD COLUMN IF NOT EXISTS catalog_verified_at TIMESTAMPTZ",
+    "CREATE INDEX IF NOT EXISTS ix_courses_source ON courses (source)",
+    # Prerequisites in the same group are alternatives (OR); groups are required together
+    # (AND). A flat list can only express AND, which happens to fit the MASY data today —
+    # and would silently mis-answer the first program that writes "A or B".
+    "ALTER TABLE course_prerequisites ADD COLUMN IF NOT EXISTS group_index INTEGER NOT NULL DEFAULT 0",
+    # The exact sentence the requirement was parsed from, so a planner verdict can quote
+    # its source rather than assert a parsed structure the student cannot check.
+    "ALTER TABLE course_prerequisites ADD COLUMN IF NOT EXISTS raw_text VARCHAR(512)",
 ]
 
 

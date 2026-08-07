@@ -141,6 +141,10 @@ STATEMENTS = [
     # systematically undercounts by one — and iterations is the number that says whether a
     # change made the agent wander.
     "ALTER TABLE ai_interactions ADD COLUMN IF NOT EXISTS iterations INTEGER",
+    # Who opened the mission. The assistant may open an empty container (approved
+    # 2026-08-07) because that decides nothing; every choice inside it is still the
+    # student's. Recording the origin keeps that visible rather than implicit.
+    "ALTER TABLE missions ADD COLUMN IF NOT EXISTS created_by VARCHAR(16) NOT NULL DEFAULT 'student'",
 ]
 
 

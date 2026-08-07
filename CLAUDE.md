@@ -130,10 +130,8 @@ From the RFP's UI/UX section. Applies to every screen.
 `P0` scaffold · `P1` schema + seed · `P2` API + wire frontend · `P3` RAG bot ·
 `P4` eval harness · `P5` RBAC + audit · `P6` case study + demo
 
-Current phase: **M7 Phase A done (agent-first shell: chat is the student front door, tool
-results are actionable inline cards) → Phase B (one-shot execution: chain
-profile→gaps→candidates→sequence→handoff in a single reviewable turn, plus lightweight
-conversation history)**
+Current phase: **M7 Phase B done (one-shot execution) → Phase C (transcript PDF intake:
+upload → parse → three-state review → batch confirm)**
 
 ## Agent-first shell (`web/src/views/ChatHome.jsx`, M7-A)
 
@@ -153,6 +151,37 @@ The chat is the student's default tab; the floating Ask UAX panel is gone. Three
 
 The old views (decoder/mission/sequence/planner) survive as secondary tabs — the "let me
 look at the records myself" path. Do not remove them.
+
+## One-shot execution (M7-B)
+
+"Help me get ready to register" does the whole job in one turn: read the plan, open a
+mission if there is none, propose the courses that fit, sequence the remaining terms, name
+what only Albert knows, and end with what is left for the student to decide — not with a
+question about whether to start. Rule 8 in the system prompt says so explicitly.
+
+**`start_mission` is the second write tool, approved 2026-08-07** after being raised as a
+boundary question rather than assumed. The reasoning is structural: an empty container
+asserts nothing about the plan, its only parameter is a term the student sees immediately
+and can change, and every decision inside it stays student-only and unreachable from any
+tool. `missions.created_by` records the origin and the UI badges it. Omitting the term
+defaults to `next_registerable_term()` and returns `term_was_assumed: true` so the model
+must disclose it.
+
+**Any new write tool must be added to `eval/golden.WRITE_TOOLS`.** CI asserts those names
+still resolve, but nothing can detect a write tool left *out* of the list — the comment
+there is the only guard.
+
+**Conversation history is text only, capped at 6 turns.** Prior tool calls and results are
+deliberately never replayed: a stale seat count from two turns ago would sit in context
+looking exactly as authoritative as this turn's lookup, and the rule that every claim cites
+a source returned *this turn* would quietly stop holding. History carries what was said;
+the tools re-establish what is true. It is client-supplied and untrusted, which is
+acceptable because it grants no data access — the worst a forged history does is mislead
+the model about earlier dialogue, which a user can already do by typing it.
+
+Durable state does not need history: profile, mission, and accepted risks are persistent
+and recomputed on read, so the agent already knows where things stand. History exists for
+one narrow job — resolving what "that one" refers to.
 
 ## Product direction (as of 2026-08)
 

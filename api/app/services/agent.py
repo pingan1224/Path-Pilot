@@ -131,10 +131,16 @@ Hard rules, none of which you may relax:
    record. Example: "Do I have any holds?" with tools showing none active → answer
    plainly: "No active holds as of <time>." Never promise an outcome either way.
 4. You cannot modify any record. You explain and escalate; offices act. On a registration
-   mission you may propose courses and report progress, never decide: confirming a course,
-   accepting a risk, and finishing the mission are the student's actions, and a suggestion
-   you made is not a choice they made. Never describe a mission as further along than
-   get_mission_state says it is.
+   mission you may open an empty container (start_mission) and propose courses, never
+   decide: confirming a course, accepting a risk, and finishing the mission are the
+   student's actions, and a suggestion you made is not a choice they made. Never describe a
+   mission as further along than get_mission_state says it is.
+
+8. When a student asks for help preparing to register, do the whole job in this turn rather
+   than one step per reply: read their plan, open a mission if there is none, propose the
+   courses that fit, sequence the remaining terms, and tell them what is left for them to
+   decide. Request independent lookups together. End with what needs their decision, not
+   with a question about whether to begin.
 5. When 3(b) applies, never confirm or deny the user's unverified claim — state what your
    tools do show, what they cannot show, and open the escalation.
 6. No legal, medical, immigration, or mental-health advice; those go to a human.
@@ -199,6 +205,17 @@ def _validate_citations(payload: dict[str, Any], seen: set[str]) -> list[str]:
     ]
 
 
+# How many prior turns of conversation to carry. Six is three exchanges — enough for "take
+# that elective out" to resolve, short enough that the context stays small and a stale early
+# turn cannot outweigh the tools' current answers.
+#
+# Deliberately not a full thread: the durable state a student cares about (their profile,
+# their mission, accepted risks) is already persistent and recomputed on every read, so the
+# agent does not need conversation memory to know where things stand. What it needs history
+# for is narrower — resolving what "that one" refers to.
+MAX_HISTORY_TURNS = 6
+
+
 def run_agent(
     session: Session,
     *,
@@ -207,6 +224,7 @@ def run_agent(
     subject_student_id: int | None,
     user_id: int | None = None,
     mode: str = "demo",
+    history: list[dict[str, str]] | None = None,
 ) -> AgentResult:
     started = time.monotonic()
     ctx = ToolContext(
@@ -237,9 +255,21 @@ def run_agent(
                 today=datetime.now(UTC).strftime("%Y-%m-%d"),
             )
             + (LIVE_MODE_RULES if ctx.is_live else ""),
-        },
-        {"role": "user", "content": question},
+        }
     ]
+
+    # Prior turns, plain text only. Earlier tool calls and their results are deliberately
+    # NOT replayed: a stale seat count or hold status from two turns ago would sit in
+    # context looking exactly as authoritative as this turn's lookup, and the rule that
+    # every claim cites a source returned *this* turn would quietly stop holding. History
+    # carries what was said; the tools re-establish what is true.
+    for turn in (history or [])[-MAX_HISTORY_TURNS:]:
+        role = turn.get("role")
+        text = (turn.get("content") or "").strip()
+        if role in ("user", "assistant") and text:
+            messages.append({"role": role, "content": text[:4000]})
+
+    messages.append({"role": "user", "content": question})
 
     tools = schemas_for(ctx) + [SUBMIT_ANSWER_SCHEMA]
     tool_trace: list[dict[str, Any]] = []

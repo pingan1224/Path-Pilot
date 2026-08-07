@@ -639,6 +639,70 @@ def tool_get_mission_state(ctx: ToolContext) -> dict[str, Any]:
     }
 
 
+def tool_start_mission(ctx: ToolContext, term: str | None = None) -> dict[str, Any]:
+    """Open an empty registration mission for a term.
+
+    The one write the assistant may do beyond proposing, approved 2026-08-07 after being
+    flagged as a boundary question rather than assumed. The reasoning is structural, not a
+    relaxation: an empty container asserts nothing about the student's plan, its single
+    parameter is a term the student sees on the card the moment it exists, and every
+    decision inside it — which courses, which risks accepted, when it is finished — stays
+    student-only and still cannot be reached from any tool.
+
+    What this buys is the difference between "I can help once you go and open a mission"
+    and actually starting the work in the turn the student asked for it.
+
+    Idempotent by way of the service: an existing mission for that term is returned rather
+    than duplicated, and a reopened one keeps its original `created_by`.
+    """
+    from app.missions.service import create_mission, mission_state
+    from app.sequence.service import next_registerable_term
+    from app.sequence.terms import parse_or_none
+
+    if ctx.user_id is None:
+        return {
+            "error": "no_signed_in_record",
+            "instruction": "A mission belongs to a signed-in student.",
+        }
+
+    parsed = parse_or_none(term)
+    if term and parsed is None:
+        return {
+            "error": "unparsed_term",
+            "given": term,
+            "instruction": 'Ask the student which term, in a form like "Spring 2027".',
+        }
+    # No term given is the common case for "help me plan next semester" — default to the
+    # next term a student could plausibly register for and say so, rather than making the
+    # model guess a date or forcing a clarifying round trip.
+    target = parsed or next_registerable_term()
+    assumed = parsed is None
+
+    existing = _mission_for_tools(ctx)
+    mission = create_mission(ctx.session, ctx.user_id, term=str(target), created_by="ai")
+    _, _, state, _ = mission_state(ctx.session, ctx.user_id, mission.id)
+
+    source_id = f"mission:{mission.id}"
+    ctx.seen_source_ids.add(source_id)
+    return {
+        "source_id": source_id,
+        "term": mission.term,
+        "term_was_assumed": assumed,
+        "already_existed": existing is not None and existing.id == mission.id,
+        "opened_by": "assistant",
+        "current_step": state.current.value if state.current else None,
+        "next_action_for_the_student": next(
+            (s.what_now for s in state.steps if s.state.value == "active"), None
+        ),
+        "instruction": (
+            "The container exists now; nothing in it is decided. Tell the student which "
+            "term it is for — especially if term_was_assumed is true, so they can correct "
+            "it — and carry on with the actual work. You still cannot confirm a course, "
+            "accept a risk, or finish the mission."
+        ),
+    }
+
+
 def tool_propose_mission_candidates(
     ctx: ToolContext, courses: list[dict[str, Any]]
 ) -> dict[str, Any]:
@@ -818,6 +882,7 @@ DEMO_TOOL_IMPLS = {
     "search_policy": tool_search_policy,
     "decode_registration_error": tool_decode_registration_error,
     "get_mission_state": tool_get_mission_state,
+    "start_mission": tool_start_mission,
     "propose_mission_candidates": tool_propose_mission_candidates,
     "get_course_sequence": tool_get_course_sequence,
     "get_holds": tool_get_holds,
@@ -830,6 +895,7 @@ LIVE_TOOL_IMPLS = {
     "search_policy": tool_search_policy,
     "decode_registration_error": tool_decode_registration_error,
     "get_mission_state": tool_get_mission_state,
+    "start_mission": tool_start_mission,
     "propose_mission_candidates": tool_propose_mission_candidates,
     "get_course_sequence": tool_get_course_sequence,
     "get_course_info": tool_get_course_info,
@@ -934,6 +1000,28 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "whether they are ready, or what to do next. You cannot advance it."
             ),
             "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "start_mission",
+            "description": (
+                "Open an empty registration mission for a term, when the student wants help "
+                "preparing and get_mission_state reports none. This creates only the "
+                "container — no course is chosen, nothing is decided, and the student can "
+                "change the term. Use it to start the work in this turn instead of telling "
+                "them to go and create one. Omit `term` if they did not name one."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "term": {
+                        "type": "string",
+                        "description": 'e.g. "Spring 2027". Omit to use the next registerable term.',
+                    }
+                },
+            },
         },
     },
     {

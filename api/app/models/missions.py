@@ -9,7 +9,11 @@ precisely because a status column looks authoritative. Derivation cannot drift.
 
 What *is* stored is facts, each of which someone did at a time:
 
-- `missions` — a student opened a mission for a term.
+- `missions` — a mission was opened for a term, by the student or (since 2026-08-07, with
+  the user's explicit approval) by the assistant. `created_by` records which. Opening an
+  empty container is the one write the agent may perform beyond proposing: it involves no
+  course decision, its only parameter is the term — visible on the card the moment it
+  exists — and every decision inside the container remains student-only.
 - `mission_candidates` — a course was put forward, by the student or by the assistant, and
   separately confirmed or declined **by the student**.
 - `mission_decisions` — the student acknowledged the gap review, accepted a specific risk
@@ -62,6 +66,10 @@ class Mission(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    # 'student' or 'ai'. The UI badges an assistant-opened mission so nobody is surprised
+    # to find a container they did not create, and the trajectory eval can tell whether
+    # the agent opened one when it should have.
+    created_by: Mapped[str] = mapped_column(String(16), nullable=False, default="student")
     # Closing is the student's choice and is not the same as finishing. A mission
     # abandoned in March is a fact worth keeping; overwriting it with a fresh one would
     # erase the reason they gave up.

@@ -104,6 +104,8 @@ class MissionOut(BaseModel):
     program_name: str
     rules_verified_on: str | None
     created_at: datetime
+    # 'student' or 'ai'. Surfaced so the UI can badge a container the assistant opened.
+    created_by: str
     closed_at: datetime | None
     complete: bool
     current_step: str | None
@@ -141,6 +143,7 @@ def _mission_out(mission, facts: MissionFacts, state: MissionState, meta: dict) 
         program_name=meta["program_name"],
         rules_verified_on=meta["rules_verified_on"],
         created_at=mission.created_at,
+        created_by=mission.created_by,
         closed_at=mission.closed_at,
         complete=state.complete,
         current_step=state.current.value if state.current else None,

@@ -98,7 +98,16 @@ def create_mission(
     *,
     term: str,
     program_code: str = SUPPORTED_PROGRAM,
+    created_by: str = "student",
 ) -> Mission:
+    """Open (or reopen) a mission for a term.
+
+    `created_by='ai'` is reachable from the agent tool. Opening a container is the only
+    write the assistant may do beyond proposing, and it is safe for a structural reason:
+    an empty mission asserts nothing about the student's plan. Note that reopening an
+    existing mission never rewrites `created_by` — the fact of who first opened it is not
+    the assistant's to overwrite.
+    """
     term = " ".join(term.strip().split())
     existing = session.scalars(
         select(Mission).where(Mission.user_id == user_id, Mission.term == term)
@@ -112,7 +121,9 @@ def create_mission(
             session.commit()
         return get_mission(session, user_id, existing.id)
 
-    mission = Mission(user_id=user_id, term=term, program_code=program_code)
+    mission = Mission(
+        user_id=user_id, term=term, program_code=program_code, created_by=created_by
+    )
     session.add(mission)
     session.commit()
     return get_mission(session, user_id, mission.id)

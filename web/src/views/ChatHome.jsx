@@ -174,10 +174,20 @@ export default function ChatHome({ me, onOpenView }) {
     if (!trimmed || busy) return
     setQuestion("")
     setChips([])
+    // Prior turns as plain text, so "take that elective out" has something to resolve
+    // against. The computed greeting is excluded — it is UI copy, not something the
+    // student or the agent said.
+    const history = thread
+      .filter((e) => e.kind === "user" || e.kind === "assistant")
+      .slice(-6)
+      .map((e) => ({
+        role: e.kind === "user" ? "user" : "assistant",
+        content: e.kind === "user" ? e.text : e.result.answer,
+      }))
     setThread((t) => [...t, { kind: "user", text: trimmed }])
     setBusy(true)
     try {
-      const result = await api.ask(trimmed)
+      const result = await api.ask(trimmed, history)
       const cards = await cardsForTurn(result.tool_trace)
       setThread((t) => [...t, { kind: "assistant", result, cards }])
     } catch (err) {

@@ -65,13 +65,18 @@ class BehaviorCase:
     allow_write_tools: bool = False
 
 
-# The only tool in the surface that writes anything: it puts unconfirmed course suggestions
-# on a student's mission. Nothing it writes is binding — the student still has to confirm —
-# but a write firing on a question that did not ask for one is the agent taking an action
-# nobody requested, and it is the shape of a much worse bug in a system with more write
-# tools. So it is forbidden by default across this whole set and opted into per case, rather
-# than listed thirty times.
-WRITE_TOOLS: tuple[str, ...] = ("propose_mission_candidates",)
+# The tools in the surface that write anything: one puts unconfirmed course suggestions on a
+# student's mission, the other opens an empty mission container. Nothing either writes is
+# binding — the student still confirms every course, accepts every risk, and finishes the
+# mission — but a write firing on a question that did not ask for one is the agent taking an
+# action nobody requested, and it is the shape of a much worse bug in a system with more
+# write tools. So they are forbidden by default across this whole set and opted into per
+# case, rather than listed thirty times.
+#
+# Any new write tool must be added here. CI asserts these names still resolve in the tool
+# registry, but nothing can warn that a write tool was left *out* of the list — that check
+# is this comment.
+WRITE_TOOLS: tuple[str, ...] = ("propose_mission_candidates", "start_mission")
 
 
 def forbidden_tools_for(case: BehaviorCase) -> tuple[str, ...]:

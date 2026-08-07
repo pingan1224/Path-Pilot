@@ -1,5 +1,7 @@
 """The Ask Albert AI endpoint."""
 
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -12,16 +14,28 @@ from app.services.llm import LlmNotConfiguredError
 router = APIRouter(prefix="/assistant", tags=["assistant"])
 
 
+class HistoryTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=4000)
+
+
 class AskRequest(BaseModel):
-    """The question, and nothing else.
+    """The question, plus prior conversation text.
 
     `student_id` and `role` used to be fields here. They are gone on purpose: while the
     caller supplied their own role, every permission check downstream — the retrieval
     pre-filter, the tool layer's subject scoping — was validating a claim the caller made
     about themselves. Identity now comes from the signed session and only from there.
+
+    `history` is client-supplied and therefore untrusted, which is fine for what it is: it
+    reaches the model as conversation text and nothing else. It grants no data access —
+    every fact still has to come from a tool call scoped by the session — so the worst a
+    forged history can do is mislead the model about what was said earlier, which a user
+    can already do by typing it. Tool calls and their results are never replayed from it.
     """
 
     question: str = Field(min_length=2, max_length=2000)
+    history: list[HistoryTurn] = Field(default_factory=list, max_length=20)
 
 
 class CitationOut(BaseModel):
@@ -62,6 +76,7 @@ def ask(
             subject_student_id=identity.subject_student_id,
             user_id=identity.user.id,
             mode=mode,
+            history=[t.model_dump() for t in payload.history],
         )
     except LlmNotConfiguredError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

@@ -55,8 +55,14 @@ export const api = {
     request("/cases", { method: "POST", body: JSON.stringify(payload) }),
   updateCase: (id, payload) =>
     request(`/cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
-  ask: (question) =>
-    request("/assistant/ask", { method: "POST", body: JSON.stringify({ question }) }),
+  // `history` is prior conversation text only — never tool results. Replaying a stale seat
+  // count or hold status would put it in context looking as authoritative as this turn's
+  // lookup; the server re-establishes every fact through tools scoped by the session.
+  ask: (question, history = []) =>
+    request("/assistant/ask", {
+      method: "POST",
+      body: JSON.stringify({ question, history }),
+    }),
   // planner — always the signed-in user's own record
   catalogSearch: (q) => request(`/catalog/courses?q=${encodeURIComponent(q)}`),
   profileCourses: () => request("/profile/courses"),

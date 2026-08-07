@@ -35,6 +35,35 @@ BLOCKED_COURSE = "MASY1-GC 2100"
 # Confirmed after the handoff is generated, to prove a later change un-finishes the mission.
 LATE_ADDITION = "MASY1-GC 1600"
 
+# A term the student never asks for, so the assistant-opened container is unambiguous.
+AI_TERM = "Summer 2028"
+
+
+def _default_term_is_disclosed(user_id: int) -> bool:
+    """An omitted term must be filled in AND flagged, not silently chosen.
+
+    Run against a throwaway term so it cannot collide with the rest of the probe: what is
+    asserted is the disclosure flag, not which term the default landed on.
+    """
+    from app.models import UserRole
+    from app.services.agent_tools import ToolContext, tool_start_mission
+
+    with get_sessionmaker()() as session:
+        ctx = ToolContext(
+            session=session, acting_role=UserRole.student, subject_student_id=None,
+            user_id=user_id, mode="live",
+        )
+        result = tool_start_mission(ctx)  # no term
+        ok = result.get("term_was_assumed") is True and bool(result.get("term"))
+
+        # Clean up so the defaulted mission does not linger into later assertions.
+        from app.missions.service import close_mission, open_missions
+
+        for mission in open_missions(session, user_id):
+            if mission.term == result.get("term"):
+                close_mission(session, user_id, mission.id, reason="probe cleanup")
+    return ok
+
 results: list[tuple[bool, str, str]] = []
 
 
@@ -76,6 +105,44 @@ def main() -> None:
             student.put("/api/v1/profile/courses", json={"course_code": code, "state": state})
         existing = student.get("/api/v1/profile/courses").json()
     check("profile exists to plan against", len(existing) > 0, f"{len(existing)} course(s)")
+
+    # --- the assistant opening a container. Approved 2026-08-07: the widest write the
+    #     agent has, so the probe pins down exactly how wide it is.
+    with get_sessionmaker()() as session:
+        from app.models import UserRole
+        from app.services.agent_tools import ToolContext, tool_start_mission
+
+        ctx = ToolContext(
+            session=session, acting_role=UserRole.student, subject_student_id=None,
+            user_id=user_id, mode="live",
+        )
+        opened = tool_start_mission(ctx, term=AI_TERM)
+        opened_again = tool_start_mission(ctx, term=AI_TERM)
+
+    ai_missions = [m for m in student.get("/api/v1/missions").json() if m["term"] == AI_TERM]
+    check(
+        "the assistant can open an empty mission container",
+        len(ai_missions) == 1 and ai_missions[0]["created_by"] == "ai",
+        f"{len(ai_missions)} mission(s), created_by={ai_missions[0]['created_by'] if ai_missions else None}",
+    )
+    check(
+        "opening one twice does not duplicate it",
+        opened_again.get("already_existed") is True and len(ai_missions) == 1,
+        f"already_existed={opened_again.get('already_existed')}",
+    )
+    check(
+        "AN AGENT-OPENED MISSION DECIDES NOTHING",
+        ai_missions[0]["candidates"] == []
+        and not ai_missions[0]["complete"]
+        and ai_missions[0]["accepted_risks"] == [],
+        f"candidates={len(ai_missions[0]['candidates'])} complete={ai_missions[0]['complete']}",
+    )
+    check(
+        "an omitted term is defaulted and disclosed as assumed",
+        _default_term_is_disclosed(user_id),
+        "",
+    )
+    student.post(f"/api/v1/missions/{ai_missions[0]['id']}/close", json={"reason": "probe cleanup"})
 
     # --- create
     r = student.post("/api/v1/missions", json={"term": TERM})

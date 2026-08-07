@@ -38,9 +38,16 @@ rationale and an "Add to my plan" button wired to the same student-authenticated
 as the full mission page. The agent proposes; the click that decides is yours, and it
 happens where the proposal happened instead of three tabs away.
 
-The assistant explains registration blockers in plain language, cites where every fact
-came from and when it was last verified, and escalates to a human — with a case number —
-whenever it cannot verify an answer.
+Ask it to get you ready to register and it does the whole job in one turn — reads your
+plan, opens a mission if you have none, proposes the courses that fit, sequences the
+remaining terms, says what only Albert can tell you — then ends with the decisions that are
+yours. Measured on a real run: 12 tool calls, 5 model turns, 18 seconds, one reviewable
+answer. Four proposed courses, one "Add all" click, and the audit trail still records that
+the assistant suggested them and you confirmed.
+
+It explains registration blockers in plain language, cites where every fact came from and
+when it was last verified, and escalates to a human — with a case number — whenever it
+cannot verify an answer.
 
 **The error decoder** is the way in. Paste the message Albert refused you with and it names
 the cause, shows which words in your own text it based that on, quotes the bulletin passage
@@ -261,8 +268,8 @@ Ablations: `scripts.ablate_chunking`, `scripts.ablate_scope`, `scripts.ablate_hy
 | M5 | Registration mission: derived task state, a decidable end, agent proposes only | ✅ |
 | M6 | Sequence planner: constraint solving over terms, with infeasibility attributed | ✅ |
 | M7-A | Agent-first shell: chat as the front door, tool results as actionable inline cards | ✅ |
-| M7-B | One-shot execution: one reviewable plan per ask, lightweight conversation history | ◻ Next |
-| M7-C | Transcript PDF intake: upload → parse → three-state review → batch confirm | ◻ |
+| M7-B | One-shot execution: one reviewable plan per ask, lightweight conversation history | ✅ |
+| M7-C | Transcript PDF intake: upload → parse → three-state review → batch confirm | ◻ Next |
 | M8 | Invite-only beta, rate limits, deployment | ◻ |
 
 ## Honest limitations

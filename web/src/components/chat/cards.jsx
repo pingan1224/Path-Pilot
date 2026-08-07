@@ -97,6 +97,11 @@ export function MissionCard({ mission: initial, onOpenView }) {
         <CardTitle className="flex flex-wrap items-center gap-2">
           Registration mission — {mission.term}
           {mission.complete ? <Badge>Complete</Badge> : null}
+          {/* Badged so nobody is surprised to find a container they did not create. The
+              term is the only thing the assistant chose, and it is changeable. */}
+          {mission.created_by === "ai" ? (
+            <Badge variant="outline">Started by the assistant</Badge>
+          ) : null}
         </CardTitle>
         <CardDescription>
           {done} of {mission.steps.length} steps done
@@ -108,9 +113,32 @@ export function MissionCard({ mission: initial, onOpenView }) {
 
         {proposals.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">
-              Suggested — not in your plan until you confirm:
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium">
+                Suggested — not in your plan until you confirm:
+              </p>
+              {/* One click for a whole one-shot proposal. Still one deliberate act per
+                  batch, and each course keeps its own buttons for picking selectively —
+                  batching the click must not blur what was agreed to. */}
+              {proposals.length > 1 ? (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() =>
+                    act(async () => {
+                      let latest = mission
+                      for (const c of proposals) {
+                        latest = await api.missionDecideCandidate(mission.id, c.id, true)
+                      }
+                      return latest
+                    })
+                  }
+                >
+                  Add all {proposals.length}
+                </Button>
+              ) : null}
+            </div>
             {proposals.map((c) => (
               <div
                 key={c.id}

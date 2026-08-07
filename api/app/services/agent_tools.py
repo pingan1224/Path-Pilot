@@ -743,7 +743,16 @@ def tool_get_course_sequence(
     except (TermParseError, LookupError) as exc:
         return {"error": f"{type(exc).__name__}: {exc}"}
 
-    source_id = f"selfreport:sequence:{ctx.user_id}"
+    # The parameters are part of the identity. A sequence computed with a Spring 2027
+    # deadline at 3 credits is a different document from the unconstrained one, and the
+    # assistant legitimately asks for both in a single turn ("can I finish by X, and if not
+    # what is the fastest path"). With one shared id, a citation could not say which of the
+    # two schedules a claim came from — the whole point of citing it.
+    cap_part = meta["max_credits_per_term"]
+    deadline_part = meta["deadline"] or "open"
+    source_id = (
+        f"selfreport:sequence:{ctx.user_id}:{meta['start_term']}:{deadline_part}:{cap_part}"
+    ).replace(" ", "")
     ctx.seen_source_ids.add(source_id)
 
     payload: dict[str, Any] = {

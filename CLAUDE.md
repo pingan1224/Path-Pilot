@@ -218,6 +218,37 @@ a library returns UNSAT and UNSAT is not something you can tell a student.
 Objective: finish soonest; among ties, prefer the plan resting on fewer guesses, then name
 order so two runs on the same data give the same schedule.
 
+## Trajectory evaluation (`eval/trajectory.py`)
+
+The behavior eval scores outcomes, and every outcome metric is satisfiable by an agent that
+blunders to the right answer — one that looks up four courses to cite one, or spends five
+turns doing what fits in two. That agent costs more, is slower, and degrades as the tool
+surface grows. The surface went from five tools to nine across M4-M6 with no instrument on
+tool choice, so this is the instrument, and it exists *before* multi-turn because multi-turn
+will move these numbers.
+
+Scored per run from the recorded trace: repeated identical calls, lookups whose sources are
+never cited, failed calls, calls per iteration, and calls against a labelled minimum.
+
+- **Only two things are gated.** `forbidden_tool_calls` at zero — the one write tool in the
+  surface (`propose_mission_candidates`) must not fire on a question that did not ask for a
+  write; it is banned by default across the behavior set and opted into per case via
+  `allow_write_tools`. And `redundant_call_rate` under a loose ceiling, as a tripwire.
+- **Uncited lookups are reported, never gated.** Checking three courses and citing the one
+  that mattered is diligence; gating it would reward padding citations, which is the exact
+  padding the decoder's grounding check refuses.
+- **`min_tool_calls` is labelled only where the floor is unambiguous** (8 of 35). Path ratio
+  is reported over that subset with its size stated. A guessed minimum makes the ratio look
+  rigorous and mean nothing.
+- **Rates are per run, not per call**, so one clean twelve-call run cannot absorb a
+  two-call run that repeated itself — the second is the one worth reading.
+
+`scripts.trajectory_report` runs the same scoring over `ai_interactions` retroactively, for
+free. That is rule 7 being cashed in: the audit log was always meant to double as eval data.
+It also spans this project's own schema changes — the two oldest rows use a `name` key and
+tool names that no longer exist — so the scorer reads both keys and the report states how
+many rows predate per-call attribution rather than smoothing over it.
+
 ## Data layers
 
 - `documents` / `document_chunks` — 35 ingested bulletin pages, ~1,250 chunks per strategy

@@ -66,12 +66,22 @@ jobs:
         run: |
           python -m scripts.schema_sql > /dev/null
           python - <<'PY'
-          from eval.golden import BEHAVIOR_CASES, RETRIEVAL_CASES
+          from eval.golden import BEHAVIOR_CASES, RETRIEVAL_CASES, WRITE_TOOLS, forbidden_tools_for
           from eval.decoder_cases import CASES as DECODER_CASES
           from eval.decoder_cases import validate as validate_decoder
 
           ids = [c.id for c in RETRIEVAL_CASES] + [c.id for c in BEHAVIOR_CASES]
           assert len(ids) == len(set(ids)), "duplicate case ids"
+
+          # The write tool is banned by default and opted into per case. If a rename ever
+          # made WRITE_TOOLS stop matching a real tool name, the ban would silently pass
+          # everywhere — so check the names still exist in the tool registry.
+          from app.services.agent_tools import DEMO_TOOL_IMPLS, LIVE_TOOL_IMPLS
+          known = set(DEMO_TOOL_IMPLS) | set(LIVE_TOOL_IMPLS)
+          missing = [t for t in WRITE_TOOLS if t not in known]
+          assert not missing, f"WRITE_TOOLS names no longer exist: {missing}"
+          banned = sum(1 for c in BEHAVIOR_CASES if forbidden_tools_for(c))
+          print(f"write tool banned on {banned}/{len(BEHAVIOR_CASES)} behavior cases")
 
           # A mislabelled decoder case would be reported as a measurement, so the labels
           # are checked for internal consistency before anything is measured against them.

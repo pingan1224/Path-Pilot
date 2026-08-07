@@ -100,6 +100,12 @@ class AiInteraction(Base):
     output_tokens: Mapped[int | None] = mapped_column(Integer)
     latency_ms: Mapped[int | None] = mapped_column(Integer)
 
+    # How many model turns the loop took. Derivable from `tool_calls` only approximately —
+    # the last turn produces the answer and calls no tool, so it leaves no mark in the trace
+    # — and loop length is the headline number for whether a change made the agent wander.
+    # An audit row that promises to be replayable should not make it a subtraction.
+    iterations: Mapped[int | None] = mapped_column(Integer)
+
     case: Mapped[Case | None] = relationship(foreign_keys=[case_id])
 
 

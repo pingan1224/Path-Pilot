@@ -136,6 +136,11 @@ STATEMENTS = [
            decided_at TIMESTAMPTZ NOT NULL DEFAULT now()
        )""",
     "CREATE INDEX IF NOT EXISTS ix_mission_decisions_mission ON mission_decisions (mission_id)",
+    # Loop length, stored rather than derived. `tool_calls` carries an iteration number per
+    # call, but the final turn produces the answer and calls nothing, so the trace
+    # systematically undercounts by one — and iterations is the number that says whether a
+    # change made the agent wander.
+    "ALTER TABLE ai_interactions ADD COLUMN IF NOT EXISTS iterations INTEGER",
 ]
 
 

@@ -378,6 +378,11 @@ def run_agent(
                 break
 
             impl = tools_for(ctx).get(name)
+            # Which source ids this one call put on the table. Captured as a delta because
+            # the tools write into a shared set, and without per-call attribution "this
+            # lookup was never used" is not a computable statement — the trajectory eval
+            # needs to know which call earned which citation, not just that some call did.
+            before_sources = set(ctx.seen_source_ids)
             if impl is None:
                 result: dict[str, Any] = {"error": f"unknown tool {name!r}"}
             else:
@@ -389,7 +394,15 @@ def run_agent(
                     result = {"error": f"{name} failed: {type(exc).__name__}. Try another approach or escalate."}
                     ctx.degraded_modes.add(f"tool_error:{name}")
 
-            tool_trace.append({"tool": name, "args": args, "iteration": iterations})
+            tool_trace.append(
+                {
+                    "tool": name,
+                    "args": args,
+                    "iteration": iterations,
+                    "source_ids": sorted(ctx.seen_source_ids - before_sources),
+                    "failed": isinstance(result, dict) and "error" in result,
+                }
+            )
             messages.append(
                 {
                     "role": "tool",
@@ -494,6 +507,7 @@ def run_agent(
         input_tokens=tokens["input_tokens"] or None,
         output_tokens=tokens["output_tokens"] or None,
         latency_ms=latency_ms,
+        iterations=iterations,
     )
     session.add(interaction)
     session.commit()

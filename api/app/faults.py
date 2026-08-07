@@ -44,6 +44,10 @@ FAULT_POINTS: dict[str, str] = {
     "retrieval.empty": "Retrieval runs but matches nothing. No exception, no degraded flag — the honest-answer path with zero evidence.",
     "tool.error": "A named record tool raises. Parameterise as `tool.error:<tool_name>`.",
     "freshness.all_stale": "Every record reads as past its freshness policy; disclosures must reach the answer.",
+    "ocr.unavailable": (
+        "The vision endpoint that reads photographed transcripts fails; intake must fall "
+        "back to the honest refusal rather than to an empty reading."
+    ),
     "search.budget_spent": (
         "The policy-search budget is already gone, so the first search is refused. Not a "
         "broken dependency — it forces M8's refusal branch, which shipped without anyone "

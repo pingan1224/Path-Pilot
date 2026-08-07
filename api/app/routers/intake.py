@@ -54,6 +54,13 @@ class ReadingOut(BaseModel):
     pages: int
     extracted_chars: int
     no_text_layer: bool
+    # The rows came from an image. The review screen must look different: nothing here can
+    # be batch-confirmed, and the student is being asked to check characters, not just
+    # course choices.
+    read_by_ocr: bool
+    # Image reading was attempted and failed — a temporary condition, worth a retry, as
+    # opposed to a file that can never be read.
+    ocr_degraded: bool
     counts: dict[str, int]
     rows: list[RowOut]
     notes: list[str]
@@ -103,6 +110,8 @@ async def post_transcript(
         pages=reading.pages,
         extracted_chars=reading.extracted_chars,
         no_text_layer=reading.no_text_layer,
+        read_by_ocr=reading.read_by_ocr,
+        ocr_degraded=reading.ocr_degraded,
         counts=reading.counts(),
         rows=[_row_out(r) for r in reading.rows],
         notes=reading.notes,

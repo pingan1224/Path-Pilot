@@ -193,14 +193,32 @@ the product (typing a dozen courses before anything else works) without changing
 data *is*: a transcript-sourced course enters `profile_courses` as a self-reported claim,
 identical to a typed one, with no "imported" marker — the file was never verified either.
 
-**There is no OCR, by measurement rather than omission.** An experiment over five synthetic
-layouts found text-layer PDFs parse well and a scan is cleanly detectable at zero extractable
-characters. A scanned upload can therefore be answered honestly today ("no text layer, export
-a text PDF from Albert instead") without a tesseract system dependency and the
-character-confusion error class that would need its own accuracy eval. Revisit only on
-evidence that students actually upload scans — and note that the first real transcript
-offered as a scan turned out to have a text layer, which is one data point *against*, not
-enough to conclude anything either way.
+**OCR exists (M10), and the interesting part is what it is not allowed to do.** It was
+built on the product judgement that students photograph their transcripts whatever the
+upload form says — which is true, and the pre-OCR behaviour was worse than "no OCR": a
+`.jpg` could not even be opened, so the likeliest real upload got the least useful answer in
+the product.
+
+- **Vision endpoint, not tesseract.** Chosen with the privacy cost stated rather than
+  buried: the image is sent to OpenAI, disclosed to the student *before* they upload. A
+  local tesseract keeps data on the machine but needs a system binary everywhere this
+  deploys and is markedly worse on phone photos, which is the entire motivating case.
+- **No OCR row can ever be `matched`.** `service._as_reviewed` forces every one to
+  `needs_review`, and there is deliberately no confidence threshold that promotes one — a
+  score from a model that cannot see the original is a claim about its own certainty.
+- **The measurement that justifies it.** Three photo fixtures (clean / skewed / low-res),
+  all five rows read in each. On the downscaled JPEG the reader returns `A-` for a course
+  the page grades `A` — **reproducibly, three runs of three**, with nothing in the reading
+  looking any different. Had OCR rows reached `matched`, a batch confirm writes a silent
+  one-notch grade downgrade into a degree audit.
+- **`silently_wrong` cannot measure OCR**, because nothing OCR produces is ever vouched
+  for. That metric would read zero however badly the images were parsed, so
+  `ocr_field_errors` is reported separately and is *not* gated at zero — its job is to say
+  how much checking the student is really being asked to do. Currently 1.
+
+The prompt asks for transcription, never interpretation: a model told to "read this
+transcript" repairs course codes into ones that exist and drops rows it thinks are headers,
+producing a clean record of a document nobody has.
 
 **Real transcripts are never committed.** The reader met its first one on 2026-08-07 and
 read it 12/12 — a genuine Albert export, in a shape none of the four invented fixtures had.

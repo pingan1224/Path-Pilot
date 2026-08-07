@@ -75,6 +75,14 @@ class TranscriptReading:
     # Set when the file has no text layer at all. Distinguished from "read it and found no
     # courses", which is a different problem with a different answer.
     no_text_layer: bool = False
+    # The rows came from an image, so none of them is `matched` and the student is told the
+    # characters are a guess. Surfaced to the client because the review screen should look
+    # different when nothing on it can be batch-confirmed.
+    read_by_ocr: bool = False
+    # Image reading was attempted and failed. Separate from `no_text_layer`: the file was a
+    # photo *and* the reader was down, which is a temporary condition worth retrying rather
+    # than a permanent property of the file.
+    ocr_degraded: bool = False
     # Reader-level caveats, as opposed to per-row ones.
     notes: list[str] = field(default_factory=list)
     disclaimer: str = (

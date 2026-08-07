@@ -109,24 +109,36 @@ export default function IntakeView({ onOpenView }) {
         <CardHeader>
           <CardTitle>Add your courses from a transcript</CardTitle>
           <CardDescription>
-            Upload an unofficial transcript or advising record as a PDF and this will read
-            the courses out of it, so you do not have to type them one at a time. Nothing is
-            added to your record until you review it and confirm.
+            Upload an unofficial transcript or advising record — a PDF, or a photo of one —
+            and this will read the courses out of it, so you do not have to type them one at
+            a time. Nothing is added to your record until you review it and confirm.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
           <input
             ref={fileRef}
             type="file"
-            accept="application/pdf,.pdf"
+            accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.heic"
             disabled={busy}
-            aria-label="Transcript PDF"
+            aria-label="Transcript PDF or photo"
             onChange={(e) => upload(e.target.files?.[0])}
             className="rounded-md border bg-muted/40 p-2 text-sm"
           />
           <p className="text-xs text-muted-foreground">
             The file is read and discarded — it is never stored. A text PDF exported from
-            Albert works; a photo or a scan has nothing to read.
+            Albert is the most accurate option by some distance.
+          </p>
+          {/* Said before the upload, not after. A photo is sent to an outside service to be
+              read, which is a different promise from the one the line above makes, and the
+              student is the only person who can decide whether that is acceptable for their
+              own transcript. */}
+          <p className="text-xs text-muted-foreground">
+            <strong>If you upload a photo or a scan:</strong> the image is sent to OpenAI's
+            vision service to be read, because there is no text in it to extract. It is not
+            stored there or here. Reading characters from an image is imperfect — grades
+            like <span className="font-mono">A</span> and{" "}
+            <span className="font-mono">A-</span> are easy to confuse — so every row from an
+            image has to be checked by you individually, and none can be added in bulk.
           </p>
           {busy ? <p className="text-sm text-muted-foreground">Reading…</p> : null}
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -189,6 +201,19 @@ export default function IntakeView({ onOpenView }) {
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
+            {/* An image reading is a different kind of result and should not look like a
+                clean one. Everything below is a guess at characters, so the screen says so
+                once at the top rather than relying on the student noticing that every row
+                happens to be flagged. */}
+            {reading.read_by_ocr ? (
+              <p className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-sm">
+                <strong>Read from an image.</strong> These course codes and grades were
+                recognised from a picture, not extracted from text, so each one is a best
+                guess — check it against your transcript before adding it. Nothing here can
+                be added in bulk. A text PDF exported from Albert avoids all of this.
+              </p>
+            ) : null}
+
             {reading.notes.map((note, i) => (
               <p key={i} className="text-sm text-muted-foreground">
                 {note}

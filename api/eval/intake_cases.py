@@ -42,6 +42,9 @@ class IntakeCase:
     rows: tuple[ExpectedRow, ...] = ()
     # Set for a file with no text layer at all — the scanned-document path.
     expect_no_text_layer: bool = False
+    # An image fixture, read through the vision endpoint. Costs a paid call per run, so
+    # these are excluded from the free `--only-decoder` pass and run with the full gate.
+    is_ocr: bool = False
     # Lines the reader must hand back rather than drop.
     min_unreadable: int = 0
     note: str = ""
@@ -151,14 +154,64 @@ CASES: list[IntakeCase] = [
             "that true."
         ),
     ),
+    # --- OCR: the same five rows, photographed three ways -------------------------------
+    #
+    # The expectations state the TRUTH, never what OCR is known to do with it. T09 misreads
+    # a grade reproducibly; labelling that misreading as expected would convert a defect
+    # into a passing assertion, and the number that matters here — `ocr_field_errors` —
+    # would go to zero while the reader stayed exactly as wrong.
+    #
+    # Every row is `needs_review` because `app.intake.service._as_reviewed` forces it, which
+    # is also why OCR cannot move `silently_wrong`: a row it never vouched for cannot be
+    # silently wrong. That is the design working, not the reader being accurate, and the
+    # separate field-accuracy metric exists so the report cannot be read the second way.
+    *(
+        IntakeCase(
+            case_id,
+            f"transcript_photo_{quality}.jpg",
+            f"photo, {description}",
+            rows=(
+                ExpectedRow("MASY1-GC 1015", R, "Fall 2024", "A-"),
+                ExpectedRow("MASY1-GC 1115", R, "Fall 2024", "A-"),
+                ExpectedRow("MASY1-GC 1500", R, "Spring 2025", "A"),
+                ExpectedRow("MASY1-GC 1600", R, "Spring 2025", "A-"),
+                ExpectedRow("MASY1-GC 2400", R, "Fall 2025", None, CourseState.in_progress),
+            ),
+            is_ocr=True,
+            note=note,
+        )
+        for case_id, quality, description, note in (
+            (
+                "T07", "clean", "flat and sharp",
+                "The control. If the best case a phone produces misreads, nothing above it "
+                "is trustworthy. Measured 2026-08-07: all five rows, every field correct.",
+            ),
+            (
+                "T08", "skewed", "rotated with an overhead shadow",
+                "A photo taken at a desk under a lamp — rotation plus a brightness "
+                "gradient. Measured: all five rows, every field correct, which was the "
+                "surprise; skew was expected to cost more than resolution.",
+            ),
+            (
+                "T09", "lowres", "downscaled and JPEG-crushed",
+                "The case that justifies the whole design. Measured three times, three "
+                "identical results: all five rows found, and MASY1-GC 1500's grade read as "
+                "'A-' when the page says 'A'. A silent one-notch grade downgrade, "
+                "reproducible, from a file small enough that a student would think nothing "
+                "of it. Had OCR rows been allowed to reach `matched`, a batch confirm would "
+                "have written it into the record with nothing to catch it.",
+            ),
+        )
+    ),
     IntakeCase(
         "T05",
         "transcript_scanned.pdf",
         "no text layer",
         expect_no_text_layer=True,
         note=(
-            "A scan or a photo. Cleanly detectable at zero extractable characters, which is "
-            "why there is no OCR dependency yet: this case can be answered honestly today."
+            "Zero extractable characters AND no embedded page images — a vector-drawn page, "
+            "which OCR cannot help with either. Still the honest refusal, and now the only "
+            "file shape that gets one."
         ),
     ),
 ]

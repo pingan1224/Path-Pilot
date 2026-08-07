@@ -544,13 +544,21 @@ def eval_decoder(session) -> dict:
 # --------------------------------------------------------------------------------------
 
 
-def eval_intake(session) -> dict:
+def eval_intake(session, include_ocr: bool = False) -> dict:
     """Score transcript reading against labelled synthetic fixtures.
 
     Two numbers, and the distinction between them is the whole point. A reader that reports
     every row as clean scores perfectly on recall and is dangerous; one that reads fewer rows
     but labels the uncertain ones scores worse on recall and is usable. So `silently_wrong`
     is gated at zero and recall merely has a floor.
+
+    **A third number exists because of OCR, and it exists to stop the first two from lying.**
+    Every OCR row is forced to `needs_review`, so no OCR misreading can ever count as
+    silently wrong — the metric would sit at zero no matter how badly the images were read,
+    and a reader that hallucinated every grade would look identical to a perfect one. So
+    `ocr_field_errors` counts wrong fields on `needs_review` rows from image fixtures, and
+    it is reported rather than gated: it is not supposed to be zero. Its job is to say how
+    much checking the student is actually being asked to do.
     """
     from pathlib import Path
 
@@ -565,6 +573,8 @@ def eval_intake(session) -> dict:
     fixtures = Path(__file__).resolve().parent.parent / "tests" / "fixtures"
     rows = []
     for case in CASES:
+        if case.is_ocr and not include_ocr:
+            continue
         path = fixtures / case.fixture
         if not path.exists():
             rows.append(
@@ -580,6 +590,10 @@ def eval_intake(session) -> dict:
         by_code = {r.course_code: r for r in reading.rows if r.course_code}
         failures: list[str] = []
         wrong = 0
+        field_errors: list[str] = []
+
+        if case.is_ocr and not reading.read_by_ocr:
+            failures.append("an image fixture was not read through the OCR path")
 
         if case.expect_no_text_layer:
             if not reading.no_text_layer:
@@ -611,6 +625,20 @@ def eval_intake(session) -> dict:
                     if got != want:
                         failures.append(f"{expected.course_code}: {label} {got!r} != {want!r}")
                         wrong += 1
+            elif case.is_ocr:
+                # Not a case failure — an OCR row is flagged for the student by design, so a
+                # wrong field here is disclosed rather than asserted. Counted separately so
+                # "silently wrong: 0" cannot be read as "the images were read correctly".
+                for label, got, want in (
+                    ("term", actual.term, expected.term),
+                    ("grade", actual.grade, expected.grade),
+                    ("state", actual.state, expected.state),
+                ):
+                    if got != want:
+                        field_errors.append(
+                            f"{case.id} {expected.course_code}: {label} read as {got!r}, "
+                            f"page says {want!r}"
+                        )
 
         unreadable = sum(1 for r in reading.rows if r.status.value == "unreadable")
         if unreadable < case.min_unreadable:
@@ -628,17 +656,26 @@ def eval_intake(session) -> dict:
                 "id": case.id, "layout": case.layout, "passed": not failures,
                 "failures": failures, "found": found, "expected": len(case.rows),
                 "wrong": wrong, "unreadable": unreadable, "note": case.note,
+                "is_ocr": case.is_ocr, "field_errors": field_errors,
             }
         )
 
     total_expected = sum(r["expected"] for r in rows)
     total_found = sum(r["found"] for r in rows)
+    ocr_rows = [r for r in rows if r["is_ocr"]]
+    ocr_expected = sum(r["expected"] for r in ocr_rows)
+    ocr_found = sum(r["found"] for r in ocr_rows)
+    ocr_errors = [e for r in ocr_rows for e in r["field_errors"]]
     return {
         "cases": rows,
         "passed": sum(1 for r in rows if r["passed"]),
         "total": len(rows),
         "row_recall": round(total_found / total_expected, 4) if total_expected else None,
         "silently_wrong": sum(r["wrong"] for r in rows),
+        "ocr_cases": len(ocr_rows),
+        "ocr_row_recall": round(ocr_found / ocr_expected, 4) if ocr_expected else None,
+        "ocr_field_errors": len(ocr_errors),
+        "ocr_field_error_detail": ocr_errors,
     }
 
 
@@ -887,6 +924,18 @@ def write_report(retrieval, behavior, decoder, intake, consistency, gate_problem
             f"| cases passed | {intake['passed']}/{intake['total']} | — |",
             f"| row recall | {intake['row_recall']} | ≥ {GATE['intake_row_recall']} |",
             f"| rows silently wrong | {intake['silently_wrong']} | = 0 |",
+        ]
+        if intake["ocr_cases"]:
+            lines += [
+                f"| OCR row recall ({intake['ocr_cases']} image fixtures) | {intake['ocr_row_recall']} | reported |",
+                f"| OCR field errors | {intake['ocr_field_errors']} | reported, **not** gated |",
+            ]
+        lines += [
+            "",
+            "OCR rows are forced to `needs_review`, so they cannot reach `silently wrong` "
+            "however badly an image is read — that metric measures the design, not the "
+            "accuracy. **OCR field errors is the accuracy number**, and it is not expected "
+            "to be zero.",
             "",
             "| case | layout | read | wrong |",
             "|---|---|---|---|",
@@ -895,6 +944,9 @@ def write_report(retrieval, behavior, decoder, intake, consistency, gate_problem
             lines.append(
                 f"| {r['id']} | {r['layout']} | {r['found']}/{r['expected']} | {r['wrong']} |"
             )
+        if intake["ocr_field_error_detail"]:
+            lines += ["", "### What OCR got wrong", ""]
+            lines += [f"- {d}" for d in intake["ocr_field_error_detail"]]
         failures = [r for r in intake["cases"] if not r["passed"]]
         lines += ["", f"### Failures ({len(failures)})", ""]
         if not failures:
@@ -1010,11 +1062,21 @@ def main() -> None:
         intake = None
         if not args.skip_decoder:
             print("part 3b/4: transcript intake ...")
-            intake = eval_intake(session)
+            # OCR costs a paid vision call per fixture, so the free pass skips it and the
+            # full run includes it — same tiering as the agent cases.
+            intake = eval_intake(session, include_ocr=not args.only_decoder)
             print(
                 f"  passed {intake['passed']}/{intake['total']}  "
                 f"recall={intake['row_recall']}  wrong={intake['silently_wrong']}"
             )
+            if intake["ocr_cases"]:
+                print(
+                    f"  ocr: {intake['ocr_cases']} image fixtures  "
+                    f"recall={intake['ocr_row_recall']}  "
+                    f"field errors={intake['ocr_field_errors']} (reported, not gated)"
+                )
+                for detail in intake["ocr_field_error_detail"]:
+                    print(f"    ! {detail}")
 
         if not args.only_decoder:
             print("part 4/4: readiness consistency ...")

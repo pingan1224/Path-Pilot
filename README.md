@@ -50,6 +50,11 @@ out, sorts them into *ready* / *needs a look* / *could not read*, and lets you c
 ones that are right. Only the first group is pre-ticked — pre-ticking a row it flagged would
 turn "please check this" into "we checked this". The file is read and discarded, never stored.
 
+A photo of a transcript works too, and lands entirely in *needs a look* — every row, always.
+Reading characters off a picture is a guess, and a measured one: on a low-resolution photo
+this reader turns an `A` into an `A-` reproducibly. So nothing from an image can be confirmed
+in bulk, no matter how confident it looks.
+
 It explains registration blockers in plain language, cites where every fact came from and
 when it was last verified, and escalates to a human — with a case number — whenever it
 cannot verify an answer.
@@ -124,10 +129,11 @@ Latest full run — see `api/eval/results/` for the reports.
 | Decoder ambiguity held (hold office never invented) | 1.00 | = 1.00 |
 | Authorization boundary checks | 36/36 | all |
 | Mission end-to-end probe | 37/37 | all |
-| Transcript intake (6 layouts incl. a real SIS export shape, 23 rows) | recall 1.00, 0 wrong | 0 silently wrong |
-| Unit tests (rule engine, decoder, missions, sequence, intake, search budget, faults) | 252/252 | all |
+| Transcript intake (9 fixtures: 6 documents + 3 photos, 38 rows) | recall 1.00, 0 wrong | 0 silently wrong |
+| OCR field errors (reported, **not** gated) | 1 — a grade read `A-` where the page says `A` | reported |
+| Unit tests (rule engine, decoder, missions, sequence, intake, search budget, faults, OCR boundary) | 271/271 | all |
 | Fault-injection scenarios | 6/6 | all |
-| Degradation coverage (declared modes ever executed) | **4/4** *(was 0/4 before M9)* | all |
+| Degradation coverage (agent's declared modes ever executed) | **4/4** *(was 0/4 before M9)* | all |
 | Degraded retrieval, recall@5 / MRR | 0.74 / 0.536 *(vs 0.91 / 0.815 healthy)* | reported |
 | Readiness consistency (two implementations) | 48/48 | 0 mismatches |
 | Assistant latency p50 / p95 | 6.1s / 15.2s | reported |
@@ -242,6 +248,51 @@ thing it is refusing. The residual limitation is written into the case rather th
 over: a phrase list has no notion of negation, and what actually stops the assistant
 clearing a hold is that no such tool exists for it to call. These probes are a tripwire, not
 a proof.
+
+### Reading a photograph, and refusing to trust it
+
+Students photograph their transcripts. The upload form said "PDF", and a `.jpg` could not
+even be *opened* — so the most likely real upload got the least useful answer in the whole
+product. Fixing that meant OCR, which meant deciding what an OCR reading is worth.
+
+**It is worth less than a text reading, and the system is built to say so.** A text-layer
+PDF *states* its characters; a photo only suggests them, and it suggests them worst for
+exactly the characters a transcript is made of — `B`/`8`, `0`/`O`, `A-`/`A`. So every row
+that arrives through OCR is forced to `needs_review`, structurally, whatever the parser
+concluded. There is no confidence threshold that promotes one, because a confidence score
+from a model that cannot see the original document is a claim about its own certainty.
+
+**That is not a precaution, it is a measured requirement.** Three photo fixtures — flat and
+sharp, rotated under a desk lamp, and downscaled to a small JPEG — drawn as images so the
+degradation is a controlled variable and the ground truth is free. All three read all five
+rows. And on the low-resolution one the reader returns **`A-` for a course the page grades
+`A`, reproducibly, three runs out of three**, with nothing in the reading looking any
+different from the correct ones. Had OCR rows been allowed to reach `matched`, one batch
+confirm writes a silent one-notch grade downgrade into a degree audit, and nothing
+downstream would ever catch it.
+
+This also breaks a metric on purpose, which is worth saying plainly: **`silently wrong: 0`
+cannot measure OCR at all.** Nothing OCR produces is ever vouched for, so that number stays
+at zero however badly an image is read — a reader that hallucinated every grade would look
+identical to a perfect one. `ocr_field_errors` is reported separately and deliberately not
+gated at zero. It currently sits at **1**, and that is the number that says how much
+checking the student is actually being asked to do.
+
+Two smaller decisions, both with their cost stated rather than buried:
+
+- **A vision endpoint, not a local tesseract.** The image leaves the machine, and the
+  student is told so *before* they upload rather than after. Tesseract keeps the data local
+  but needs a system binary everywhere this deploys and is markedly worse on phone photos —
+  the case that motivated the feature. That tradeoff was the user's call to make, not the
+  implementer's.
+- **The prompt asks for transcription, never interpretation.** A model told to "read this
+  transcript" helpfully repairs a course code into one that exists, normalises a term, and
+  drops rows it takes for headers — producing a clean, plausible record of a document that
+  does not exist.
+
+When the vision service is down, this degrades to the honest refusal that existed before it
+— never to an empty reading, which would tell a student with a full transcript that no
+courses were found because a third party was unavailable.
 
 ### Breaking it on purpose
 
@@ -406,9 +457,9 @@ actually costs).
 | M7-C | Transcript PDF intake: upload → parse → three-state review → batch confirm | ✅ |
 | M8 | Search budget: stop searching when searching has stopped working | ✅ |
 | M9 | Fault injection: every declared degraded path executed and watched | ✅ |
-| M10 | Multi-turn context budgeting: freshness-aware reuse of tool results | ◻ Next |
-| M11 | Invite-only beta, rate limits, deployment | ◻ |
-| — | Open: OCR, if evidence appears that students upload scans | ◻ |
+| M10 | Transcript photos: OCR that is never allowed to be trusted | ✅ |
+| M11 | Multi-turn context budgeting: freshness-aware reuse of tool results | ◻ Next |
+| M12 | Invite-only beta, rate limits, deployment | ◻ |
 
 ## Honest limitations
 
@@ -419,13 +470,9 @@ actually costs).
   and registration guidance, not a degree audit.
 - **Agent behaviour was tuned against its 35 eval cases.** That set is a regression gate,
   not proof of generalization; held-out cases are needed for that claim.
-- **Transcript reading has no OCR, so a scan cannot be read.** Measured over five layouts:
-  text-layer PDFs parse reliably, and a scan is cleanly detectable — so it is refused with an
-  explanation rather than guessed at. Term association in side-by-side column layouts is
-  genuinely ambiguous and the term is dropped rather than inferred. The one real transcript
-  this has been tried on turned out to *have* a text layer, which is weak evidence that the
-  scanned case is rarer than assumed — and one document is not evidence of much, so OCR
-  stays unbuilt rather than being justified by a sample of one in either direction.
+- **Transcript photos are read, and nothing read from one can be confirmed in bulk.** See
+  below — the constraint is the feature. Term association in side-by-side column layouts
+  remains genuinely ambiguous and the term is dropped rather than inferred.
 - **The reader has now met exactly one real transcript, and read it 12/12.** A genuine NYU
   SPS export, in a layout none of the four invented fixtures had: the whole row on one
   extracted line with the title first, a section suffix on the course code, long titles

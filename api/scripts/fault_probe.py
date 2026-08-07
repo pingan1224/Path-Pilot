@@ -44,6 +44,16 @@ RESULTS_DIR = Path(__file__).resolve().parent.parent / "eval" / "results"
 
 # Every degraded mode the code can record. The coverage metric is measured against this
 # list, so a mode added without a scenario shows up as uncovered instead of unnoticed.
+# Every degraded mode the code can record. The coverage metric is measured against this
+# list, so a mode added without a scenario shows up as uncovered instead of unnoticed.
+#
+# **Scope, so the number is not read as more than it is.** These are the degradations of an
+# *agent turn*, because coverage is computed from `ai_interactions` and that is the only
+# thing recorded there. Transcript intake has a degraded path of its own — the vision
+# endpoint failing, which must fall back to the honest refusal rather than to an empty
+# reading — and it is not an agent turn, so it cannot appear here. It is covered by
+# `tests/test_intake_ocr.py` with the `ocr.unavailable` fault armed, which costs nothing to
+# run. "Coverage 4/4" means the agent's four, not every degraded path in the system.
 DECLARED_MODES = (
     "keyword_fallback",
     "llm_error",

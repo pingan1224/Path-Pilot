@@ -1,0 +1,25 @@
+{
+  "run": "20260807-205707",
+  "scenarios": [
+    {
+      "id": "F1",
+      "fault": "embeddings.unavailable",
+      "question": "What happens if I join a waitlist?",
+      "what_breaks": "The embedding provider is down, so policy search falls back to keyword ranking.",
+      "passed": false,
+      "failures": [
+        "survived: the turn raised InternalError: (psycopg.errors.InFailedSqlTransaction) current transaction is aborted, commands ignored until end of transaction block\n[SQL: SELECT max(CAST(split_part(cases.case_number, %(split_part_1)s::VARCHAR, %(split_part_2)s::INTEGER) AS INTEGER)) AS max_1 \nFROM cases]\n[parameters: {'split_part_1': '-', 'split_part_2': 2}]\n(Background on this error at: https://sqlalche.me/e/20/2j85)"
+      ],
+      "decision": "",
+      "confidence": null,
+      "degraded_modes": [],
+      "case_number": null,
+      "tool_calls": 0,
+      "owned_it_in_words": false,
+      "answer": ""
+    }
+  ],
+  "passed": 0,
+  "total": 1,
+  "degradation_coverage": 0.0
+}

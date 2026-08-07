@@ -29,6 +29,7 @@ from typing import Any
 from sqlalchemy import Integer, func, select
 from sqlalchemy.orm import Session
 
+from app import faults
 from app.config import settings
 from app.models import (
     ActorKind,
@@ -426,12 +427,27 @@ def run_agent(
                 result: dict[str, Any] = {"error": f"unknown tool {name!r}"}
             else:
                 try:
+                    # Inside the real try, so an injected tool failure takes the same path
+                    # as a genuine one: a named error handed back to the model, a degraded
+                    # mode recorded, and the loop continuing rather than aborting.
+                    if faults.armed_for_tool(name):
+                        raise faults.InjectedFault(f"injected fault: tool.error:{name}")
                     result = impl(ctx, **args)
                 except PermissionError as exc:
                     result = {"error": str(exc)}
                 except Exception as exc:  # noqa: BLE001 — the model gets a named failure, not a crash
                     result = {"error": f"{name} failed: {type(exc).__name__}. Try another approach or escalate."}
                     ctx.degraded_modes.add(f"tool_error:{name}")
+                    # A tool that failed on a database error leaves the transaction
+                    # aborted, and every statement after it fails too — including the
+                    # escalation that is supposed to be the safety net. So the net fails
+                    # in exactly the case it exists for, and the student gets a 500
+                    # instead of a case number. Found by fault injection, not by review.
+                    #
+                    # Safe to roll back here because the write tools commit as they go:
+                    # a mission opened earlier in this turn is already durable, and what
+                    # is discarded is the failed statement's own work.
+                    session.rollback()
 
             tool_trace.append(
                 {

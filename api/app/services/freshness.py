@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app import faults
 from app.models import SourceFreshnessPolicy
 from app.schemas import Provenance
 
@@ -52,7 +53,10 @@ class FreshnessPolicies:
                 disclosure=UNKNOWN_DISCLOSURE,
             )
 
-        is_stale = age > policy.max_age_seconds
+        # Forces the rule-2 disclosure path for every field at once. The mirror going
+        # stale is the most likely real degradation of the four and the least visible:
+        # nothing errors, the numbers are simply older than they claim to be.
+        is_stale = age > policy.max_age_seconds or faults.is_armed("freshness.all_stale")
         return Provenance(
             source_key=source_key,
             label=policy.label,

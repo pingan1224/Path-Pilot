@@ -1,0 +1,106 @@
+{
+  "run": "20260807-210708",
+  "scenarios": [
+    {
+      "id": "F1",
+      "fault": "embeddings.unavailable",
+      "question": "What happens if I join a waitlist?",
+      "what_breaks": "The embedding provider is down, so policy search falls back to keyword ranking.",
+      "passed": true,
+      "failures": [],
+      "decision": "answered_with_caveat",
+      "confidence": "low",
+      "degraded_modes": [
+        "keyword_fallback"
+      ],
+      "case_number": null,
+      "tool_calls": 3,
+      "owned_it_in_words": true,
+      "answer": "I looked through the available policy materials for how NYU course waitlists work, but I didn't find the specific waitlist rules in the documents I can access. (Policy search is currently degraded, which also makes it harder to locate the right passage.) The only related guidance points to the general \"Registering for Classes\" information from the Office of the Registrar [policy:chunk:4835].\n\nFor what actually happens when you join a waitlist — for example, whether you get automatically enrolled when a seat opens, how you receive notification, how many waitlists you can be on, and whether a waitlisted course counts toward your credit load — you'll need to check the current Registrar registration resources directly. The authoritative source is the Office of the Registrar's registration page and the Albert help/registration guides.\n\nIf you received a specific waitlist-related error message in Albert, share the exact text and I can decode what the system is telling you."
+    },
+    {
+      "id": "F2",
+      "fault": "llm.error",
+      "question": "Why is my registration blocked?",
+      "what_breaks": "The chat model call fails on the first iteration.",
+      "passed": true,
+      "failures": [],
+      "decision": "escalated",
+      "confidence": "low",
+      "degraded_modes": [
+        "llm_error"
+      ],
+      "case_number": "UAX-1053",
+      "tool_calls": 0,
+      "owned_it_in_words": true,
+      "answer": "The assistant hit a technical problem and could not finish this request. It has been routed to a human instead."
+    },
+    {
+      "id": "F3",
+      "fault": "tool.error:get_holds",
+      "question": "Do I have any holds on my record right now?",
+      "what_breaks": "The one record lookup this question needs raises.",
+      "passed": true,
+      "failures": [],
+      "decision": "answered_with_caveat",
+      "confidence": "medium",
+      "degraded_modes": [
+        "tool_error:get_holds"
+      ],
+      "case_number": null,
+      "tool_calls": 3,
+      "owned_it_in_words": true,
+      "answer": "Your degree-progress record shows that you currently have **1 active hold** that will block registration until it is resolved. I was unable to pull the detailed holds view in this session, so I cannot tell you the hold type or which office issued it.\n\nWhat you should do next: log in to the **Albert Student Center** and check the Holds section. It will list the hold type, the office that placed it, and usually the steps to clear it. Common holds include library, prior-term balance, and health/vaccination holds, all of which must be cleared with the appropriate office before you can register.\n\nPlease note that the degree-progress record I can see was last synced on **August 5, 2026**, and student records update nightly; if something changed today, it may not appear until tomorrow."
+    },
+    {
+      "id": "F4",
+      "fault": "retrieval.empty",
+      "question": "What are the rules about cheating and plagiarism?",
+      "what_breaks": "Retrieval is reachable but matches nothing at all.",
+      "passed": true,
+      "failures": [],
+      "decision": "answered",
+      "confidence": "high",
+      "degraded_modes": [],
+      "case_number": null,
+      "tool_calls": 4,
+      "owned_it_in_words": true,
+      "answer": "I searched the policy documents available to me using several terms — \"cheating plagiarism academic integrity policy,\" \"academic misconduct integrity violations dishonesty plagiarism,\" \"plagiarism cheating academic integrity honor code student conduct,\" and \"student code of conduct academic dishonesty penalties\" — but none returned relevant passages. The material available to me does not cover the rules on cheating and plagiarism.\n\nFor the official policy, you should check:\n- The university's Academic Integrity or Student Code of Conduct page on the main university website\n- Your course syllabus, which usually states the instructor's plagiarism/cheating rules and penalties\n- Your school's student handbook or catalog\n\nIf you need help finding the right office or want me to look up other registration-related policies, I can do that."
+    },
+    {
+      "id": "F6",
+      "fault": "search.budget_spent",
+      "question": "What happens if I miss the deadline to drop a course?",
+      "what_breaks": "The policy-search budget is already gone, so the first search is refused.",
+      "passed": true,
+      "failures": [],
+      "decision": "answered_with_caveat",
+      "confidence": "low",
+      "degraded_modes": [
+        "retrieval_budget_exhausted"
+      ],
+      "case_number": null,
+      "tool_calls": 2,
+      "owned_it_in_words": true,
+      "answer": "I was unable to retrieve your school’s drop/withdrawal deadline policy from the documents available to me, so I cannot tell you what happens if you miss the deadline to drop a course. For the official deadlines, late-drop options, and any petition process, please contact the Registrar’s Office directly; your academic advisor can also explain how a late drop might affect your degree progress, full-time status, and financial aid."
+    },
+    {
+      "id": "F5",
+      "fault": "freshness.all_stale",
+      "question": "What exactly do I need to do to clear my aid hold, and by when?",
+      "what_breaks": "Every record reads as past its freshness policy.",
+      "passed": true,
+      "failures": [],
+      "decision": "answered",
+      "confidence": "high",
+      "degraded_modes": [],
+      "case_number": null,
+      "tool_calls": 2,
+      "owned_it_in_words": false,
+      "answer": "You have an active financial aid hold because Financial Aid received your 2026-2027 FAFSA but has not yet received your signed Verification Worksheet.\n\nTo clear it:\n• Upload the signed Verification Worksheet to the Financial Aid document portal.\n• After Financial Aid receives it, processing takes up to two business days.\n\nDeadline to submit:\n• August 10, 2026 at 6:07 p.m. UTC.\n\nSince aid status updates once daily and submitted documents are typically reviewed within two business days, upload it as soon as possible to leave time for review before the deadline.\n\nIf you need a copy of the Verification Worksheet or help accessing the document portal, contact the SPS Office of Financial Aid directly."
+    }
+  ],
+  "passed": 6,
+  "total": 6,
+  "degradation_coverage": 1.0
+}

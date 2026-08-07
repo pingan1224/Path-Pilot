@@ -17,6 +17,7 @@ from typing import Any
 
 from openai import OpenAI
 
+from app import faults
 from app.config import settings
 
 
@@ -41,6 +42,11 @@ def chat(
     max_tokens: int = 4096,
 ) -> Any:
     """One completion turn. Returns the raw message (content and/or tool_calls)."""
+    # Stands in for an upstream 4xx/5xx or a timeout. The agent loop catches every
+    # exception from this call, so the shape of the failure does not matter — only that
+    # the turn ends as a routed escalation with a case number instead of a bare 500.
+    faults.fail_if_armed("llm.error")
+
     kwargs: dict[str, Any] = {
         "model": settings.chat_model,
         "messages": messages,

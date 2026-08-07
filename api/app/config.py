@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     # "vector" (dense only) or "hybrid" (dense + lexical, fused by RRF).
     retrieval_mode: str = "vector"
 
+    # Arms `app.faults`, which lets a probe break embeddings, the chat model, a tool, or
+    # retrieval on purpose to watch the degraded paths run. Off by default and must stay
+    # off anywhere real: with it disabled no fault can be armed at all, so the injection
+    # points compile down to a settings read.
+    fault_injection: bool = False
+
     # Signs the session cookie. The default exists so local development runs without
     # setup; it is deliberately obvious, and deployment must override it — a predictable
     # signing key means anyone can mint a session for any role.

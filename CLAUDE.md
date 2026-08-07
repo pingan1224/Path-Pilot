@@ -131,9 +131,10 @@ From the RFP's UI/UX section. Applies to every screen.
 `P4` eval harness · `P5` RBAC + audit · `P6` case study + demo
 
 Current phase: **M7 complete (A: agent-first shell, B: one-shot execution, C: transcript
-intake); M8 closed the B26 retrieval give-up finding with a measured search budget. Open
-agent gaps: fault injection (degraded paths have still never executed), OCR only if
-evidence warrants it.**
+intake); M8 closed the B26 retrieval give-up finding with a measured search budget; M9 built
+fault injection and took degradation coverage 0/4 → 4/4, finding three real bugs including
+a keyword fallback that had never once executed successfully. Open agent gaps: multi-turn
+context budgeting, OCR only if evidence warrants it.**
 
 ## Agent-first shell (`web/src/views/ChatHome.jsx`, M7-A)
 
@@ -363,6 +364,47 @@ free. That is rule 7 being cashed in: the audit log was always meant to double a
 It also spans this project's own schema changes — the two oldest rows use a `name` key and
 tool names that no longer exist — so the scorer reads both keys and the report states how
 many rows predate per-call attribution rather than smoothing over it.
+
+## Fault injection (`app/faults.py`, `scripts/fault_probe.py`, M9)
+
+Rule 6 promises every dependency a visible degraded path. Measured across 121 audited
+turns before this existed, those paths had executed **zero times**. An `except` branch that
+has never run is a guess with good intentions.
+
+`app/faults.py` arms named faults at the real dependency boundaries — embeddings, the chat
+model, tool dispatch, retrieval, freshness — and `scripts/fault_probe.py` runs the **real
+agent loop** on top of them and reads what the student ends up with. Two safety properties:
+`settings.fault_injection` defaults False and nothing can be armed while it is off, and the
+armed set is a ContextVar so a fault cannot leak into a concurrent request. Unknown fault
+names raise rather than injecting nothing.
+
+The checks are the user-visible contract: the degradation reached `degraded_modes`, the
+turn did not come back as a clean `answered`, a case was opened where the request could not
+be served, and — the load-bearing one — **no citation names a source no tool returned**. An
+assistant that loses its evidence and keeps its confidence is worse than one that fails.
+
+**Degradation coverage went 0/4 → 4/4.** The metric reads `ai_interactions`, not the current
+invocation, so narrowing the probe with `--only` cannot reset it to zero.
+
+**What the first run found, in order of severity:**
+
+1. **The keyword fallback had never worked.** `unnest(:terms)` without a cast is an
+   ambiguous function in Postgres, so the whole fallback raised on its first statement —
+   the documented degraded path for an embeddings outage would itself have failed, in the
+   one situation it exists for.
+2. **A failed tool poisoned the transaction, so the escalation failed too.** The safety net
+   broke in exactly the case it exists for; the student would have got a 500 instead of a
+   case number. `session.rollback()` in the tool-error handler, which is safe because the
+   write tools commit as they go.
+3. **The fallback still carried a bug the dense path fixed months ago** — a home-school-only
+   boost that buries every unaffiliated document. Dead code does not get patched. Its first
+   real answer handed an SPS student the School of Social Work's waitlist procedure, in
+   confident prose, with nothing marking it as degraded.
+
+Degraded retrieval now has a measured size instead of the adjective "less relevant":
+**recall@5 0.91 → 0.74, MRR 0.815 → 0.536** (`scripts/measure_degraded_retrieval.py`), and
+the tool tells the model those numbers plus "check the passage is actually about this
+student's school" rather than a vague caveat.
 
 ## The policy-search budget (`MAX_POLICY_SEARCHES`, M8)
 

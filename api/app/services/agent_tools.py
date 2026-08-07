@@ -19,6 +19,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app import faults
 from app.models import (
     Course,
     CoursePrerequisite,
@@ -139,7 +140,7 @@ MAX_POLICY_SEARCHES = 5
 
 
 def tool_search_policy(ctx: ToolContext, query: str) -> dict[str, Any]:
-    if len(ctx.policy_queries) >= MAX_POLICY_SEARCHES:
+    if len(ctx.policy_queries) >= MAX_POLICY_SEARCHES or faults.is_armed("search.budget_spent"):
         # Refused before retrieval: no embedding call, no query, no fresh passages to
         # tempt another reformulation.
         ctx.degraded_modes.add("retrieval_budget_exhausted")
@@ -199,9 +200,19 @@ def tool_search_policy(ctx: ToolContext, query: str) -> dict[str, Any]:
             if remaining <= 2
             else None
         ),
+        # Measured, not adjectival. "Less relevant" is what this said before the fallback
+        # had ever run; the first run of it answered an SPS student with the School of
+        # Social Work's waitlist procedure, in confident prose, with nothing in the text
+        # marking it as degraded. The numbers come from scripts/measure_degraded_retrieval.
         "note": (
-            "Ranking is keyword-based right now because semantic search is unavailable; "
-            "results may be less relevant."
+            "DEGRADED SEARCH: semantic search is unavailable, so these passages were "
+            "ranked by keyword overlap alone. Measured on this corpus, that finds the "
+            "right section about 74% of the time against 91% normally, and ranks it worse. "
+            "Two things follow. Say in your answer that policy search is degraded right "
+            "now and the passage may not be the best one. And check that each passage is "
+            "actually about this student's school and level before relying on it — the "
+            "wrong school's answer to the right question is the characteristic failure "
+            "here, and it reads as perfectly authoritative."
             if result.degraded
             else None
         ),

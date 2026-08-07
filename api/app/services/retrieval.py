@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app import faults
 from app.config import settings
 from app.services.embeddings import EmbeddingsUnavailableError, embed_one
 
@@ -158,23 +159,47 @@ VECTOR_SQL = text(
 
 # Fallback: crude term matching, same role boundary. Scores are counts, not similarities;
 # they are surfaced as-is so a degraded turn never masquerades as a normal one.
+#
+# `CAST(:terms AS varchar[])` is load-bearing, and its absence is the first thing fault
+# injection found. A bare `unnest(:terms)` sends the array as an untyped parameter, and
+# Postgres cannot choose between the unnest overloads: "function unnest(unknown) is not
+# unique". This entire fallback therefore raised on its first statement from the day it was
+# written — the documented degraded path for an embeddings outage would itself have failed,
+# in the one situation it exists for. Nothing caught it because nothing ever ran it.
 KEYWORD_SQL = text(
     """
-    SELECT dc.id, dc.text, dc.heading_path, dc.section_keys,
-           d.title, d.url, d.office, d.fetched_at,
-           d.school, d.level,
-           (
-             SELECT count(*) FROM unnest(:terms) AS term
-             WHERE dc.text ILIKE '%' || term || '%'
-                OR dc.heading_path ILIKE '%' || term || '%'
-           )::float
-           + CASE WHEN d.school = CAST(:school AS varchar) THEN 1 ELSE 0 END
-           AS score
-    FROM document_chunks dc
-    JOIN documents d ON d.id = dc.document_id
-    WHERE d.is_active
-      AND dc.strategy = :strategy
-      AND dc.visible_to_roles @> ARRAY[:role]::varchar(16)[]
+    WITH matched AS (
+        SELECT dc.id, dc.text, dc.heading_path, dc.section_keys,
+               d.title, d.url, d.office, d.fetched_at,
+               d.school, d.level,
+               (
+                 SELECT count(*) FROM unnest(CAST(:terms AS varchar[])) AS term
+                 WHERE dc.text ILIKE '%' || term || '%'
+                    OR dc.heading_path ILIKE '%' || term || '%'
+               )::float AS match_count
+        FROM document_chunks dc
+        JOIN documents d ON d.id = dc.document_id
+        WHERE d.is_active
+          AND dc.strategy = :strategy
+          AND dc.visible_to_roles @> ARRAY[:role]::varchar(16)[]
+    )
+    SELECT id, text, heading_path, section_keys, title, url, office, fetched_at,
+           school, level, match_count,
+           match_count
+             + CASE WHEN school IS NULL
+                      OR school = CAST(:school AS varchar)
+                      OR school = 'synthetic'
+                    THEN CAST(:school_boost AS float) ELSE 0 END
+             + CASE WHEN level IS NULL OR level = CAST(:level AS varchar)
+                    THEN CAST(:level_boost AS float) ELSE 0 END
+             AS score
+    FROM matched
+    -- Matching no term at all is not a weak result, it is not a result. Filtering here
+    -- rather than on the final score is the difference between "drop the rows that
+    -- matched nothing" and "drop every row whose score is under the boost", which at a
+    -- large boost quietly deletes the whole peer-school half of the corpus and turns the
+    -- boost into a hard filter without saying so.
+    WHERE match_count > 0
     ORDER BY score DESC
     LIMIT :k
     """
@@ -206,6 +231,38 @@ DEFAULT_LEVEL_BOOST = 0.04
 RRF_K = 60
 HYBRID_SCHOOL_BOOST = 0.010
 HYBRID_LEVEL_BOOST = 0.003
+
+# The keyword fallback needs its own pair for the third time, because its scores are term
+# *counts* — small integers, at most 8 — not similarities. The 0.12 tuned for cosine space
+# is a rounding error here, and the 1.0 that was hardcoded before is worth exactly one
+# matched term.
+#
+# Swept by scripts/measure_degraded_retrieval.py, the first measurement this path has ever
+# had:
+#
+#   school  level   recall@5     MRR   home_scope  restricted
+#     0.00   0.00     0.3100  0.2517       0.17        0.75   (no scoping)
+#     1.00   0.00     0.5767  0.3930       0.42        1.00   (what was hardcoded)
+#     2.00   0.50     0.6967  0.4890       0.67        1.00
+#     5.00   1.00     0.7367  0.5363       0.67        1.00   <- shipped
+#     8.00   1.50     0.7367  0.5647       0.67        1.00
+#    12.00   2.00     0.7367  0.5547       0.67        1.00
+#
+# **Not the argmax, deliberately.** MRR nominally peaks at 8.0, but recall has been flat
+# since 5.0 and everything above it is a hard partition already: a chunk must match a term
+# to be returned at all, so the lowest possible home-school score is 1 + 5 + 1 = 7 while the
+# highest possible peer-school score is 8 terms — past this point the school dimension no
+# longer trades off against anything, and the remaining MRR wiggle is the level boost
+# breaking ties. Taking the maximum of that wiggle across 50 points would be reading noise
+# as signal. 5.0 is the smallest setting that reaches the plateau.
+#
+# A partition rather than a soft boost is the right call *for this path specifically*. The
+# dense path keeps its boost soft because a peer school's page is sometimes the only answer
+# and cosine ranking is good enough to find it. Ranking by term count is not good enough for
+# that judgement, and the failure it produces is the one fault injection caught: an SPS
+# student being handed the School of Social Work's waitlist procedure, confidently.
+KEYWORD_SCHOOL_BOOST = 5.0
+KEYWORD_LEVEL_BOOST = 1.0
 
 
 @dataclass
@@ -256,6 +313,8 @@ def search_policy(
     school_boost: float | None = None,
     level_boost: float | None = None,
     mode: str | None = None,
+    keyword_school_boost: float | None = None,
+    keyword_level_boost: float | None = None,
 ) -> RetrievalResult:
     active = strategy or settings.chunk_strategy
     retrieval_mode = mode or settings.retrieval_mode
@@ -291,10 +350,22 @@ def search_policy(
             {
                 "terms": terms, "role": role, "k": k,
                 "strategy": active, "school": scope.school,
+                "level": scope.level,
+                "school_boost": (
+                    KEYWORD_SCHOOL_BOOST if keyword_school_boost is None else keyword_school_boost
+                ),
+                "level_boost": (
+                    KEYWORD_LEVEL_BOOST if keyword_level_boost is None else keyword_level_boost
+                ),
             },
         ).all()
-        rows = [r for r in rows if r.score > 0]
         degraded = True
+
+    # A corpus that is reachable but matches nothing. Deliberately NOT a degraded mode:
+    # there is no outage to disclose, and the question this fault asks is whether the
+    # assistant says "I found nothing" or fills the silence.
+    if faults.is_armed("retrieval.empty"):
+        rows = []
 
     chunks = [
         RetrievedChunk(

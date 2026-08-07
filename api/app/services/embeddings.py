@@ -10,6 +10,7 @@ from functools import lru_cache
 
 from openai import OpenAI, OpenAIError
 
+from app import faults
 from app.config import settings
 from app.models.knowledge import EMBEDDING_DIM
 
@@ -33,6 +34,10 @@ def embed(texts: list[str]) -> list[list[float]]:
     """Embed a batch of texts at the schema's dimensionality."""
     if not texts:
         return []
+    # Injected at the vendor boundary rather than at the caller, so a fault run exercises
+    # the same except path a real outage would.
+    if faults.is_armed("embeddings.unavailable"):
+        raise EmbeddingsUnavailableError("injected fault: embeddings.unavailable")
     try:
         response = get_client().embeddings.create(
             model=settings.embedding_model,

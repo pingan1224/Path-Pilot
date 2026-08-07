@@ -154,6 +154,13 @@ Hard rules, none of which you may relax:
    that" is a complete answer, and it is the right one far more often than a sixth
    wording. This applies with full force when the user asks for a specific document you
    cannot find: report that you cannot retrieve it, and do not keep trying phrasings.
+10. Every policy passage names the school it came from. Before relying on one, check it
+    against the student's own school. A passage from a DIFFERENT, named school is not this
+    student's applicable procedure — it is at most an example of how the topic works
+    elsewhere, and generalizing it to "here is what you should do" is wrong even when the
+    citation is real and the quote is accurate. Say explicitly which school a passage is
+    for whenever it is not the student's own; if search_policy flags cross_school_warning,
+    treat that as the finding, not a suggestion.
 
 Work in small steps: gather evidence with tools (reformulate and search again when a
 result misses part of the question, within the budget in rule 9), then finish with
@@ -285,6 +292,7 @@ def run_agent(
     tool_trace: list[dict[str, Any]] = []
     payload: dict[str, Any] | None = None
     citation_retry_used = False
+    empty_answer_retry_used = False
     iterations = 0
     tokens = {"input_tokens": 0, "output_tokens": 0}
 
@@ -373,6 +381,61 @@ def run_agent(
                 args = {}
 
             if name == "submit_answer":
+                # An empty answer is not a completion, whatever the schema said.
+                #
+                # `answer` is a required property, and a model can still omit it or send it
+                # blank — observed live 2026-08-07, one run in four: submit_answer arrived
+                # with no `answer` at all, the loop accepted it, and the turn was written to
+                # the audit log as `answered` with `response_text = NULL`. The student got
+                # an empty bubble from a system whose own record said it had answered them,
+                # which is the silent failure rule 6 exists to prevent.
+                #
+                # Same shape as the citation check below: one correction round, then treat
+                # it as the assistant failing rather than shipping the emptiness onward.
+                if not str(args.get("answer") or "").strip():
+                    if not empty_answer_retry_used:
+                        empty_answer_retry_used = True
+                        messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": call.id,
+                                "content": json.dumps(
+                                    {
+                                        "error": "empty_answer",
+                                        "instruction": (
+                                            "submit_answer was called with no answer text. "
+                                            "Call it again with the full plain-language "
+                                            "answer in the `answer` field."
+                                        ),
+                                    }
+                                ),
+                            }
+                        )
+                        continue
+                    ctx.degraded_modes.add("empty_answer")
+                    args = {
+                        "answer": (
+                            "The assistant could not produce an answer to this question, so "
+                            "it has been routed to a human instead."
+                        ),
+                        "intent": args.get("intent", Intent.high_stakes.value),
+                        "citations": [],
+                        "confidence": "low",
+                        "escalate": True,
+                        "escalation": {
+                            "category": CaseCategory.general_support.value,
+                            "title": "Assistant returned an empty answer",
+                            "summary": (
+                                f"Question: {question!r}. The assistant twice called "
+                                "submit_answer with no answer text, so the turn was routed "
+                                "to a human rather than shown as an empty reply."
+                            ),
+                        },
+                    }
+                    payload = args
+                    finished = True
+                    break
+
                 bad = _validate_citations(args, ctx.seen_source_ids)
                 if bad and not citation_retry_used:
                     # One correction round: name the fabricated ids, demand real ones.
@@ -468,6 +531,14 @@ def run_agent(
 
         if finished:
             break
+
+    # Belt to the braces above: whatever route produced `payload`, an answer with no text
+    # in it is not something to show anybody. The check inside the loop is the one that
+    # gets a retry and a case; this one exists so that no future edit can open a path to a
+    # blank reply without tripping over it.
+    if payload is not None and not str(payload.get("answer") or "").strip():
+        ctx.degraded_modes.add("empty_answer")
+        payload = None
 
     if payload is None:
         # Loop exhausted without a submit_answer call even under forcing — treat as an

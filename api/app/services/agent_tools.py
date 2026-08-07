@@ -159,8 +159,9 @@ def tool_search_policy(ctx: ToolContext, query: str) -> dict[str, Any]:
         }
 
     ctx.policy_queries.append(query)
+    scope = _scope_for(ctx)
     result = search_policy(
-        ctx.session, query, ctx.acting_role.value, k=5, scope=_scope_for(ctx)
+        ctx.session, query, ctx.acting_role.value, k=5, scope=scope
     )
     if result.degraded:
         ctx.degraded_modes.add("keyword_fallback")
@@ -172,6 +173,24 @@ def tool_search_policy(ctx: ToolContext, query: str) -> dict[str, Any]:
         ctx.retrieval_trace.append(
             {"chunk_id": chunk.chunk_id, "score": chunk.score, "rank": chunk.rank}
         )
+        # The scope boost is soft by design (see retrieval.py) — it nudges ranking, it does
+        # not filter, because some questions genuinely have no home-school answer. That
+        # means a passage from a *different, named* school can still outrank the asker's
+        # own, and it did: asked whether an SPS student could take a Stern elective, the
+        # top-ranked passage on the healthy dense path was School of Social Work's
+        # cross-registration procedure, and the model narrated it as this student's own
+        # process — real citation, accurate quote, wrong program. The heading_path said
+        # "(MSW)" and the model read past it.
+        #
+        # So the mismatch is computed here, once, as a fact rather than left for the model
+        # to notice in prose. `None` means "no signal either way" — school is unknown for
+        # one or both sides — which must not be read as a match.
+        cross_school = (
+            bool(scope.school)
+            and bool(chunk.school)
+            and chunk.school != scope.school
+            and chunk.school != "synthetic"
+        )
         passages.append(
             {
                 "source_id": source_id,
@@ -182,13 +201,37 @@ def tool_search_policy(ctx: ToolContext, query: str) -> dict[str, Any]:
                 "office": chunk.office,
                 "verified_at": chunk.fetched_at,
                 "relevance": chunk.score,
+                "school": chunk.school,
+                "school_differs_from_students_own": cross_school,
             }
         )
+    any_cross_school = any(p["school_differs_from_students_own"] for p in passages)
     remaining = MAX_POLICY_SEARCHES - len(ctx.policy_queries)
     return {
         "passages": passages,
         "search_degraded": result.degraded,
         "searches_remaining_this_turn": remaining,
+        # Server-computed, not left for the model to infer from a heading path. Found live
+        # (2026-08-07): asked whether an SPS student could take a Stern elective, a School
+        # of Social Work cross-registration passage outranked the student's own thin
+        # program page — real citation, accurate quote, and the model narrated the MSW
+        # procedure as this student's own, never noticing the "(MSW)" in the section it was
+        # quoting. A soft ranking boost can still lose to a genuinely on-topic passage from
+        # the wrong school, so the mismatch is stated as a fact here rather than hoped for.
+        "cross_school_warning": (
+            "One or more passages above are from a DIFFERENT school than this student's "
+            "own (see each passage's \"school\" and \"school_differs_from_students_own\" "
+            "fields). A passage written for another school's students — its own program "
+            "name, its own credit rules — is not this student's applicable procedure just "
+            "because the topic matches. You may report what it shows as an example of how "
+            "cross-registration works in general, but say explicitly which school it is "
+            "actually for, and do not tell this student they can do something on the "
+            "strength of a rule written for a different program. If nothing you retrieved "
+            "is actually about this student's own school, say that plainly instead of "
+            "generalizing from what is."
+            if any_cross_school
+            else None
+        ),
         # The corpus does not tell you it lacks a page; the nearest five chunks come back
         # either way. Saying so once, near the end of the budget, is what turns "keep
         # rewording" into "say it is not there".
@@ -1041,7 +1084,9 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "Reformulate and search again if the first results miss part of the question. "
                 f"Budgeted: {MAX_POLICY_SEARCHES} searches per turn, and the result says how "
                 "many are left. Always returns the five nearest passages, so getting results "
-                "back is not evidence the corpus has your answer."
+                "back is not evidence the corpus has your answer. Every passage names the "
+                "school it is from; check that against the student's own before treating it "
+                "as their applicable procedure."
             ),
             "parameters": {
                 "type": "object",

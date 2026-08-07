@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
+import { describeDegradations } from "../lib/degradations";
 
 /**
  * The Ask Albert AI panel. Non-modal by design — the RFP is explicit that the dashboard
@@ -149,8 +150,7 @@ export default function AskAlbert() {
 
                   {r.degraded_modes.length > 0 ? (
                     <p className="msg__degraded">
-                      Reduced service: {r.degraded_modes.join(", ")}. Parts of this answer may
-                      be less precise than usual.
+                      Heads up: {describeDegradations(r.degraded_modes)}.
                     </p>
                   ) : null}
 

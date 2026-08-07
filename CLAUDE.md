@@ -131,8 +131,9 @@ From the RFP's UI/UX section. Applies to every screen.
 `P4` eval harness · `P5` RBAC + audit · `P6` case study + demo
 
 Current phase: **M7 complete (A: agent-first shell, B: one-shot execution, C: transcript
-intake) → next milestone unagreed. Open agent gaps: the B26 retrieval give-up finding, fault
-injection (degraded paths have still never executed), OCR only if evidence warrants it.**
+intake); M8 closed the B26 retrieval give-up finding with a measured search budget. Open
+agent gaps: fault injection (degraded paths have still never executed), OCR only if
+evidence warrants it.**
 
 ## Agent-first shell (`web/src/views/ChatHome.jsx`, M7-A)
 
@@ -363,6 +364,43 @@ It also spans this project's own schema changes — the two oldest rows use a `n
 tool names that no longer exist — so the scorer reads both keys and the report states how
 many rows predate per-call attribution rather than smoothing over it.
 
+## The policy-search budget (`MAX_POLICY_SEARCHES`, M8)
+
+The defect the trajectory eval found: retrieval cannot return nothing — it always returns
+its five nearest chunks — so an empty-handed search is indistinguishable from a productive
+one from inside the loop, and B26 spent 13 tool calls and 8 uncited searches rewording its
+way towards a document its role cannot see.
+
+**The fix is a count, not a judgement, and that is the whole point.**
+`scripts/measure_giveup.py` tested three content signals against the 50 labelled queries and
+every multi-search turn in the audit log. A relevance floor does not separate (answerable
+min 0.5894 vs unanswerable max 0.6480). Query similarity and result novelty separate
+*backwards* — the most repetitive turn in the log is four prerequisite lookups for four
+different courses. Only the count separates: max 4 searches on any productive turn, 8/9/13
+on the three circling ones. The cap is 5, one above the observed productive maximum.
+
+- The sixth call is **refused before retrieval runs** — no embedding, no fresh passages to
+  tempt another reformulation — and returns the queries already tried.
+- Every result carries `searches_remaining_this_turn`, and a note near the end, so running
+  out is a stop the model saw coming rather than a wall it hits.
+- Exhaustion records `retrieval_budget_exhausted` in `degraded_modes`, so the audit row
+  shows a turn that answered on less evidence than it wanted.
+- Repeats are **not** deduplicated and low scores are **not** filtered. Both would be the
+  quality judgement the measurement says cannot be made.
+- The decoder's own retrieval is not budgeted: it verifies a passage mentions the cause and
+  says so when none does, so it cannot circle.
+
+Result: B24/B25/B26 fell from 8/9/13 tool calls to a mean of 3.67, same outcomes.
+
+**Leakage probes must fail on substance, not spelling.** Fixing the above exposed that
+`"two substitutions"` could not detect a leak: it appears verbatim in none of the 3,465
+student-visible chunks, but the public SPS policy states the same rule in its own words, so
+an honest answer paraphrasing public policy tripped it. Probes were written against the old
+15-chunk corpus and never migrated when the real one landed. `validate_leak_phrases()` now
+runs before any model call and fails the run if a forbidden phrase appears in a
+student-visible chunk. It cannot catch a phrase the corpus merely *licenses* by paraphrase —
+that judgement stays with the author, recorded in the comment above `OVERRIDE_LEAK`.
+
 ## Data layers
 
 - `documents` / `document_chunks` — 35 ingested bulletin pages, ~1,250 chunks per strategy
@@ -374,7 +412,9 @@ many rows predate per-call attribution rather than smoothing over it.
 P4 facts: golden set in api/eval/golden.py (15 retrieval + 35 behavior cases) plus
 api/eval/decoder_cases.py (32 error messages); runner is scripts/run_eval.py (--gate for
 thresholds, --only for subsets, --only-decoder for the model-free part, --reseed to restore
-the demo db). Official run 2026-08-03: 35/35, high-stakes recall 1.0, leakage 0, gate PASS.
+the demo db). Official run 2026-08-07 (search budget): 34/35, high-stakes recall 1.0,
+leakage 0, tool calls/run 2.34, gate PASS — the one failure is B05 flipping to escalate on
+a borderline call, identical trajectory, passes 3/3 on re-run.
 Decoder run 2026-08-06: 28/32, coverage 0.8333, accuracy 1.00, 0 confidently wrong. The
 decoder set's `held_out` family is written to fail — its misses are the table's backlog, and
 adding those exact phrasings to the table is the one way of moving coverage that means

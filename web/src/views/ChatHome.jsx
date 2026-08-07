@@ -3,6 +3,7 @@ import { api } from "@/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DecodeCard, MissionCard, SequenceCard } from "@/components/chat/cards"
+import { describeDegradations } from "@/lib/degradations"
 
 /**
  * The chat, promoted from a floating corner panel to the student's front door.
@@ -246,7 +247,7 @@ export default function ChatHome({ me, onOpenView }) {
 
                 {result.degraded_modes.length > 0 ? (
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Reduced service: {result.degraded_modes.join(", ")}.
+                    Heads up: {describeDegradations(result.degraded_modes)}.
                   </p>
                 ) : null}
 

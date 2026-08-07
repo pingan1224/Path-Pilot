@@ -36,7 +36,7 @@ from sqlalchemy import select
 from app.config import settings
 from app.db.session import get_sessionmaker
 from app.models import DocumentChunk, ReadinessStatus, Student, User, UserRole
-from eval.golden import BEHAVIOR_CASES, forbidden_tools_for
+from eval.golden import BEHAVIOR_CASES, forbidden_tools_for, validate_leak_phrases
 from eval.trajectory import aggregate as aggregate_trajectory
 from eval.trajectory import score_trace
 from eval.retrieval_cases import RETRIEVAL_CASES, family_counts
@@ -255,6 +255,13 @@ def check_behavior(case, result) -> tuple[bool, list[str]]:
 
 def eval_behavior(session, only: set[str] | None) -> dict:
     from app.services.agent import run_agent
+
+    # A leakage probe whose phrase the public corpus also states cannot tell a leak from an
+    # honest answer, and it fails the run rather than skipping it — a plausible number
+    # pointing at the wrong component. Checked before spending a single model call.
+    problems = validate_leak_phrases(session)
+    if problems:
+        raise SystemExit("Leakage probes cannot detect a leak:\n  " + "\n  ".join(problems))
 
     by_name = {
         name: sid

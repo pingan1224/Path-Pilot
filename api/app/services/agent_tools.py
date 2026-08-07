@@ -63,6 +63,9 @@ class ToolContext:
     degraded_modes: set[str] = field(default_factory=set)
     # Raw retrieval hits for the audit log.
     retrieval_trace: list[dict[str, Any]] = field(default_factory=list)
+    # Policy queries issued this turn, in order. The budget counts these; see
+    # MAX_POLICY_SEARCHES.
+    policy_queries: list[str] = field(default_factory=list)
 
     # Which world this conversation lives in.
     #
@@ -99,7 +102,62 @@ def _scope_for(ctx: ToolContext) -> RetrievalScope:
     )
 
 
+# How many policy searches one turn may spend, and the reason it is a count rather than a
+# judgement about search quality.
+#
+# Retrieval cannot return nothing: it always hands back the five nearest chunks, so from
+# inside the loop an empty-handed search looks exactly like a productive one. The
+# trajectory eval caught what that costs — B26 spent 13 tool calls and 8 uncited policy
+# searches reformulating its way towards a document its role cannot see, and arrived at the
+# refusal it could have given after two.
+#
+# Three ways to detect that from the content of a search were measured against the 50
+# labelled queries and every multi-search turn in the audit log
+# (`scripts/measure_giveup.py`). All three failed:
+#
+#   relevance floor    answerable top-1 bottoms out at 0.5894, unanswerable tops out at
+#                      0.6480 — overlapping, and a floor strict enough to catch the
+#                      unanswerable ones discards 4 of 50 real queries.
+#   query similarity   inverted. The most repetitive turn in the log (0.952 adjacent
+#                      cosine) is four prerequisite lookups for four different courses;
+#                      the worst circling turn sits at 0.598.
+#   result novelty     inverted too. That same legitimate turn returns nothing new three
+#                      searches running, while a circling turn never does. Chunk novelty is
+#                      not information novelty.
+#
+# What separates cleanly is the count. Across 77 audited turns, no turn anyone called
+# productive used more than 4 policy searches; the three circling ones used 8, 9 and 13.
+# The cap is set one above the observed productive maximum, so the first turn that
+# genuinely needs a fifth search is not the one that pays for this. The model is told the
+# budget and its remaining balance, so running out is a stop signal it saw coming rather
+# than a failure it has to work around.
+#
+# Only explicit search_policy calls count. The decoder runs its own retrieval, but it
+# verifies that a passage mentions the cause before returning it and says so when none
+# does — it cannot circle, so it is not budgeted.
+MAX_POLICY_SEARCHES = 5
+
+
 def tool_search_policy(ctx: ToolContext, query: str) -> dict[str, Any]:
+    if len(ctx.policy_queries) >= MAX_POLICY_SEARCHES:
+        # Refused before retrieval: no embedding call, no query, no fresh passages to
+        # tempt another reformulation.
+        ctx.degraded_modes.add("retrieval_budget_exhausted")
+        return {
+            "error": "search_budget_exhausted",
+            "searches_used": len(ctx.policy_queries),
+            "queries_already_tried": list(ctx.policy_queries),
+            "instruction": (
+                "This turn has spent its policy searches. Another wording will not surface "
+                "a document that is not there, and nothing further will be retrieved. "
+                "Answer from the passages you already have and say plainly which part of "
+                "the question they do not cover — 'the material available to me does not "
+                "address that' is a complete and honest answer. Escalate only if the "
+                "escalation rules apply for their own reasons."
+            ),
+        }
+
+    ctx.policy_queries.append(query)
     result = search_policy(
         ctx.session, query, ctx.acting_role.value, k=5, scope=_scope_for(ctx)
     )
@@ -125,9 +183,22 @@ def tool_search_policy(ctx: ToolContext, query: str) -> dict[str, Any]:
                 "relevance": chunk.score,
             }
         )
+    remaining = MAX_POLICY_SEARCHES - len(ctx.policy_queries)
     return {
         "passages": passages,
         "search_degraded": result.degraded,
+        "searches_remaining_this_turn": remaining,
+        # The corpus does not tell you it lacks a page; the nearest five chunks come back
+        # either way. Saying so once, near the end of the budget, is what turns "keep
+        # rewording" into "say it is not there".
+        "budget_note": (
+            "These are the nearest passages, not necessarily relevant ones — retrieval "
+            f"always returns five. {remaining} search(es) left this turn. If what you have "
+            "does not answer the question, the corpus most likely has no page on it: say "
+            "so rather than trying another wording."
+            if remaining <= 2
+            else None
+        ),
         "note": (
             "Ranking is keyword-based right now because semantic search is unavailable; "
             "results may be less relevant."
@@ -956,7 +1027,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "description": (
                 "Search official university policy documents. Use for questions about how "
                 "processes work: holds, prerequisites, waitlists, payment plans, appointments. "
-                "Reformulate and search again if the first results miss part of the question."
+                "Reformulate and search again if the first results miss part of the question. "
+                f"Budgeted: {MAX_POLICY_SEARCHES} searches per turn, and the result says how "
+                "many are left. Always returns the five nearest passages, so getting results "
+                "back is not evidence the corpus has your answer."
             ),
             "parameters": {
                 "type": "object",

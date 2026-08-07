@@ -38,6 +38,7 @@ from app.models.enums import (
 from app.models.governance import AiInteraction, SourceFreshnessPolicy
 from app.models.identity import Student, User
 from app.models.knowledge import EMBEDDING_DIM, Document, DocumentChunk
+from app.models.missions import Mission, MissionCandidate, MissionDecision
 from app.models.profile import ProfileCourse
 
 __all__ = [
@@ -60,6 +61,9 @@ __all__ = [
     "HoldType",
     "Intent",
     "InteractionDecision",
+    "Mission",
+    "MissionCandidate",
+    "MissionDecision",
     "Office",
     "ProfileCourse",
     "Program",

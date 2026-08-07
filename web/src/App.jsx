@@ -6,6 +6,7 @@ import AdvisorView from "./views/AdvisorView";
 import AskAlbert from "./views/AskAlbert";
 import DecoderView from "./views/DecoderView";
 import DemoLogin from "./views/DemoLogin";
+import MissionView from "./views/MissionView";
 import Login from "./views/Login";
 import PlannerView from "./views/PlannerView";
 import RegistrarView from "./views/RegistrarView";
@@ -45,20 +46,24 @@ export default function App() {
       .finally(() => setChecking(false));
   }, []);
 
-  // Where a student lands depends on whether there is a record to plan against. Sending
-  // someone with an empty profile to the planner shows them an empty form and asks for a
-  // dozen courses; the decoder answers a question on first contact. Returning students go
-  // straight back to the planner, which is what they came for.
+  // Where a student lands, in order of what they are most likely here for: an unfinished
+  // mission, then their plan, then the decoder. Sending someone with an empty profile to
+  // the planner shows them an empty form and asks for a dozen courses, while the decoder
+  // answers a question on first contact — and someone who left a mission half-done wants
+  // to be put back where they stopped, not made to find it.
   useEffect(() => {
     if (!me) return;
     if (me.role !== "student") {
       setStudentTab("planner");
       return;
     }
-    api
-      .profileCourses()
-      .then((courses) => setStudentTab(courses.length > 0 ? "planner" : "decoder"))
-      .catch(() => setStudentTab("decoder"));
+    Promise.all([
+      api.missions().catch(() => []),
+      api.profileCourses().catch(() => []),
+    ]).then(([missions, courses]) => {
+      const unfinished = missions.some((m) => !m.complete);
+      setStudentTab(unfinished ? "mission" : courses.length > 0 ? "planner" : "decoder");
+    });
   }, [me]);
 
   async function signOut() {
@@ -133,6 +138,7 @@ export default function App() {
             <nav className="roles" aria-label="Student views">
               {[
                 ["decoder", "Decode an error"],
+                ["mission", "Registration mission"],
                 ["planner", "Degree planner"],
                 ...(me.student_id ? [["dashboard", "Dashboard (demo)"]] : []),
               ].map(([id, label]) => (
@@ -162,6 +168,8 @@ export default function App() {
             <Loading what="your view" />
           ) : studentTab === "decoder" ? (
             <DecoderView onOpenPlanner={() => setStudentTab("planner")} />
+          ) : studentTab === "mission" ? (
+            <MissionView onOpenPlanner={() => setStudentTab("planner")} />
           ) : me.student_id && studentTab === "dashboard" ? (
             <StudentView studentId={me.student_id} />
           ) : (

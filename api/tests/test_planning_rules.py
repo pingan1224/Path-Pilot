@@ -324,3 +324,80 @@ def test_no_finding_is_satisfied_without_a_citation(program):
     for finding in result.findings:
         if finding.verdict is Verdict.satisfied:
             assert finding.citations, f"{finding.summary} claims satisfied with no source"
+
+
+# --------------------------------------------------------------------------------------
+# Finding identity — what makes a student's "I know about this one" survive a re-evaluation
+# --------------------------------------------------------------------------------------
+
+
+def test_every_finding_carries_a_key(program):
+    result = evaluate_plan(
+        program,
+        [
+            StatedCourse("C1", CourseState.completed),
+            StatedCourse("A2", CourseState.planned),
+            StatedCourse("XYZ-GC 1", CourseState.planned),
+        ],
+    )
+    for finding in result.findings:
+        assert finding.key, f"{finding.summary!r} has no key"
+
+
+def test_finding_keys_are_unique_within_one_plan(program):
+    """Two findings sharing a key would make an accepted risk ambiguous — accepting one
+    would silently accept the other."""
+    result = evaluate_plan(
+        program,
+        [
+            StatedCourse("C1", CourseState.completed),
+            StatedCourse("A2", CourseState.planned),
+            StatedCourse("XYZ-GC 1", CourseState.planned),
+        ],
+    )
+    keys = [f.key for f in result.findings]
+    assert len(keys) == len(set(keys)), f"duplicate keys: {keys}"
+
+
+def test_a_key_survives_both_the_summary_and_the_verdict_changing(program):
+    """The whole point. The same requirement keeps its key as the situation moves under it,
+    including the count in its summary — which is why the summary cannot be the key."""
+
+    def core(result):
+        return next(f for f in result.findings if f.key == "requirement:Core")
+
+    empty = core(evaluate_plan(program, []))
+    partial = core(evaluate_plan(program, [StatedCourse("C1", CourseState.completed)]))
+    done = core(
+        evaluate_plan(
+            program,
+            [
+                StatedCourse("C1", CourseState.completed),
+                StatedCourse("C2", CourseState.completed),
+            ],
+        )
+    )
+
+    assert empty.key == partial.key == done.key
+    # The count moved, so a summary-derived key would have changed identity here.
+    assert empty.summary != partial.summary
+    # And the verdict moved, so a verdict-derived key would have changed it here.
+    assert partial.verdict is Verdict.not_satisfied
+    assert done.verdict is Verdict.satisfied
+
+
+def test_course_findings_name_their_subject_and_requirement_findings_do_not(program):
+    result = evaluate_plan(
+        program,
+        [
+            StatedCourse("A2", CourseState.planned),
+            StatedCourse("XYZ-GC 1", CourseState.planned),
+        ],
+    )
+    prereq = next(f for f in result.findings if "Prerequisite" in f.summary)
+    unknown = next(f for f in result.findings if "XYZ-GC 1" in f.summary)
+    requirement = next(f for f in result.findings if f.key.startswith("requirement:"))
+
+    assert prereq.subject == "A2"
+    assert unknown.subject == "XYZ-GC 1"
+    assert requirement.subject is None

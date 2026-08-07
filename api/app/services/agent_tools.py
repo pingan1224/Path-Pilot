@@ -546,9 +546,167 @@ def tool_decode_registration_error(ctx: ToolContext, error_text: str) -> dict[st
     return payload
 
 
+MAX_PROPOSALS = 4
+
+
+def _mission_for_tools(ctx: ToolContext):
+    """The user's single open mission, or None. Never an id from the model.
+
+    The model cannot name a mission any more than it can name a student: it gets the open
+    mission belonging to the signed-in account, and if there are several it gets the most
+    recent. A `mission_id` parameter would be a way to ask about somebody else's plan, so
+    it does not exist.
+    """
+    from app.missions.service import open_missions
+
+    if ctx.user_id is None:
+        return None
+    missions = open_missions(ctx.session, ctx.user_id)
+    return missions[0] if missions else None
+
+
+def tool_get_mission_state(ctx: ToolContext) -> dict[str, Any]:
+    """Where the student is in preparing to register, and what is left.
+
+    This is the tool that gives the assistant a notion of a task being *finished*. Every
+    other tool answers a question; this one reports progress against a termination
+    condition the server computed.
+    """
+    from app.missions.service import build_facts, mission_state
+
+    mission = _mission_for_tools(ctx)
+    if mission is None:
+        return {
+            "has_mission": False,
+            "instruction": (
+                "The student has no open registration mission. If they want help preparing "
+                "for a term, tell them to start one on the Registration mission page — you "
+                "cannot create it for them."
+            ),
+        }
+
+    _, facts, state, meta = mission_state(ctx.session, ctx.user_id, mission.id)
+    source_id = f"mission:{mission.id}"
+    ctx.seen_source_ids.add(source_id)
+
+    return {
+        "source_id": source_id,
+        "has_mission": True,
+        "term": mission.term,
+        "program": meta["program_name"],
+        "basis": (
+            "Computed from the courses the student entered themselves and the published "
+            "program rules. Not an official record, and not a registration."
+        ),
+        "complete": state.complete,
+        "current_step": state.current.value if state.current else None,
+        "steps": [
+            {
+                "id": step.id.value,
+                "title": step.title,
+                "state": step.state.value,
+                "criterion": step.criterion,
+                "what_now": step.what_now,
+                "note": step.note,
+            }
+            for step in state.steps
+        ],
+        "chosen_courses": [c.course_code for c in facts.confirmed],
+        "awaiting_the_student_decision": [
+            {"course": c.course_code, "proposed_by": c.proposed_by, "why": c.rationale}
+            for c in facts.proposed
+        ],
+        "unresolved_blockers": [
+            {
+                "key": f.key,
+                "course": f.subject,
+                "summary": f.summary,
+                "detail": f.detail,
+                "next_step": f.next_step,
+            }
+            for f in state.open_blockers
+        ],
+        "risks_the_student_accepted_knowingly": [
+            {"key": r.finding_key, "as_it_read_then": r.accepted_summary, "note": r.note}
+            for r in facts.accepted_risks
+        ],
+        "instruction": (
+            "Report the current step and what it needs. You cannot advance a step, confirm "
+            "a course, accept a risk, or finish the mission — each of those is the student's "
+            "decision and only their own action counts. Say what is left, not that it is "
+            "handled."
+        ),
+    }
+
+
+def tool_propose_mission_candidates(
+    ctx: ToolContext, courses: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Suggest courses for the mission's term. Suggestions only.
+
+    Every row this writes has `confirmed_at IS NULL`, and there is no parameter here that
+    could change that — the same design as no tool accepting a `student_id`. An unconfirmed
+    candidate is not in the plan and does not advance the mission, so the model can suggest
+    freely without ever having decided anything on the student's behalf.
+    """
+    from app.missions.service import add_candidate, mission_state
+
+    mission = _mission_for_tools(ctx)
+    if mission is None:
+        return {
+            "error": "no_open_mission",
+            "instruction": (
+                "There is no open mission to propose into. Tell the student to start one; "
+                "you cannot."
+            ),
+        }
+
+    proposed, skipped = [], []
+    for entry in (courses or [])[:MAX_PROPOSALS]:
+        code = str(entry.get("course_code", "")).strip()
+        if not code:
+            continue
+        row = add_candidate(
+            ctx.session,
+            ctx.user_id,
+            mission.id,
+            course_code=code,
+            proposed_by="ai",
+            rationale=str(entry.get("why", "")).strip() or None,
+            # Not a parameter of this tool, and pinned here so a future edit to the schema
+            # cannot quietly turn suggestions into decisions.
+            confirmed=False,
+        )
+        if row.confirmed_at is not None or row.declined_at is not None:
+            # The student already ruled on this course. A suggestion does not reopen it.
+            skipped.append({"course": row.course_code, "why": "the student already decided this one"})
+        else:
+            proposed.append(row.course_code)
+
+    _, _, state, _ = mission_state(ctx.session, ctx.user_id, mission.id)
+    source_id = f"mission:{mission.id}"
+    ctx.seen_source_ids.add(source_id)
+
+    return {
+        "source_id": source_id,
+        "proposed": proposed,
+        "not_proposed": skipped,
+        "status": "awaiting the student's confirmation",
+        "mission_still_needs": state.current.value if state.current else None,
+        "instruction": (
+            "These are suggestions sitting on the student's mission page for them to accept "
+            "or reject. Tell them what you suggested and why, and that nothing is chosen "
+            "until they confirm it. Do not describe the mission as further along than the "
+            "current step says it is."
+        ),
+    }
+
+
 DEMO_TOOL_IMPLS = {
     "search_policy": tool_search_policy,
     "decode_registration_error": tool_decode_registration_error,
+    "get_mission_state": tool_get_mission_state,
+    "propose_mission_candidates": tool_propose_mission_candidates,
     "get_holds": tool_get_holds,
     "get_degree_progress": tool_get_degree_progress,
     "get_registration_attempts": tool_get_registration_attempts,
@@ -558,6 +716,8 @@ DEMO_TOOL_IMPLS = {
 LIVE_TOOL_IMPLS = {
     "search_policy": tool_search_policy,
     "decode_registration_error": tool_decode_registration_error,
+    "get_mission_state": tool_get_mission_state,
+    "propose_mission_candidates": tool_propose_mission_candidates,
     "get_course_info": tool_get_course_info,
     "get_my_plan": tool_get_my_plan,
     "albert_checklist": tool_albert_checklist,
@@ -646,6 +806,52 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     }
                 },
                 "required": ["error_text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_mission_state",
+            "description": (
+                "The student's registration-preparation progress for a term: which of the "
+                "five steps is current, what it needs, which courses they have chosen, and "
+                "which blockers are unresolved. Use whenever they ask what is left to do, "
+                "whether they are ready, or what to do next. You cannot advance it."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "propose_mission_candidates",
+            "description": (
+                "Suggest up to four courses for the student's registration mission. These "
+                "are SUGGESTIONS: they appear on their mission page awaiting confirmation, "
+                "they are not added to their plan, and they do not advance the mission. "
+                "Only the student can confirm one. Give a reason for each."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "courses": {
+                        "type": "array",
+                        "maxItems": MAX_PROPOSALS,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "course_code": {"type": "string", "description": "e.g. MASY1-GC 2100"},
+                                "why": {
+                                    "type": "string",
+                                    "description": "One sentence: what this course does for their plan.",
+                                },
+                            },
+                            "required": ["course_code", "why"],
+                        },
+                    }
+                },
+                "required": ["courses"],
             },
         },
     },

@@ -101,6 +101,7 @@ def _passages(
 def _finding_dict(finding) -> dict:
     return {
         "verdict": finding.verdict.value,
+        "key": finding.key,
         "summary": finding.summary,
         "detail": finding.detail,
         "next_step": finding.next_step,

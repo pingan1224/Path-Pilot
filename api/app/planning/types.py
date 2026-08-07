@@ -60,6 +60,22 @@ class Finding:
     next_step: str | None = None
     # Set when the verdict depends on something this tool cannot see.
     check_in_albert: bool = False
+    # Stable identity for the *subject* of the finding, deliberately independent of the
+    # verdict and of any number in the summary: `requirement:Electives`,
+    # `prereq:MASY1-GC 2100:MASY1-GC 2000`, `catalog:MKTG-GB 2350`.
+    #
+    # This exists so a student can say "I know about this one, I am handling it" and have
+    # that still refer to the same thing next week. Keying on the summary would break the
+    # moment "3 credit(s) short" became "6 credit(s) short" — silently dropping an
+    # acknowledgement is how a task tracker starts lying about what has been dealt with.
+    # Keying on the verdict would be worse: the acknowledgement would vanish exactly when
+    # the situation changed and the student most needed to see their earlier decision.
+    key: str = ""
+    # The course this finding is about, when it is about a course at all. Requirement-level
+    # findings have none. Used to separate "blockers for the courses you actually chose"
+    # from "where you stand on the degree", which are different questions with different
+    # answers and must not be pooled.
+    subject: str | None = None
 
     @property
     def blocking(self) -> bool:

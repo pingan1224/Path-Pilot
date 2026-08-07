@@ -72,6 +72,45 @@ export const api = {
   // are classified together with it rather than tracked as server-side state
   decode: (text, answers = []) =>
     request("/decoder/decode", { method: "POST", body: JSON.stringify({ text, answers }) }),
+  // missions — every response is the whole mission with its recomputed step state, so the
+  // client never derives progress itself and cannot disagree with the server about it
+  missions: () => request("/missions"),
+  createMission: (term) =>
+    request("/missions", { method: "POST", body: JSON.stringify({ term }) }),
+  mission: (id) => request(`/missions/${id}`),
+  missionAddCandidate: (id, courseCode) =>
+    request(`/missions/${id}/candidates`, {
+      method: "POST",
+      body: JSON.stringify({ course_code: courseCode }),
+    }),
+  missionDecideCandidate: (id, candidateId, confirm) =>
+    request(`/missions/${id}/candidates/${candidateId}/decision`, {
+      method: "POST",
+      body: JSON.stringify({ confirm }),
+    }),
+  missionRemoveCandidate: (id, candidateId) =>
+    request(`/missions/${id}/candidates/${candidateId}`, { method: "DELETE" }),
+  missionAcknowledgeGaps: (id) =>
+    request(`/missions/${id}/acknowledge-gaps`, { method: "POST" }),
+  missionAcceptRisk: (id, payload) =>
+    request(`/missions/${id}/accepted-risks`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  missionWithdrawRisk: (id, findingKey) =>
+    request(`/missions/${id}/accepted-risks/${encodeURIComponent(findingKey)}`, {
+      method: "DELETE",
+    }),
+  missionHandoff: (id, question) =>
+    request(`/missions/${id}/handoff`, {
+      method: "POST",
+      body: JSON.stringify({ question: question || null }),
+    }),
+  missionClose: (id, reason) =>
+    request(`/missions/${id}/close`, {
+      method: "POST",
+      body: JSON.stringify({ reason: reason || null }),
+    }),
 };
 
 /** "3 hours ago" — the API gives us seconds, the UI needs words. */

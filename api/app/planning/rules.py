@@ -130,6 +130,9 @@ def check_prerequisites(
         satisfying_states.add(CourseState.in_progress)
 
     for group in course.prerequisite_groups:
+        # One key per prerequisite group, carrying no verdict: whether the group is met,
+        # unknown, or missing, it is the same requirement being talked about.
+        pkey = f"prereq:{course.code}:{'|'.join(group)}"
         alternatives_met: list[str] = []
         alternatives_unknown: list[str] = []
 
@@ -159,6 +162,8 @@ def check_prerequisites(
                 findings.append(
                     Finding(
                         verdict=Verdict.conditional,
+                        key=pkey,
+                        subject=course.code,
                         summary=f"Prerequisite met if you pass {met}",
                         detail=(
                             f"{course.code} requires {options}. You are taking {met} now, "
@@ -172,6 +177,8 @@ def check_prerequisites(
                 findings.append(
                     Finding(
                         verdict=Verdict.satisfied,
+                        key=pkey,
+                        subject=course.code,
                         summary=f"Prerequisite met: {met}",
                         detail=(
                             f"{course.code} requires {options}. You have reported "
@@ -188,6 +195,8 @@ def check_prerequisites(
             findings.append(
                 Finding(
                     verdict=Verdict.unverifiable,
+                    key=pkey,
+                    subject=course.code,
                     summary=f"Grade needed for {code}",
                     detail=(
                         f"{course.code} requires {code} with a minimum grade of {minimum}. "
@@ -215,6 +224,8 @@ def check_prerequisites(
         findings.append(
             Finding(
                 verdict=Verdict.not_satisfied,
+                key=pkey,
+                subject=course.code,
                 summary=f"Prerequisite missing: {options}",
                 detail=detail,
                 citations=(citation,),
@@ -236,6 +247,9 @@ def evaluate_requirement(
     citation = Citation(
         label=spec.name, url=spec.source_url, verified_on=spec.verified_on, quote=spec.caveat
     )
+    # Every branch below is a statement about this one requirement, so they share a key.
+    # The verdict and the numbers in the summary change; which requirement it is does not.
+    rkey = f"requirement:{spec.name}"
     held = {code for code, c in stated.items() if c.state in counting_states}
 
     if spec.rule == "all_of":
@@ -243,12 +257,14 @@ def evaluate_requirement(
         if not missing:
             return Finding(
                 verdict=Verdict.satisfied,
+                key=rkey,
                 summary=f"{spec.name} complete",
                 detail=f"All {len(spec.course_codes)} required courses reported complete.",
                 citations=(citation,),
             )
         return Finding(
             verdict=Verdict.not_satisfied,
+            key=rkey,
             summary=f"{spec.name}: {len(missing)} course(s) remaining",
             detail="Still required: " + ", ".join(missing) + ".",
             citations=(citation,),
@@ -265,6 +281,7 @@ def evaluate_requirement(
         if complete:
             return Finding(
                 verdict=Verdict.satisfied,
+                key=rkey,
                 summary=f"{spec.name} complete: {complete[0].name}",
                 detail=f"You have completed the {complete[0].name} concentration.",
                 citations=(citation,),
@@ -275,6 +292,7 @@ def evaluate_requirement(
             names = ", ".join(t.name for t, _ in started)
             return Finding(
                 verdict=Verdict.not_satisfied,
+                key=rkey,
                 summary=f"{spec.name}: courses spread across tracks",
                 detail=(
                     f"You have courses in more than one concentration ({names}). "
@@ -290,6 +308,7 @@ def evaluate_requirement(
             remaining = [c for c in track.course_codes if c not in done]
             return Finding(
                 verdict=Verdict.not_satisfied,
+                key=rkey,
                 summary=f"{spec.name}: {track.name} in progress",
                 detail=f"Remaining in {track.name}: {', '.join(remaining)}.",
                 citations=(citation,),
@@ -309,6 +328,7 @@ def evaluate_requirement(
             remaining = [c for c in track.course_codes if c not in courses_now]
             return Finding(
                 verdict=Verdict.not_satisfied,
+                key=rkey,
                 summary=f"{spec.name}: {track.name} underway",
                 detail=(
                     f"You are taking {', '.join(courses_now)} now. Once complete, "
@@ -321,6 +341,7 @@ def evaluate_requirement(
         options = ", ".join(t.name for t in spec.tracks)
         return Finding(
             verdict=Verdict.not_satisfied,
+            key=rkey,
             summary=f"{spec.name} not started",
             detail=f"Choose one concentration: {options}.",
             citations=(citation,),
@@ -338,6 +359,7 @@ def evaluate_requirement(
     if listed_credits >= spec.min_credits:
         return Finding(
             verdict=Verdict.satisfied,
+            key=rkey,
             summary=f"{spec.name} complete",
             detail=f"{listed_credits} of {spec.min_credits} credits from the listed courses.",
             citations=(citation,),
@@ -355,6 +377,7 @@ def evaluate_requirement(
         )
     return Finding(
         verdict=Verdict.unverifiable if unknown_held else Verdict.not_satisfied,
+        key=rkey,
         summary=f"{spec.name}: {spec.min_credits - listed_credits} credit(s) short",
         detail=detail,
         citations=(citation,),
@@ -408,6 +431,8 @@ def evaluate_plan(
             result.add(
                 Finding(
                     verdict=Verdict.unverifiable,
+                    key=f"catalog:{course.code}",
+                    subject=course.code,
                     summary=f"{course.code} is not in this catalog",
                     detail=(
                         f"{course.code} is not part of the {program.name} catalog this tool "

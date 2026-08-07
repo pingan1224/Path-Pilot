@@ -65,6 +65,10 @@ class CitationOut(BaseModel):
 
 class FindingOut(BaseModel):
     verdict: Verdict
+    # Stable across re-evaluations, so a client can carry a reference to one finding
+    # (a mission's accepted risk) without holding on to its wording.
+    key: str
+    subject: str | None
     summary: str
     detail: str
     next_step: str | None
@@ -123,6 +127,8 @@ def _plan_response(result, meta) -> PlanOut:
         findings=[
             FindingOut(
                 verdict=f.verdict,
+                key=f.key,
+                subject=f.subject,
                 summary=f.summary,
                 detail=f.detail,
                 next_step=f.next_step,

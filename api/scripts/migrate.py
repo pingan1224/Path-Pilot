@@ -94,6 +94,48 @@ STATEMENTS = [
     # Which encoded program the student says they are in. Planning needs it, and it is a
     # claim like everything else here.
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS stated_program_code VARCHAR(24)",
+    # Registration missions. Note what is absent: no status or current_step column. A
+    # mission's progress is recomputed from these rows on every read, because a stored
+    # status is a second source of truth that drifts from the profile and the candidate
+    # list, and drifts invisibly — it still looks authoritative while it lies.
+    """CREATE TABLE IF NOT EXISTS missions (
+           id SERIAL PRIMARY KEY,
+           user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+           term VARCHAR(32) NOT NULL,
+           program_code VARCHAR(24) NOT NULL,
+           created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+           closed_at TIMESTAMPTZ,
+           close_reason VARCHAR(200),
+           UNIQUE (user_id, term)
+       )""",
+    "CREATE INDEX IF NOT EXISTS ix_missions_user ON missions (user_id)",
+    # `confirmed_at` is the boundary between the assistant proposing and the student
+    # deciding. The agent tool that inserts here cannot reach this column — see
+    # app/models/missions.py.
+    """CREATE TABLE IF NOT EXISTS mission_candidates (
+           id SERIAL PRIMARY KEY,
+           mission_id INTEGER NOT NULL REFERENCES missions(id) ON DELETE CASCADE,
+           course_code VARCHAR(24) NOT NULL,
+           proposed_by VARCHAR(16) NOT NULL DEFAULT 'student',
+           rationale TEXT,
+           confirmed_at TIMESTAMPTZ,
+           declined_at TIMESTAMPTZ,
+           created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+           UNIQUE (mission_id, course_code)
+       )""",
+    "CREATE INDEX IF NOT EXISTS ix_mission_candidates_mission ON mission_candidates (mission_id)",
+    # `finding_summary` records how a finding read when the student accepted it, so a risk
+    # that later got worse cannot hide behind an acceptance of its smaller self.
+    """CREATE TABLE IF NOT EXISTS mission_decisions (
+           id SERIAL PRIMARY KEY,
+           mission_id INTEGER NOT NULL REFERENCES missions(id) ON DELETE CASCADE,
+           kind VARCHAR(24) NOT NULL,
+           finding_key VARCHAR(200),
+           finding_summary VARCHAR(400),
+           note TEXT,
+           decided_at TIMESTAMPTZ NOT NULL DEFAULT now()
+       )""",
+    "CREATE INDEX IF NOT EXISTS ix_mission_decisions_mission ON mission_decisions (mission_id)",
 ]
 
 

@@ -5,6 +5,7 @@ import { ErrorState, Loading } from "./components";
 import AdvisorView from "./views/AdvisorView";
 import ChatHome from "./views/ChatHome";
 import DecoderView from "./views/DecoderView";
+import IntakeView from "./views/IntakeView";
 import DemoLogin from "./views/DemoLogin";
 import MissionView from "./views/MissionView";
 import SequenceView from "./views/SequenceView";
@@ -120,6 +121,7 @@ export default function App() {
             <nav className="roles" aria-label="Student views">
               {[
                 ["chat", "Assistant"],
+                ["intake", "Add from transcript"],
                 ["decoder", "Decode an error"],
                 ["mission", "Registration mission"],
                 ["sequence", "Term sequence"],
@@ -150,6 +152,8 @@ export default function App() {
         {me.role === "student" ? (
           studentTab === "chat" ? (
             <ChatHome me={me} onOpenView={setStudentTab} />
+          ) : studentTab === "intake" ? (
+            <IntakeView onOpenView={setStudentTab} />
           ) : studentTab === "decoder" ? (
             <DecoderView onOpenPlanner={() => setStudentTab("planner")} />
           ) : studentTab === "mission" ? (

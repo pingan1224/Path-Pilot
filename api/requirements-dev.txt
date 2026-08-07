@@ -2,3 +2,6 @@
 # carry them. CI installs both; the runtime installs only the first.
 -r requirements.txt
 pytest==9.1.1
+# Generates the synthetic transcript fixtures (tests.fixtures.make_transcripts). Test-only:
+# the app reads PDFs, it never writes them.
+reportlab==5.0.0

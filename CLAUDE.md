@@ -130,8 +130,9 @@ From the RFP's UI/UX section. Applies to every screen.
 `P0` scaffold · `P1` schema + seed · `P2` API + wire frontend · `P3` RAG bot ·
 `P4` eval harness · `P5` RBAC + audit · `P6` case study + demo
 
-Current phase: **M7 Phase B done (one-shot execution) → Phase C (transcript PDF intake:
-upload → parse → three-state review → batch confirm)**
+Current phase: **M7 complete (A: agent-first shell, B: one-shot execution, C: transcript
+intake) → next milestone unagreed. Open agent gaps: the B26 retrieval give-up finding, fault
+injection (degraded paths have still never executed), OCR only if evidence warrants it.**
 
 ## Agent-first shell (`web/src/views/ChatHome.jsx`, M7-A)
 
@@ -182,6 +183,44 @@ the model about earlier dialogue, which a user can already do by typing it.
 Durable state does not need history: profile, mission, and accepted risks are persistent
 and recomputed on read, so the agent already knows where things stand. History exists for
 one narrow job — resolving what "that one" refers to.
+
+## Transcript intake (`app/intake/`, M7-C)
+
+Upload a PDF, review what was read, confirm what is right. Removes the largest friction in
+the product (typing a dozen courses before anything else works) without changing what the
+data *is*: a transcript-sourced course enters `profile_courses` as a self-reported claim,
+identical to a typed one, with no "imported" marker — the file was never verified either.
+
+**There is no OCR, by measurement rather than omission.** An experiment over four synthetic
+layouts found text-layer PDFs parse well and a scan is cleanly detectable at zero extractable
+characters. A scanned upload can therefore be answered honestly today ("no text layer, export
+a text PDF from Albert instead") without a tesseract system dependency and the
+character-confusion error class that would need its own accuracy eval. Revisit only on
+evidence that students actually upload scans.
+
+**Parsing anchors on the course code**, because that is the only field every layout preserves
+intact. Three measured findings drove this and are all defended by tests:
+
+- Table extraction emits **one cell per line**, so a row arrives as five separate lines. The
+  obvious line-regex approach reads nothing.
+- **Empty cells vanish from the stream entirely.** A blank-grade row runs into its neighbour;
+  before the row window was bounded on a *second credits token*, an in-progress course
+  absorbed the next row's "TR" and reported a grade the student never earned.
+- **Term association is directional.** A labelled term (`Term: Fall 2024`) follows its
+  course; an unlabelled one is a header sitting above its courses. Preferring either
+  direction alone mis-assigned every row of the other layout. In side-by-side columns the
+  linear order carries no association at all, so the term is **dropped rather than guessed**
+  — it is optional in the profile, so blank costs nothing and wrong puts a course in the
+  wrong semester.
+
+`matched` means the reader vouches for every field; a test asserts a matched row can never
+carry an unresolved one. Off-scale grades (S/U/P/TR/W/I) are recognised and flagged rather
+than read as "no grade", which would silently report finished coursework as in progress. The
+review UI pre-selects only `matched` rows — pre-selecting a flagged row would turn "please
+check this" into "we checked this".
+
+Gated at `intake_silently_wrong = 0`; row recall merely has a floor. The asymmetry is the
+point: a row read wrong and accepted is invisible damage, a row missed is visible.
 
 ## Product direction (as of 2026-08)
 

@@ -45,6 +45,11 @@ yours. Measured on a real run: 12 tool calls, 5 model turns, 18 seconds, one rev
 answer. Four proposed courses, one "Add all" click, and the audit trail still records that
 the assistant suggested them and you confirmed.
 
+**Or skip the typing entirely.** Upload an unofficial transcript and it reads the courses
+out, sorts them into *ready* / *needs a look* / *could not read*, and lets you confirm the
+ones that are right. Only the first group is pre-ticked — pre-ticking a row it flagged would
+turn "please check this" into "we checked this". The file is read and discarded, never stored.
+
 It explains registration blockers in plain language, cites where every fact came from and
 when it was last verified, and escalates to a human — with a case number — whenever it
 cannot verify an answer.
@@ -117,9 +122,10 @@ Latest full run — see `api/eval/results/` for the reports.
 | Decoder accuracy when it names a cause | 1.00 | = 0 wrong |
 | Decoder coverage (labelled causes named) | 0.83 | ≥ 0.80 |
 | Decoder ambiguity held (hold office never invented) | 1.00 | = 1.00 |
-| Authorization boundary checks | 32/32 | all |
-| Mission end-to-end probe | 33/33 | all |
-| Unit tests (rule engine, decoder, missions, sequence) | 157/157 | all |
+| Authorization boundary checks | 36/36 | all |
+| Mission end-to-end probe | 37/37 | all |
+| Transcript intake (5 layouts, 18 rows) | recall 1.00, 0 wrong | 0 silently wrong |
+| Unit tests (rule engine, decoder, missions, sequence, intake) | 223/223 | all |
 | Readiness consistency (two implementations) | 48/48 | 0 mismatches |
 | Assistant latency p50 / p95 | 4.7s / 17.2s | reported |
 | Forbidden (write) tool calls | 0 | = 0 |
@@ -269,8 +275,9 @@ Ablations: `scripts.ablate_chunking`, `scripts.ablate_scope`, `scripts.ablate_hy
 | M6 | Sequence planner: constraint solving over terms, with infeasibility attributed | ✅ |
 | M7-A | Agent-first shell: chat as the front door, tool results as actionable inline cards | ✅ |
 | M7-B | One-shot execution: one reviewable plan per ask, lightweight conversation history | ✅ |
-| M7-C | Transcript PDF intake: upload → parse → three-state review → batch confirm | ◻ Next |
+| M7-C | Transcript PDF intake: upload → parse → three-state review → batch confirm | ✅ |
 | M8 | Invite-only beta, rate limits, deployment | ◻ |
+| — | Open: retrieval give-up signal, fault injection, OCR if warranted | ◻ Next |
 
 ## Honest limitations
 
@@ -281,6 +288,10 @@ Ablations: `scripts.ablate_chunking`, `scripts.ablate_scope`, `scripts.ablate_hy
   and registration guidance, not a degree audit.
 - **Agent behaviour was tuned against its 35 eval cases.** That set is a regression gate,
   not proof of generalization; held-out cases are needed for that claim.
+- **Transcript reading has no OCR, so a scan cannot be read.** Measured over four layouts:
+  text-layer PDFs parse reliably, and a scan is cleanly detectable — so it is refused with an
+  explanation rather than guessed at. Term association in side-by-side column layouts is
+  genuinely ambiguous and the term is dropped rather than inferred.
 - **A sequence is only as good as the offering data, and a third of the catalog has none.**
   18 of 57 courses do not say when they run and 2 say "occasionally". Those placements are
   marked as guesses rather than quietly treated as available every term, and the per-term

@@ -1,0 +1,4 @@
+# PDFs are binary. Without this git applies text/CRLF normalisation to them — the fixture
+# transcripts get corrupted on checkout, and the parser tests fail on a fresh clone with an
+# error that points nowhere near the cause.
+*.pdf binary

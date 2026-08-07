@@ -121,6 +121,14 @@ GATE = {
     # is the next thing to fix, and it was invisible until this ran.
     "forbidden_tool_calls": 0,               # hard zero
     "redundant_call_rate_max": 0.20,
+    # Transcript intake. The asymmetry is deliberate: a row the reader vouches for and gets
+    # wrong puts coursework in a student's record they never took, or a grade they did not
+    # earn, and nothing downstream will catch it. A row it fails to read is a course quietly
+    # missing — a real cost, but one the student can see and fix on the review screen.
+    #
+    # Baseline, 2026-08-07, 5 synthetic layouts / 18 labelled rows: recall 1.00, 0 wrong.
+    "intake_silently_wrong": 0,              # hard zero
+    "intake_row_recall": 0.90,
 }
 
 
@@ -525,6 +533,109 @@ def eval_decoder(session) -> dict:
 
 
 # --------------------------------------------------------------------------------------
+# Part 3b — transcript intake
+# --------------------------------------------------------------------------------------
+
+
+def eval_intake(session) -> dict:
+    """Score transcript reading against labelled synthetic fixtures.
+
+    Two numbers, and the distinction between them is the whole point. A reader that reports
+    every row as clean scores perfectly on recall and is dangerous; one that reads fewer rows
+    but labels the uncertain ones scores worse on recall and is usable. So `silently_wrong`
+    is gated at zero and recall merely has a floor.
+    """
+    from pathlib import Path
+
+    from app.intake import read_transcript
+    from eval.intake_cases import CASES
+    from eval.intake_cases import validate as validate_intake
+
+    problems = validate_intake()
+    if problems:
+        raise SystemExit("Invalid intake labels:\n  " + "\n  ".join(problems))
+
+    fixtures = Path(__file__).resolve().parent.parent / "tests" / "fixtures"
+    rows = []
+    for case in CASES:
+        path = fixtures / case.fixture
+        if not path.exists():
+            rows.append(
+                {
+                    "id": case.id, "layout": case.layout, "passed": False,
+                    "failures": [f"fixture missing: {case.fixture} — run tests.fixtures.make_transcripts"],
+                    "found": 0, "expected": len(case.rows), "wrong": 0, "note": case.note,
+                }
+            )
+            continue
+
+        reading = read_transcript(session, path.read_bytes())
+        by_code = {r.course_code: r for r in reading.rows if r.course_code}
+        failures: list[str] = []
+        wrong = 0
+
+        if case.expect_no_text_layer:
+            if not reading.no_text_layer:
+                failures.append("expected no text layer to be detected")
+            if not reading.notes:
+                failures.append("a scanned file must come back with an explanation")
+        found = 0
+        for expected in case.rows:
+            actual = by_code.get(expected.course_code)
+            if actual is None:
+                failures.append(f"{expected.course_code}: not read at all")
+                continue
+            found += 1
+            # A row the reader calls `matched` is a row it is vouching for, so every field
+            # has to be right. A `needs_review` row is already flagged for the student, so a
+            # blank field there is disclosure, not error.
+            if actual.status.value != expected.status:
+                failures.append(
+                    f"{expected.course_code}: status {actual.status.value} != {expected.status}"
+                )
+                if actual.status.value == "matched":
+                    wrong += 1
+            if actual.status.value == "matched":
+                for label, got, want in (
+                    ("term", actual.term, expected.term),
+                    ("grade", actual.grade, expected.grade),
+                    ("state", actual.state, expected.state),
+                ):
+                    if got != want:
+                        failures.append(f"{expected.course_code}: {label} {got!r} != {want!r}")
+                        wrong += 1
+
+        unreadable = sum(1 for r in reading.rows if r.status.value == "unreadable")
+        if unreadable < case.min_unreadable:
+            failures.append(
+                f"expected at least {case.min_unreadable} unreadable row(s), got {unreadable}"
+            )
+        # Phantom rows are their own failure: an invented course is worse than a missed one.
+        unexpected = set(by_code) - {r.course_code for r in case.rows}
+        if unexpected:
+            failures.append(f"read courses the fixture does not contain: {sorted(unexpected)}")
+            wrong += len(unexpected)
+
+        rows.append(
+            {
+                "id": case.id, "layout": case.layout, "passed": not failures,
+                "failures": failures, "found": found, "expected": len(case.rows),
+                "wrong": wrong, "unreadable": unreadable, "note": case.note,
+            }
+        )
+
+    total_expected = sum(r["expected"] for r in rows)
+    total_found = sum(r["found"] for r in rows)
+    return {
+        "cases": rows,
+        "passed": sum(1 for r in rows if r["passed"]),
+        "total": len(rows),
+        "row_recall": round(total_found / total_expected, 4) if total_expected else None,
+        "silently_wrong": sum(r["wrong"] for r in rows),
+    }
+
+
+# --------------------------------------------------------------------------------------
 # Part 4 — readiness consistency
 # --------------------------------------------------------------------------------------
 
@@ -553,7 +664,7 @@ def eval_consistency(session) -> dict:
 # --------------------------------------------------------------------------------------
 
 
-def apply_gate(retrieval, behavior, decoder, consistency) -> list[str]:
+def apply_gate(retrieval, behavior, decoder, intake, consistency) -> list[str]:
     problems = []
     if retrieval and retrieval["recall_at_5"] < GATE["retrieval_recall_at_5"]:
         problems.append(f"recall@5 {retrieval['recall_at_5']} < {GATE['retrieval_recall_at_5']}")
@@ -599,12 +710,20 @@ def apply_gate(retrieval, behavior, decoder, consistency) -> list[str]:
             problems.append(
                 f"decoder ambiguity held {held} < {GATE['decoder_ambiguity_held']}"
             )
+    if intake:
+        if intake["silently_wrong"] > GATE["intake_silently_wrong"]:
+            problems.append(
+                f"intake rows silently wrong: {intake['silently_wrong']} (must be 0)"
+            )
+        rr = intake["row_recall"]
+        if rr is not None and rr < GATE["intake_row_recall"]:
+            problems.append(f"intake row recall {rr} < {GATE['intake_row_recall']}")
     if consistency and consistency["mismatches"]:
         problems.append(f"readiness consistency mismatches: {len(consistency['mismatches'])}")
     return problems
 
 
-def write_report(retrieval, behavior, decoder, consistency, gate_problems, elapsed_s) -> Path:
+def write_report(retrieval, behavior, decoder, intake, consistency, gate_problems, elapsed_s) -> Path:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
 
@@ -752,6 +871,31 @@ def write_report(retrieval, behavior, decoder, consistency, gate_problems, elaps
             lines.append(f"- **{r['id']}**: {'; '.join(r['failures'])}")
         lines.append("")
 
+    if intake:
+        lines += [
+            f"## Transcript intake ({intake['total']} synthetic layouts)",
+            "",
+            "| metric | value | gate |",
+            "|---|---|---|",
+            f"| cases passed | {intake['passed']}/{intake['total']} | — |",
+            f"| row recall | {intake['row_recall']} | ≥ {GATE['intake_row_recall']} |",
+            f"| rows silently wrong | {intake['silently_wrong']} | = 0 |",
+            "",
+            "| case | layout | read | wrong |",
+            "|---|---|---|---|",
+        ]
+        for r in intake["cases"]:
+            lines.append(
+                f"| {r['id']} | {r['layout']} | {r['found']}/{r['expected']} | {r['wrong']} |"
+            )
+        failures = [r for r in intake["cases"] if not r["passed"]]
+        lines += ["", f"### Failures ({len(failures)})", ""]
+        if not failures:
+            lines.append("None.")
+        for r in failures:
+            lines.append(f"- **{r['id']}**: {'; '.join(r['failures'])}")
+        lines.append("")
+
     if consistency:
         lines += [
             "## Readiness consistency (set-based vs per-student)",
@@ -856,14 +1000,23 @@ def main() -> None:
             for name, stats in decoder["families"].items():
                 print(f"    {name:<14} {stats['passed']}/{stats['cases']}")
 
+        intake = None
+        if not args.skip_decoder:
+            print("part 3b/4: transcript intake ...")
+            intake = eval_intake(session)
+            print(
+                f"  passed {intake['passed']}/{intake['total']}  "
+                f"recall={intake['row_recall']}  wrong={intake['silently_wrong']}"
+            )
+
         if not args.only_decoder:
             print("part 4/4: readiness consistency ...")
             consistency = eval_consistency(session)
             print(f"  {consistency['students']} students, {len(consistency['mismatches'])} mismatches")
 
-    gate_problems = apply_gate(retrieval, behavior, decoder, consistency)
+    gate_problems = apply_gate(retrieval, behavior, decoder, intake, consistency)
     elapsed = (datetime.now(UTC) - started).total_seconds()
-    report_path = write_report(retrieval, behavior, decoder, consistency, gate_problems, elapsed)
+    report_path = write_report(retrieval, behavior, decoder, intake, consistency, gate_problems, elapsed)
     print(f"\nreport: {report_path}")
     print("gate  :", "PASS" if not gate_problems else f"FAIL — {'; '.join(gate_problems)}")
 

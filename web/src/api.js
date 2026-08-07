@@ -78,6 +78,16 @@ export const api = {
   // are classified together with it rather than tracked as server-side state
   decode: (text, answers = []) =>
     request("/decoder/decode", { method: "POST", body: JSON.stringify({ text, answers }) }),
+  // intake — the upload is read and thrown away; nothing is written until confirm
+  readTranscript: (file) => {
+    const body = new FormData()
+    body.append("file", file)
+    // No Content-Type header on purpose: the browser must set the multipart boundary, and
+    // the shared `request` helper would otherwise force application/json and break parsing.
+    return request("/intake/transcript", { method: "POST", body, headers: {} })
+  },
+  confirmTranscript: (rows) =>
+    request("/intake/confirm", { method: "POST", body: JSON.stringify({ rows }) }),
   // missions — every response is the whole mission with its recomputed step state, so the
   // client never derives progress itself and cannot disagree with the server about it
   missions: () => request("/missions"),

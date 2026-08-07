@@ -237,6 +237,46 @@ def main() -> None:
     else:
         check("a sequence always states what it assumes", False, f"got {r.status_code}")
 
+    # --- transcript intake. The most sensitive upload in the product, so the boundary is
+    # student-only and the reading writes nothing until a separate confirm.
+    from pathlib import Path
+
+    fixture = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "transcript_table.pdf"
+    if fixture.exists():
+        pdf = fixture.read_bytes()
+        files = {"file": ("t.pdf", pdf, "application/pdf")}
+
+        r = advisor.post("/api/v1/intake/transcript", files=files)
+        check("staff cannot upload a transcript", r.status_code == 403, f"got {r.status_code}")
+
+        r = anon.post("/api/v1/intake/transcript", files=files)
+        check("unauthenticated upload rejected", r.status_code == 401, f"got {r.status_code}")
+
+        r = student.post(
+            "/api/v1/intake/transcript",
+            files={"file": ("x.pdf", b"not a pdf at all", "application/pdf")},
+        )
+        check(
+            "a file that is not a PDF is refused, not guessed at",
+            r.status_code == 422,
+            f"got {r.status_code}",
+        )
+
+        before = len(student.get("/api/v1/profile/courses").json())
+        r = student.post("/api/v1/intake/transcript", files=files)
+        after = len(student.get("/api/v1/profile/courses").json())
+        check(
+            "READING A TRANSCRIPT WRITES NOTHING",
+            r.status_code == 200 and before == after,
+            f"{before} -> {after} course(s) after upload",
+        )
+    else:
+        check(
+            "transcript fixtures present",
+            False,
+            "run tests.fixtures.make_transcripts",
+        )
+
     # --- session hygiene
     student.post("/api/v1/auth/logout")
     r = student.get(f"/api/v1/students/{alex_id}/readiness")

@@ -13,7 +13,8 @@ numbers the proposal promised**. The eval harness is the point, not an afterthou
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Frontend | React + Vite (JS) | `web/`. Plain JS, not TS — frontend is the shell, not the focus |
+| Frontend | React + Vite (JS) | `web/`. Plain JS, not TS — see the UI stack note below |
+| UI | Tailwind v4 + shadcn/ui | Components are copied into `web/src/components/ui/`, not imported |
 | Backend | FastAPI (Python 3.13) | `api/`. All business logic and AI lives here |
 | Database | Postgres + pgvector | Business data and embeddings in the same database |
 | ORM | SQLAlchemy 2.x | Typed `Mapped[]` style, not legacy declarative |
@@ -23,6 +24,30 @@ numbers the proposal promised**. The eval harness is the point, not an afterthou
 Do **not** add LangChain, LlamaIndex, or any RAG framework. Retrieval, chunking, and
 prompt assembly are written directly. Ripping out the abstraction later is more expensive
 than writing 200 lines now.
+
+## UI stack (adopted 2026-08-07)
+
+shadcn/ui over Tailwind v4, chosen after a spike that landed on this branch. The reason it
+fits rather than fights: shadcn copies component *source* into the repo instead of shipping a
+dependency, so the components are editable in place and there is no library version to fight
+when a card needs to behave differently.
+
+Three things about the setup that are not obvious and will bite if forgotten:
+
+- **`src/tailwind.css` aliases, it does not define.** `@theme inline` maps shadcn's expected
+  tokens onto the palette already in `App.css`. There is exactly one palette. Never add a
+  hex value to `tailwind.css` — put it in `App.css` and alias it.
+- **`src/index.css` must stay inside `@layer uax-reset`.** Unlayered CSS beats layered CSS
+  regardless of specificity, so an unwrapped reset silently overrides every Tailwind utility.
+  This cost real debugging time; the file says so at the top.
+- **`npx shadcn add` is not self-sufficient here.** In plain-JS mode it generates components
+  importing `cn`, `clsx`, `tailwind-merge`, and `class-variance-authority` while installing
+  none of them and scaffolding no `lib/utils.js`. Expect to add missing deps by hand after
+  pulling a new component.
+
+Old hand-written CSS (`App.css`, the `.card` / `.finding` / `.msg` families) and Tailwind
+coexist deliberately. Existing views were not rewritten; new work uses shadcn. Do not
+migrate a working view without a reason to touch it.
 
 ## Non-negotiable architecture rules
 

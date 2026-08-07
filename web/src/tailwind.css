@@ -1,0 +1,57 @@
+/* Tailwind entry, kept separate from index.css so the hand-written reset and the framework
+   layer stay visibly distinct.
+
+   The `@theme inline` block below is the whole reason shadcn/ui can be adopted here without
+   a visual rewrite: it aliases every token shadcn components expect (--color-primary,
+   --color-border, ...) onto the palette this project already had in App.css (--accent,
+   --line, --surface-2, ...). There is no second palette, and no duplicated hex value that
+   could drift from the first one.
+
+   `inline` is load-bearing. A plain `@theme` would bake the resolved value into the utility
+   at build time; `inline` emits the alias itself, so `bg-primary` compiles to
+   `background-color: var(--accent)` and re-reads that variable from the cascade at paint
+   time. That is what lets the dark-mode machinery already in App.css — the
+   `@media (prefers-color-scheme: dark)` block and the `[data-theme="dark"]` override —
+   drive shadcn components with no dark-mode code of their own.
+
+   Verified: flipping data-theme moves a shadcn Button's background from #57068c to #c49ae9,
+   which is exactly the light/dark pair for --accent. */
+
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--ground);
+  --color-foreground: var(--ink);
+
+  --color-card: var(--surface);
+  --color-card-foreground: var(--ink);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--ink);
+
+  /* shadcn's "primary" is the main call-to-action colour — this project's --accent (the
+     brand purple already on .btn--primary) is exactly that, and NOT shadcn's own "accent",
+     which is a lighter secondary highlight and is mapped to --accent-soft below. Getting
+     these two the wrong way round is the easiest way to make every button look washed out. */
+  --color-primary: var(--accent);
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--ink);
+
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--ink-2);
+
+  --color-accent: var(--accent-soft);
+  --color-accent-foreground: var(--accent);
+
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: #ffffff;
+
+  --color-border: var(--line);
+  --color-input: var(--line);
+  --color-ring: var(--accent);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}

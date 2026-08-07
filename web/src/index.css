@@ -1,59 +1,74 @@
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+/* This reset lives in a cascade layer, and it has to.
 
-* {
-  margin: 0;
-}
+   It used to be plain unlayered CSS. Tailwind v4 wraps every utility in `@layer`, and the
+   cascade-layers spec says unlayered rules beat layered ones regardless of specificity — so
+   `button { color: inherit }` here was silently overriding shadcn's
+   `.text-primary-foreground` on every single button, however specific the utility. The
+   symptom was a purple primary button with near-black text on it: legible enough to miss in
+   a screenshot, and nothing about it points at the cascade.
 
-html {
-  -webkit-text-size-adjust: 100%;
-}
+   Naming this layer puts it back into normal specificity-based competition with Tailwind's
+   utilities. Do not unwrap it while Tailwind is in the build. */
+@layer base, uax-reset;
 
-body {
-  min-height: 100vh;
-  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
-    "Helvetica Neue", Arial, sans-serif;
-  line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
-  background: var(--ground);
-  color: var(--ink);
-}
-
-img,
-svg {
-  display: block;
-  max-width: 100%;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-  color: inherit;
-}
-
-h1,
-h2,
-h3 {
-  line-height: 1.2;
-  text-wrap: balance;
-}
-
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
+@layer uax-reset {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    box-sizing: border-box;
+  }
+
+  * {
+    margin: 0;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100vh;
+    font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system,
+      "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    background: var(--ground);
+    color: var(--ink);
+  }
+
+  img,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: inherit;
+  }
+
+  h1,
+  h2,
+  h3 {
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

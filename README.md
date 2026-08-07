@@ -404,8 +404,11 @@ actually costs).
 | M7-A | Agent-first shell: chat as the front door, tool results as actionable inline cards | ✅ |
 | M7-B | One-shot execution: one reviewable plan per ask, lightweight conversation history | ✅ |
 | M7-C | Transcript PDF intake: upload → parse → three-state review → batch confirm | ✅ |
-| M8 | Invite-only beta, rate limits, deployment | ◻ |
-| — | Open: retrieval give-up signal, fault injection, OCR if warranted | ◻ Next |
+| M8 | Search budget: stop searching when searching has stopped working | ✅ |
+| M9 | Fault injection: every declared degraded path executed and watched | ✅ |
+| M10 | Multi-turn context budgeting: freshness-aware reuse of tool results | ◻ Next |
+| M11 | Invite-only beta, rate limits, deployment | ◻ |
+| — | Open: OCR, if evidence appears that students upload scans | ◻ |
 
 ## Honest limitations
 

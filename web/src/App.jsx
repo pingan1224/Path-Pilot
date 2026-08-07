@@ -181,8 +181,8 @@ export default function App() {
       </main>
 
       {/* The floating Ask UAX panel is gone: the assistant is the front door now, not an
-          accessory docked in a corner. AskAlbert.jsx stays in the tree for reference until
-          Phase B settles what the chat keeps from it. */}
+          accessory docked in a corner. AskAlbert.jsx was kept unmounted while M7-B settled
+          what the chat would carry over from it, and deleted once it had. */}
 
       <footer className="footer">
         <p>

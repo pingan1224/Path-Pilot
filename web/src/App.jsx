@@ -7,6 +7,7 @@ import AskAlbert from "./views/AskAlbert";
 import DecoderView from "./views/DecoderView";
 import DemoLogin from "./views/DemoLogin";
 import MissionView from "./views/MissionView";
+import SequenceView from "./views/SequenceView";
 import Login from "./views/Login";
 import PlannerView from "./views/PlannerView";
 import RegistrarView from "./views/RegistrarView";
@@ -139,6 +140,7 @@ export default function App() {
               {[
                 ["decoder", "Decode an error"],
                 ["mission", "Registration mission"],
+                ["sequence", "Term sequence"],
                 ["planner", "Degree planner"],
                 ...(me.student_id ? [["dashboard", "Dashboard (demo)"]] : []),
               ].map(([id, label]) => (
@@ -170,6 +172,8 @@ export default function App() {
             <DecoderView onOpenPlanner={() => setStudentTab("planner")} />
           ) : studentTab === "mission" ? (
             <MissionView onOpenPlanner={() => setStudentTab("planner")} />
+          ) : studentTab === "sequence" ? (
+            <SequenceView onOpenPlanner={() => setStudentTab("planner")} />
           ) : me.student_id && studentTab === "dashboard" ? (
             <StudentView studentId={me.student_id} />
           ) : (

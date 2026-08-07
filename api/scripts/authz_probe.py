@@ -216,6 +216,27 @@ def main() -> None:
     r = anon.post("/api/v1/decoder/decode", json={"text": "ERR_PREREQ: Requisites not met"})
     check("decoder rejects an unauthenticated caller", r.status_code == 401, f"got {r.status_code}")
 
+    # --- sequence planner. Student-only and scoped to the caller's own record, like the
+    # planner it derives from. Staff have no business sequencing anyone's degree.
+    r = advisor.get("/api/v1/sequence")
+    check("staff cannot reach the sequence planner", r.status_code == 403, f"got {r.status_code}")
+
+    r = anon.get("/api/v1/sequence")
+    check("unauthenticated sequence rejected", r.status_code == 401, f"got {r.status_code}")
+
+    r = student.get("/api/v1/sequence")
+    if r.status_code == 200:
+        body = r.json()
+        # A schedule that omitted what it assumes would be the most authoritative-looking
+        # thing this product prints and the least examinable.
+        check(
+            "a sequence always states what it assumes",
+            body["credit_cap_was_assumed"] is True and len(body["assumptions"]) > 0,
+            f"{len(body['assumptions'])} assumption(s)",
+        )
+    else:
+        check("a sequence always states what it assumes", False, f"got {r.status_code}")
+
     # --- session hygiene
     student.post("/api/v1/auth/logout")
     r = student.get(f"/api/v1/students/{alex_id}/readiness")

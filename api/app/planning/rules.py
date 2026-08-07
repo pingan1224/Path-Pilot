@@ -47,6 +47,14 @@ class CourseRule:
     prerequisite_text: str | None = None
     catalog_url: str | None = None
     verified_on: str | None = None
+    # Prerequisites the catalog allows to be taken alongside rather than strictly before.
+    # Carried for the sequence planner: it is the difference between needing an extra term
+    # and not, so dropping it would make plans longer than they have to be.
+    concurrent: tuple[str, ...] = ()
+    # The bulletin's own words about when the course runs, unparsed. Interpreting it is
+    # `sequence.offerings`' job — a third of the catalog says nothing here, and the parser
+    # is where that has to stay visible.
+    typically_offered: str | None = None
 
 
 @dataclass(frozen=True)

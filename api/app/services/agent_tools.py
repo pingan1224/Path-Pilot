@@ -702,11 +702,115 @@ def tool_propose_mission_candidates(
     }
 
 
+def tool_get_course_sequence(
+    ctx: ToolContext,
+    finish_by: str | None = None,
+    max_credits_per_term: int | None = None,
+) -> dict[str, Any]:
+    """An order for the student's remaining requirements across future terms.
+
+    The solver decides; the model narrates. Same split as the planner and the decoder, and
+    it matters most here: a schedule is the output a student plans a year of their life
+    around, so it has to be reproducible and it has to carry what it rests on.
+
+    When there is no workable order, the tool returns which constraint is binding — proven
+    by relaxing it, not guessed. The model must relay that rather than inventing a reason.
+    """
+    from app.sequence.service import sequence_for_user
+    from app.sequence.terms import TermParseError, parse_or_none
+
+    if ctx.user_id is None:
+        return {
+            "error": "no_signed_in_record",
+            "instruction": "Sequencing needs the student's own entered coursework.",
+        }
+
+    deadline = parse_or_none(finish_by)
+    if finish_by and deadline is None:
+        return {
+            "error": "unparsed_term",
+            "given": finish_by,
+            "instruction": 'Ask the student for a term like "Spring 2028".',
+        }
+
+    try:
+        plan, meta = sequence_for_user(
+            ctx.session,
+            ctx.user_id,
+            deadline=deadline,
+            max_credits_per_term=max_credits_per_term,
+        )
+    except (TermParseError, LookupError) as exc:
+        return {"error": f"{type(exc).__name__}: {exc}"}
+
+    source_id = f"selfreport:sequence:{ctx.user_id}"
+    ctx.seen_source_ids.add(source_id)
+
+    payload: dict[str, Any] = {
+        "source_id": source_id,
+        "basis": (
+            "Computed from the courses the student entered themselves and the published "
+            "program rules. Not a registration, and no evidence that a section will run."
+        ),
+        "program": meta["program_name"],
+        "start_term": meta["start_term"],
+        "finish_by_requested": meta["deadline"],
+        "credits_per_term_used": meta["max_credits_per_term"],
+        "credits_per_term_was_assumed": meta["credit_cap_was_assumed"],
+        "feasible": plan.feasible,
+        "concentration_used": plan.chosen_track,
+        "concentrations_that_do_not_fit": [
+            {"track": name, "why": why} for name, why in plan.rejected_tracks
+        ],
+        "terms": [
+            {
+                "term": str(term),
+                "credits": sum(p.course.credits for p in placements),
+                "courses": [
+                    {
+                        "code": p.course.code,
+                        "credits": p.course.credits,
+                        "for_requirement": p.course.requirement,
+                        "why_this_term": p.course.offering.describe(),
+                        "this_term_is_a_guess": p.rests_on_assumption,
+                    }
+                    for p in placements
+                ],
+            }
+            for term, placements in plan.by_term().items()
+        ],
+        "finish_term": str(plan.finish_term) if plan.finish_term else None,
+        "terms_needed": len(plan.terms_used),
+        "assumptions_this_rests_on": [
+            {"about": a.subject, "assumption": a.statement, "check": a.check}
+            for a in plan.assumptions
+        ],
+    }
+
+    if plan.infeasibility is not None:
+        payload["no_workable_order"] = {
+            "binding_constraints": [c.value for c in plan.infeasibility.binding],
+            "explanation": plan.infeasibility.explanation,
+            "what_would_unblock_it": list(plan.infeasibility.remedies),
+        }
+
+    payload["instruction"] = (
+        "Give the term-by-term order and say what it assumes. Any course marked "
+        "this_term_is_a_guess was placed in a term the bulletin does not confirm — say so "
+        "for those specifically, do not average the caveat across the whole plan. If "
+        "no_workable_order is present, relay the binding constraint and the remedies; do "
+        "not invent a different reason and do not present a partial order as workable. "
+        "Never say a course will be available: this tool cannot see sections or seats."
+    )
+    return payload
+
+
 DEMO_TOOL_IMPLS = {
     "search_policy": tool_search_policy,
     "decode_registration_error": tool_decode_registration_error,
     "get_mission_state": tool_get_mission_state,
     "propose_mission_candidates": tool_propose_mission_candidates,
+    "get_course_sequence": tool_get_course_sequence,
     "get_holds": tool_get_holds,
     "get_degree_progress": tool_get_degree_progress,
     "get_registration_attempts": tool_get_registration_attempts,
@@ -718,6 +822,7 @@ LIVE_TOOL_IMPLS = {
     "decode_registration_error": tool_decode_registration_error,
     "get_mission_state": tool_get_mission_state,
     "propose_mission_candidates": tool_propose_mission_candidates,
+    "get_course_sequence": tool_get_course_sequence,
     "get_course_info": tool_get_course_info,
     "get_my_plan": tool_get_my_plan,
     "albert_checklist": tool_albert_checklist,
@@ -852,6 +957,38 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                     }
                 },
                 "required": ["courses"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_course_sequence",
+            "description": (
+                "What order the student can take their remaining requirements in, term by "
+                "term. Use for 'what is the fastest path', 'can I finish by X', 'what "
+                "should I take when', or any question about ordering across terms. "
+                "Enforces prerequisite order, the bulletin's offering pattern, a per-term "
+                "credit cap, one concentration in full, and a finish-by term. When no "
+                "order fits it returns which constraint is binding — relay that, do not "
+                "guess a reason."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "finish_by": {
+                        "type": "string",
+                        "description": 'Term to finish by, e.g. "Spring 2028". Omit if the student did not say.',
+                    },
+                    "max_credits_per_term": {
+                        "type": "integer",
+                        "description": (
+                            "Credits the student is willing to carry per term, if they "
+                            "said. Omit to use the conservative assumed default — there is "
+                            "no published cap for this program in the corpus."
+                        ),
+                    },
+                },
             },
         },
     },

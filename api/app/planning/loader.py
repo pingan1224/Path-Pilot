@@ -46,6 +46,7 @@ def load_catalog_courses(session: Session) -> dict[str, CourseRule]:
     grouped: dict[int, dict[int, list[str]]] = {}
     grades: dict[int, list[tuple[str, str]]] = {}
     raw_text: dict[int, str] = {}
+    concurrent: dict[int, list[str]] = {}
     for edge in edges:
         target = by_id.get(edge.prerequisite_id)
         if target is None:
@@ -60,6 +61,8 @@ def load_catalog_courses(session: Session) -> dict[str, CourseRule]:
             grades.setdefault(edge.course_id, []).append((target.code, edge.min_grade))
         if edge.raw_text:
             raw_text[edge.course_id] = edge.raw_text
+        if edge.can_be_concurrent:
+            concurrent.setdefault(edge.course_id, []).append(target.code)
 
     rules: dict[str, CourseRule] = {}
     for course in courses:
@@ -75,6 +78,8 @@ def load_catalog_courses(session: Session) -> dict[str, CourseRule]:
             prerequisite_text=raw_text.get(course.id),
             catalog_url=course.catalog_url,
             verified_on=_iso(course.catalog_verified_at),
+            concurrent=tuple(sorted(concurrent.get(course.id, ()))),
+            typically_offered=course.typically_offered,
         )
     return rules
 

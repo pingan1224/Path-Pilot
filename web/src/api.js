@@ -106,6 +106,15 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ question: question || null }),
     }),
+  // sequence — a GET because it computes and stores nothing; same inputs, same answer
+  sequence: ({ startTerm, deadline, maxCredits } = {}) => {
+    const params = new URLSearchParams();
+    if (startTerm) params.set("start_term", startTerm);
+    if (deadline) params.set("deadline", deadline);
+    if (maxCredits) params.set("max_credits_per_term", String(maxCredits));
+    const query = params.toString();
+    return request(`/sequence${query ? `?${query}` : ""}`);
+  },
   missionClose: (id, reason) =>
     request(`/missions/${id}/close`, {
       method: "POST",

@@ -55,6 +55,19 @@ The assistant can suggest courses for it and can report what is left. It cannot 
 accept a risk, or finish the mission, and it cannot un-finish one either. Those are actions
 with a person's name on them.
 
+**The term sequence** answers the question you cannot work out on paper: in what order can
+the remaining requirements actually be taken, given that prerequisites have an order, courses
+only run in certain terms, one concentration has to be finished in full, and there is a limit
+to what you will carry in a term. When those cannot all be satisfied, it names which one is
+in the way — established by removing it and re-solving, not guessed:
+
+> No sequence fits. Any one of these would be enough to unblock it on its own: the term you
+> want to finish by; the credits you are willing to take per term.
+
+Each placement says what it rests on. Two-thirds of the catalog publishes when a course runs;
+for the rest the term is a guess and is labelled one, per course, because a single caveat
+under the grid does not tell you which two courses to go and check.
+
 **Try it:** `/demo` signs you in as any role with one click. Everything there is fictional,
 and each role is blocked from the others' data — which you are invited to test.
 
@@ -90,9 +103,9 @@ Latest full run — see `api/eval/results/` for the reports.
 | Decoder accuracy when it names a cause | 1.00 | = 0 wrong |
 | Decoder coverage (labelled causes named) | 0.83 | ≥ 0.80 |
 | Decoder ambiguity held (hold office never invented) | 1.00 | = 1.00 |
-| Authorization boundary checks | 29/29 | all |
+| Authorization boundary checks | 32/32 | all |
 | Mission end-to-end probe | 33/33 | all |
-| Unit tests (rule engine, decoder, missions) | 110/110 | all |
+| Unit tests (rule engine, decoder, missions, sequence) | 157/157 | all |
 | Readiness consistency (two implementations) | 48/48 | 0 mismatches |
 | Assistant latency p50 / p95 | 4.7s / 17.2s | reported |
 
@@ -205,8 +218,8 @@ Ablations: `scripts.ablate_chunking`, `scripts.ablate_scope`, `scripts.ablate_hy
 | M3 | Student portal, what-if planner, advisor handoff | ✅ |
 | M4 | Error decoder: paste-and-explain entry, ambiguity as a first-class outcome | ✅ |
 | M5 | Registration mission: derived task state, a decidable end, agent proposes only | ✅ |
-| M6 | Sequence planner: constraint solving over terms, offering patterns, credit caps | ◻ Next |
-| M7 | Invite-only beta, rate limits, deployment | ◻ |
+| M6 | Sequence planner: constraint solving over terms, with infeasibility attributed | ✅ |
+| M7 | Invite-only beta, rate limits, deployment | ◻ Next |
 
 ## Honest limitations
 
@@ -217,6 +230,11 @@ Ablations: `scripts.ablate_chunking`, `scripts.ablate_scope`, `scripts.ablate_hy
   and registration guidance, not a degree audit.
 - **Agent behaviour was tuned against its 35 eval cases.** That set is a regression gate,
   not proof of generalization; held-out cases are needed for that claim.
+- **A sequence is only as good as the offering data, and a third of the catalog has none.**
+  18 of 57 courses do not say when they run and 2 say "occasionally". Those placements are
+  marked as guesses rather than quietly treated as available every term, and the per-term
+  credit cap is the student's own number — the corpus has caps for Stern's MBA programs and
+  nothing for SPS.
 - **A mission proves preparation, not availability.** Finishing one means every published
   rule the tool can check is satisfied or knowingly accepted. It says nothing about whether
   a seat exists, whether your appointment has opened, or whether a hold is waiting — none

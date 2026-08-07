@@ -105,8 +105,8 @@ From the RFP's UI/UX section. Applies to every screen.
 `P0` scaffold · `P1` schema + seed · `P2` API + wire frontend · `P3` RAG bot ·
 `P4` eval harness · `P5` RBAC + audit · `P6` case study + demo
 
-Current phase: **M5 done (registration mission) → M6 (sequence planner: constraint solving
-over terms, offering patterns, and credit caps)**
+Current phase: **M6 done (sequence planner) → M7 (deployment: invite-only beta, rate limits,
+cost ceiling)**
 
 ## Product direction (as of 2026-08)
 
@@ -183,6 +183,40 @@ before this was a stateless question and answer, so "done" was not a concept the
 Add a step only if a student can work on it. An earlier draft had a sixth ("run the
 prerequisite checks") that completed itself the instant the previous one did; a step nobody
 can act on is a progress bar pretending to be a checklist.
+
+## Sequence planner (`app/sequence/`, M6)
+
+Backtracking search assigning remaining courses to future terms under five things at once:
+prerequisite order, the bulletin's offering pattern, a per-term credit cap, one
+concentration taken in full, and a term to finish by. Hand-written, not a solver library —
+the problem is 3-8 courses over 3-8 terms, and the explanation is most of the value, where
+a library returns UNSAT and UNSAT is not something you can tell a student.
+
+- **Infeasibility is attributed by relaxation, never inferred.** Drop one constraint,
+  re-solve, and report the ones whose removal actually produces a sequence. A hand-written
+  diagnosis would be wrong exactly when the schedule is complicated enough to need help.
+  Cheap only because the search is cheap. If no single relaxation helps, say that rather
+  than blaming one.
+- **Silence about offerings is not availability.** 18 of the 57 catalog courses have no
+  `typically_offered` text and 2 say "occasionally". Those are searched as any-term and
+  reported as `unstated` / `irregular`, and every placement resting on one is marked
+  individually — not with one caveat under the grid, which tells the student nothing about
+  *which* two courses to go and check.
+- **The per-term credit cap is the student's number, not a rule.** The ingested corpus has
+  caps for Stern's MBA programs only; quoting one at an SPS student would be the mistake the
+  home-school retrieval boost exists to prevent, and worse here because it would be buried
+  in a constraint instead of visible as a citation. Default is conservative and always
+  disclosed as assumed.
+- **`credits` requirements cannot be sequenced.** The elective scope is an open set, so a
+  shortfall enters as a credit placeholder with no identity and no prerequisites checked —
+  dropping it would make every finish date a course too early.
+- **A `one_track` requirement is a choice, not a constraint.** Each concentration is
+  sequenced separately and compared; tracks that do not fit are reported with their reason,
+  because "Risk Analytics fits your deadline and Business Analytics does not" is a decision
+  only the student can make.
+
+Objective: finish soonest; among ties, prefer the plan resting on fewer guesses, then name
+order so two runs on the same data give the same schedule.
 
 ## Data layers
 

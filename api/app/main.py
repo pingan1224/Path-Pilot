@@ -25,6 +25,7 @@ from app.routers import (
     missions,
     profile,
     registrar,
+    sequence,
     students,
 )
 
@@ -108,3 +109,4 @@ app.include_router(profile.router, prefix="/api/v1")
 app.include_router(catalog.router, prefix="/api/v1")
 app.include_router(decoder.router, prefix="/api/v1")
 app.include_router(missions.router, prefix="/api/v1")
+app.include_router(sequence.router, prefix="/api/v1")

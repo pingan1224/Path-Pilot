@@ -31,9 +31,16 @@ Signing in decides what you see; there is no role switcher.
 | Registrar | Where is enrollment pressure building? |
 | Finance | Which financial holds are blocking registration? |
 
-Plus a grounded assistant that explains registration blockers in plain language, cites
-where every fact came from and when it was last verified, and escalates to a human — with a
-case number — whenever it cannot verify an answer.
+Students land in a chat. It greets from computed state ("your Spring 2027 mission is 4 of
+5 steps done — next: the advisor handoff"), answers with citations, and renders what the
+agent did as **cards you can act on in place**: a proposed course arrives with its
+rationale and an "Add to my plan" button wired to the same student-authenticated endpoint
+as the full mission page. The agent proposes; the click that decides is yours, and it
+happens where the proposal happened instead of three tabs away.
+
+The assistant explains registration blockers in plain language, cites where every fact
+came from and when it was last verified, and escalates to a human — with a case number —
+whenever it cannot verify an answer.
 
 **The error decoder** is the way in. Paste the message Albert refused you with and it names
 the cause, shows which words in your own text it based that on, quotes the bulletin passage
@@ -253,7 +260,10 @@ Ablations: `scripts.ablate_chunking`, `scripts.ablate_scope`, `scripts.ablate_hy
 | M4 | Error decoder: paste-and-explain entry, ambiguity as a first-class outcome | ✅ |
 | M5 | Registration mission: derived task state, a decidable end, agent proposes only | ✅ |
 | M6 | Sequence planner: constraint solving over terms, with infeasibility attributed | ✅ |
-| M7 | Invite-only beta, rate limits, deployment | ◻ Next |
+| M7-A | Agent-first shell: chat as the front door, tool results as actionable inline cards | ✅ |
+| M7-B | One-shot execution: one reviewable plan per ask, lightweight conversation history | ◻ Next |
+| M7-C | Transcript PDF intake: upload → parse → three-state review → batch confirm | ◻ |
+| M8 | Invite-only beta, rate limits, deployment | ◻ |
 
 ## Honest limitations
 

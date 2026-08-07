@@ -3,7 +3,7 @@ import "./App.css";
 import { api, UnauthenticatedError } from "./api";
 import { ErrorState, Loading } from "./components";
 import AdvisorView from "./views/AdvisorView";
-import AskAlbert from "./views/AskAlbert";
+import ChatHome from "./views/ChatHome";
 import DecoderView from "./views/DecoderView";
 import DemoLogin from "./views/DemoLogin";
 import MissionView from "./views/MissionView";
@@ -32,10 +32,11 @@ export default function App() {
   const [error, setError] = useState(null);
   // Advisor drill-down into one advisee; null means "own home view".
   const [viewStudentId, setViewStudentId] = useState(null);
-  // Student tabs. The planner is the product; the decoder is the door into it, because it
-  // is the only view that works before anything has been entered. The dashboard shows the
-  // seeded demo record and only exists for accounts that have one. null = not decided yet.
-  const [studentTab, setStudentTab] = useState(null);
+  // Student tabs. The chat is the front door — it greets from computed state, answers on
+  // first contact with nothing entered, and renders the agent's work as actionable cards.
+  // The other views survive as the "I want to look at the records myself" path, and the
+  // conditional landing logic they used to need is gone: the greeting does that job now.
+  const [studentTab, setStudentTab] = useState("chat");
 
   useEffect(() => {
     api
@@ -46,26 +47,6 @@ export default function App() {
       })
       .finally(() => setChecking(false));
   }, []);
-
-  // Where a student lands, in order of what they are most likely here for: an unfinished
-  // mission, then their plan, then the decoder. Sending someone with an empty profile to
-  // the planner shows them an empty form and asks for a dozen courses, while the decoder
-  // answers a question on first contact — and someone who left a mission half-done wants
-  // to be put back where they stopped, not made to find it.
-  useEffect(() => {
-    if (!me) return;
-    if (me.role !== "student") {
-      setStudentTab("planner");
-      return;
-    }
-    Promise.all([
-      api.missions().catch(() => []),
-      api.profileCourses().catch(() => []),
-    ]).then(([missions, courses]) => {
-      const unfinished = missions.some((m) => !m.complete);
-      setStudentTab(unfinished ? "mission" : courses.length > 0 ? "planner" : "decoder");
-    });
-  }, [me]);
 
   async function signOut() {
     try {
@@ -138,6 +119,7 @@ export default function App() {
           {me.role === "student" ? (
             <nav className="roles" aria-label="Student views">
               {[
+                ["chat", "Assistant"],
                 ["decoder", "Decode an error"],
                 ["mission", "Registration mission"],
                 ["sequence", "Term sequence"],
@@ -166,8 +148,8 @@ export default function App() {
 
       <main id="main" className="main">
         {me.role === "student" ? (
-          studentTab === null ? (
-            <Loading what="your view" />
+          studentTab === "chat" ? (
+            <ChatHome me={me} onOpenView={setStudentTab} />
           ) : studentTab === "decoder" ? (
             <DecoderView onOpenPlanner={() => setStudentTab("planner")} />
           ) : studentTab === "mission" ? (
@@ -194,7 +176,9 @@ export default function App() {
         {me.role === "finance" ? <FinanceView /> : null}
       </main>
 
-      {me.role === "student" ? <AskAlbert /> : null}
+      {/* The floating Ask UAX panel is gone: the assistant is the front door now, not an
+          accessory docked in a corner. AskAlbert.jsx stays in the tree for reference until
+          Phase B settles what the chat keeps from it. */}
 
       <footer className="footer">
         <p>

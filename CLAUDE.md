@@ -130,8 +130,29 @@ From the RFP's UI/UX section. Applies to every screen.
 `P0` scaffold · `P1` schema + seed · `P2` API + wire frontend · `P3` RAG bot ·
 `P4` eval harness · `P5` RBAC + audit · `P6` case study + demo
 
-Current phase: **M6 done (sequence planner) → M7 (deployment: invite-only beta, rate limits,
-cost ceiling)**
+Current phase: **M7 Phase A done (agent-first shell: chat is the student front door, tool
+results are actionable inline cards) → Phase B (one-shot execution: chain
+profile→gaps→candidates→sequence→handoff in a single reviewable turn, plus lightweight
+conversation history)**
+
+## Agent-first shell (`web/src/views/ChatHome.jsx`, M7-A)
+
+The chat is the student's default tab; the floating Ask UAX panel is gone. Three rules:
+
+- **Cards render authoritative state, not snapshots.** After each answer the tool trace
+  says what was consulted; ChatHome re-fetches the mission / re-runs the deterministic
+  sequence and decoder endpoints and renders those as inline cards
+  (`web/src/components/chat/cards.jsx`). "No stored status, recompute on read" applied to
+  the UI: what the student acts on must be what is true now.
+- **Card buttons call the same student-authenticated endpoints as the full pages.**
+  Confirming an AI-proposed course happens inside the chat; the server's recomputed
+  mission replaces the card state. The propose/confirm boundary is unchanged — the card
+  is just the confirm surface moved to where the proposal happened.
+- **The greeting is computed, not generated.** Profile + mission state → deterministic
+  greeting and context-aware suggestion chips. No LLM call for "hello".
+
+The old views (decoder/mission/sequence/planner) survive as secondary tabs — the "let me
+look at the records myself" path. Do not remove them.
 
 ## Product direction (as of 2026-08)
 

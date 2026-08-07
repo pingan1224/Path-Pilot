@@ -20,6 +20,7 @@ from app.routers import (
     auth,
     cases,
     catalog,
+    decoder,
     health,
     profile,
     registrar,
@@ -104,3 +105,4 @@ app.include_router(cases.router, prefix="/api/v1")
 app.include_router(assistant.router, prefix="/api/v1")
 app.include_router(profile.router, prefix="/api/v1")
 app.include_router(catalog.router, prefix="/api/v1")
+app.include_router(decoder.router, prefix="/api/v1")

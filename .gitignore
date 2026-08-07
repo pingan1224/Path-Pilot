@@ -38,3 +38,6 @@ api/data/chunks/
 # Logs
 *.log
 npm-debug.log*
+
+# Scratch renders and working files
+tmp/

@@ -1,0 +1,4 @@
+# Test-only dependencies, kept out of requirements.txt so the deployed image does not
+# carry them. CI installs both; the runtime installs only the first.
+-r requirements.txt
+pytest==9.1.1

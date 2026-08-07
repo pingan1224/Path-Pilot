@@ -2,8 +2,10 @@
 #
 # Two tiers, honestly separated:
 #
-# - `checks` runs on every push: lint, frontend build, and the parts of the eval that
-#   need no external service (golden-set integrity, schema compile). Free, fast, always on.
+# - `checks` runs on every push: lint, frontend build, the unit tests (planning rule
+#   engine and decoder classifier — pure functions, no database or model), and the parts
+#   of the eval that need no external service (label integrity, schema compile). Free,
+#   fast, always on.
 #
 # - `eval-gate` runs the full agent evaluation and fails the build if a metric drops
 #   below threshold (see GATE in api/scripts/run_eval.py: high-stakes escalation recall
@@ -46,19 +48,40 @@ jobs:
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: api/requirements.txt
+          cache-dependency-path: api/requirements-dev.txt
       - name: API deps
         working-directory: api
-        run: pip install -r requirements.txt
-      - name: Schema compiles, golden set imports
+        run: pip install -r requirements-dev.txt
+
+      # The rule engine and the decoder classifier are pure functions over frozen
+      # dataclasses — no database, no model, no network. That is what makes them
+      # affordable on every push, and they are where a wrong planning verdict or a
+      # misread error message gets caught.
+      - name: Unit tests
+        working-directory: api
+        run: python -m pytest tests/ -q
+
+      - name: Schema compiles, case labels are well-formed
         working-directory: api
         run: |
           python -m scripts.schema_sql > /dev/null
           python - <<'PY'
           from eval.golden import BEHAVIOR_CASES, RETRIEVAL_CASES
+          from eval.decoder_cases import CASES as DECODER_CASES
+          from eval.decoder_cases import validate as validate_decoder
+
           ids = [c.id for c in RETRIEVAL_CASES] + [c.id for c in BEHAVIOR_CASES]
           assert len(ids) == len(set(ids)), "duplicate case ids"
-          print(f"golden set OK: {len(RETRIEVAL_CASES)} retrieval + {len(BEHAVIOR_CASES)} behavior")
+
+          # A mislabelled decoder case would be reported as a measurement, so the labels
+          # are checked for internal consistency before anything is measured against them.
+          problems = validate_decoder()
+          assert not problems, "invalid decoder labels:\n  " + "\n  ".join(problems)
+
+          print(
+              f"golden set OK: {len(RETRIEVAL_CASES)} retrieval + "
+              f"{len(BEHAVIOR_CASES)} behavior + {len(DECODER_CASES)} decoder"
+          )
           PY
 
   eval-gate:

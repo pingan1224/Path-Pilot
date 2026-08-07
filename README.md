@@ -35,6 +35,17 @@ Plus a grounded assistant that explains registration blockers in plain language,
 where every fact came from and when it was last verified, and escalates to a human — with a
 case number — whenever it cannot verify an answer.
 
+**The error decoder** is the way in. Paste the message Albert refused you with and it names
+the cause, shows which words in your own text it based that on, quotes the bulletin passage
+that explains it, and checks the published prerequisites against the courses you have
+entered. Nothing has to be filled in first, which is the point: every other view needs a
+dozen courses before it can say anything.
+
+Its most-used answer is a question. "You have a hold on your record" does not say which
+office placed one, so the decoder says both readings are live and asks which office Albert
+names — because reading that as a financial hold would send a student to pay a balance
+while an advising hold went on blocking them.
+
 **Try it:** `/demo` signs you in as any role with one click. Everything there is fictional,
 and each role is blocked from the others' data — which you are invited to test.
 
@@ -66,7 +77,11 @@ Latest full run — see `api/eval/results/` for the reports.
 | Citation coverage on answers | 0.91 | ≥ 0.90 |
 | Restricted-document leakage | 0 | = 0 |
 | Retrieval recall@5 / MRR | 0.91 / 0.815 | ≥ 0.85 / 0.75 |
-| Authorization boundary checks | 27/27 | all |
+| Decoder cases passed | 28/32 | — |
+| Decoder accuracy when it names a cause | 1.00 | = 0 wrong |
+| Decoder coverage (labelled causes named) | 0.83 | ≥ 0.80 |
+| Decoder ambiguity held (hold office never invented) | 1.00 | = 1.00 |
+| Authorization boundary checks | 29/29 | all |
 | Readiness consistency (two implementations) | 48/48 | 0 mismatches |
 | Assistant latency p50 / p95 | 4.7s / 17.2s | reported |
 
@@ -78,6 +93,18 @@ Two ablations, both reported as measured rather than as hoped:
 - **Hybrid BM25 + vector via RRF** — a wash (0.9233/0.8057 against 0.9100/0.8283). It fixes
   two cases and costs ranking quality, so it ships behind a flag with its numbers recorded
   rather than being adopted because hybrid is fashionable.
+- **Decoder gap patterns** — coverage 0.7500 → 0.8333. Allowing a short run of intervening
+  words inside a pattern ("requisite\*not met" catches "the requisites *were* not met") was
+  motivated by one paraphrase case and recovered a held-out case nobody had written a
+  pattern for. Adding that case's wording to the table would have moved the same number
+  without meaning anything, which is why coverage and accuracy are reported separately.
+
+Two of the nine causes — reserved-seat restrictions and time conflicts — have **no policy
+source in the ingested corpus at all**. Retrieval cannot return nothing, so it hands back
+plausible registration prose that never mentions them; the decoder verifies each passage
+actually mentions the cause and, when none does, says there is no source rather than citing
+the nearest neighbours. An unsourced explanation labelled unsourced is usable. The same
+explanation propped up by three unrelated links is not.
 
 ## Data
 
@@ -142,12 +169,14 @@ cd api
 
 ```bash
 cd api
-.venv/Scripts/python -m scripts.authz_probe   # 27 adversarial permission checks
+.venv/Scripts/python -m pytest tests/ -q      # rule engine + decoder classifier, no I/O
+.venv/Scripts/python -m scripts.authz_probe   # 29 adversarial permission checks
 .venv/Scripts/python -m scripts.smoke         # authenticated happy path
+.venv/Scripts/python -m scripts.run_eval --only-decoder   # decoder alone, seconds, no LLM
 .venv/Scripts/python -m scripts.run_eval --gate   # full eval, ~4 min, calls the LLM
 ```
 
-`authz_probe` is the one to read: 16 of its 27 checks assert that a **forbidden** action
+`authz_probe` is the one to read: 16 of its 29 checks assert that a **forbidden** action
 fails. A permissions test that only confirms allowed actions succeed proves nothing about
 the claim being made.
 
@@ -160,9 +189,11 @@ Ablations: `scripts.ablate_chunking`, `scripts.ablate_scope`, `scripts.ablate_hy
 | P0–P4 | Scaffold, schema, API, bounded agent, eval harness | ✅ |
 | RAG | Real corpus, chunking/scope/hybrid ablations | ✅ |
 | P5 / M1 | Server-side identity, role-scoped APIs, login, real catalog + degree rules | ✅ |
-| M2 | Self-reported profile, deterministic planning rule engine | ◻ Next |
-| M3 | Student portal, what-if planner, advisor handoff | ◻ |
-| M4 | Invite-only beta, rate limits, deployment | ◻ |
+| M2 | Self-reported profile, deterministic planning rule engine | ✅ |
+| M3 | Student portal, what-if planner, advisor handoff | ✅ |
+| M4 | Error decoder: paste-and-explain entry, ambiguity as a first-class outcome | ✅ |
+| M5 | Registration mission agent: persistent task state, multi-turn context | ◻ Next |
+| M6 | Invite-only beta, rate limits, deployment | ◻ |
 
 ## Honest limitations
 
@@ -173,6 +204,10 @@ Ablations: `scripts.ablate_chunking`, `scripts.ablate_scope`, `scripts.ablate_hy
   and registration guidance, not a degree audit.
 - **Agent behaviour was tuned against its 35 eval cases.** That set is a regression gate,
   not proof of generalization; held-out cases are needed for that claim.
+- **The decoder recognises the phrasings in its table and no others.** It matches patterns,
+  so a message worded in a way nobody has written down comes back undecoded — 4 of 32
+  labelled cases do, and the eval lists them as the backlog rather than rounding coverage
+  up. Undecoded is the safe failure: it asks for the message verbatim instead of guessing.
 - **The corpus is a dated snapshot.** Every citation carries its fetch date, and the
   staleness machinery says so, but the bulletin can change underneath it.
 - **Model comparison is indicative, n=1 per scenario.** Not a benchmark.

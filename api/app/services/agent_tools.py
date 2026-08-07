@@ -454,8 +454,101 @@ def tool_albert_checklist(ctx: ToolContext, topic: str) -> dict[str, Any]:
     }
 
 
+def tool_decode_registration_error(ctx: ToolContext, error_text: str) -> dict[str, Any]:
+    """Decode a registration error message the student quotes in conversation.
+
+    The model does not classify the error — `app.decoder` does, from a rule table — and
+    this tool hands back the result plus the evidence for it. That split is the same one
+    the planner uses: the verdict is computed so it is repeatable and testable, and the
+    model's job is to narrate it and cite the passages.
+
+    Available in both modes on purpose. Nothing here reads a student record, so it is not
+    one of the tools live mode has to withdraw: the input is text the student pasted, and
+    the only record consulted is their own self-reported coursework, clearly labelled.
+    """
+    from app.decoder import decode
+
+    result = decode(
+        ctx.session,
+        error_text,
+        role=ctx.acting_role.value,
+        user_id=ctx.user_id,
+    )
+    classification = result.classification
+    ctx.seen_source_ids.update(result.source_ids)
+    for passage in result.passages:
+        ctx.retrieval_trace.append(
+            {"chunk_id": int(passage["source_id"].rsplit(":", 1)[1]), "via": "decoder"}
+        )
+    if result.degraded:
+        ctx.degraded_modes.update(result.degraded)
+
+    from app.decoder.patterns import BY_REASON
+
+    payload: dict[str, Any] = {
+        "outcome": classification.outcome.value,
+        "confidence": classification.confidence,
+        "identified_cause": (
+            {
+                "source_id": f"decode:{classification.reason.value}",
+                "reason": classification.reason.value,
+                "label": BY_REASON[classification.reason].label,
+                "what_the_message_says": result.reading,
+                "what_to_do": list(result.what_to_do),
+                "office_that_can_act": result.responsible_office,
+                "matched_in_your_text": [
+                    e.matched for e in classification.candidates[0].evidence
+                ],
+            }
+            if classification.reason is not None
+            else None
+        ),
+        "possible_causes": [
+            {
+                "reason": c.reason.value,
+                "label": BY_REASON[c.reason].label,
+                "what_the_message_says": BY_REASON[c.reason].reading,
+                "matched_in_your_text": [e.matched for e in c.evidence],
+            }
+            for c in classification.candidates[:3]
+        ],
+        "identifiers_found": {
+            "course_codes": list(classification.extracted.course_codes),
+            "class_numbers": list(classification.extracted.class_numbers),
+            "hold_codes": list(classification.extracted.hold_codes),
+            "term": classification.extracted.term,
+        },
+        "questions_to_ask_the_student": [
+            {"question": f.question, "why": f.why} for f in classification.follow_ups
+        ],
+        "policy_passages": result.passages,
+        "no_policy_source": result.no_policy_note,
+        "albert": result.albert,
+    }
+
+    if result.record_check is not None:
+        payload["self_reported_record_check"] = {
+            "performed": result.record_check.performed,
+            "basis": result.record_check.basis,
+            "findings": result.record_check.findings,
+            "note": result.record_check.note,
+        }
+
+    payload["instruction"] = (
+        "Report the decoded cause and cite it. When outcome is 'ambiguous', do NOT pick "
+        "one of the possible causes — name them, explain what separates them, and ask the "
+        "questions above; the message genuinely does not determine which it is, and "
+        "guessing sends the student to the wrong office. When outcome is 'unrecognized', "
+        "say the message could not be decoded and ask for it verbatim. When "
+        "no_policy_source is set, the corpus has no page on this cause: relay the steps "
+        "as general guidance and say plainly that no policy source backs them."
+    )
+    return payload
+
+
 DEMO_TOOL_IMPLS = {
     "search_policy": tool_search_policy,
+    "decode_registration_error": tool_decode_registration_error,
     "get_holds": tool_get_holds,
     "get_degree_progress": tool_get_degree_progress,
     "get_registration_attempts": tool_get_registration_attempts,
@@ -464,6 +557,7 @@ DEMO_TOOL_IMPLS = {
 
 LIVE_TOOL_IMPLS = {
     "search_policy": tool_search_policy,
+    "decode_registration_error": tool_decode_registration_error,
     "get_course_info": tool_get_course_info,
     "get_my_plan": tool_get_my_plan,
     "albert_checklist": tool_albert_checklist,
@@ -528,6 +622,30 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
                 "type": "object",
                 "properties": {"query": {"type": "string", "description": "Search query"}},
                 "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "decode_registration_error",
+            "description": (
+                "Use whenever the student quotes or describes an error the registration "
+                "system gave them — an error code, a refusal message, or their paraphrase "
+                "of one. Classifies the cause from a rule table, returns the evidence it "
+                "matched in their text, the policy passages that explain it, and — when "
+                "the message is consistent with several causes — the question that "
+                "separates them. Pass the error text as the student gave it, unedited."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "error_text": {
+                        "type": "string",
+                        "description": "The error message as the student wrote it.",
+                    }
+                },
+                "required": ["error_text"],
             },
         },
     },

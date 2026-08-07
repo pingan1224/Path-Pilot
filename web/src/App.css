@@ -1347,3 +1347,149 @@
     width: calc(100vw - 1rem);
   }
 }
+
+/* --- error decoder -------------------------------------------------------------- */
+
+.decoder__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.decoder__input {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+.decoder__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.decoder__samples {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-top: 0.9rem;
+}
+.decoder__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+/* The echoed message. Monospaced because it is a quotation of machine output, and the
+   student is comparing it against what is on their other screen. */
+.decoder__echo {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.decoder__legend {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  font-size: 0.76rem;
+}
+
+/* Never colour alone (WCAG 2.1 AA, and the RFP's own UI rule): each evidence strength
+   also differs in weight and underline, so the three are distinguishable in greyscale and
+   to anyone who cannot separate the hues. */
+.ev {
+  border-radius: 3px;
+  padding: 0 0.15em;
+  background: transparent;
+  color: inherit;
+}
+.ev--code {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+.ev--phrase {
+  background: color-mix(in srgb, var(--good) 22%, transparent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+.ev--keyword {
+  background: color-mix(in srgb, var(--warn) 16%, transparent);
+  font-style: italic;
+}
+
+.decoder__reading {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.decoder__office {
+  font-size: 0.88rem;
+}
+.decoder__steps {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+
+/* The two readings of an ambiguous message. Equal width and identical styling, on
+   purpose: any visual hierarchy here would answer the question the card is asking. */
+.decoder__split {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.decoder__option {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  background: var(--surface-2);
+}
+.decoder__option-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.decoder__q {
+  border-left: 3px solid var(--accent);
+  padding: 0.1rem 0 0.1rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.decoder__q-text {
+  font-weight: 600;
+}
+.decoder__q input {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.86rem;
+  max-width: 32rem;
+}
+
+@media (min-width: 720px) {
+  .decoder__split {
+    flex-direction: row;
+  }
+  .decoder__option {
+    flex: 1;
+  }
+}

@@ -190,6 +190,32 @@ def main() -> None:
         detail = f"got {r.status_code}"
     check("finance sees financial categories only", ok, detail)
 
+    # --- error decoder. Open to every signed-in role by design, so the boundary that
+    # matters is not who may call it but whose record it reads: `identity.user.id`'s own
+    # self-reported courses and nobody else's. An advisor decoding a message a student
+    # forwarded must get the policy reading with an empty record check.
+    r = advisor.post(
+        "/api/v1/decoder/decode",
+        json={"text": "ERR_PREREQ: Requisites not met for this class (MASY1-GC 2100)"},
+    )
+    if r.status_code == 200:
+        body = r.json()
+        findings = (body.get("record_check") or {}).get("findings") or []
+        check(
+            "decoder answers an advisor without reading a student's record",
+            body["reason"] == "prerequisite_not_met" and not findings,
+            f"reason={body['reason']} findings={len(findings)}",
+        )
+    else:
+        check(
+            "decoder answers an advisor without reading a student's record",
+            False,
+            f"got {r.status_code}",
+        )
+
+    r = anon.post("/api/v1/decoder/decode", json={"text": "ERR_PREREQ: Requisites not met"})
+    check("decoder rejects an unauthenticated caller", r.status_code == 401, f"got {r.status_code}")
+
     # --- session hygiene
     student.post("/api/v1/auth/logout")
     r = student.get(f"/api/v1/students/{alex_id}/readiness")

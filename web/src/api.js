@@ -68,6 +68,10 @@ export const api = {
     request(`/profile/plan?include_planned=${includePlanned ? "true" : "false"}`),
   whatIf: (courses) =>
     request("/profile/plan/what-if", { method: "POST", body: JSON.stringify({ courses }) }),
+  // decoder — reads the pasted message; `answers` are replies to earlier follow-ups and
+  // are classified together with it rather than tracked as server-side state
+  decode: (text, answers = []) =>
+    request("/decoder/decode", { method: "POST", body: JSON.stringify({ text, answers }) }),
 };
 
 /** "3 hours ago" — the API gives us seconds, the UI needs words. */

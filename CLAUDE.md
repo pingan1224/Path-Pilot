@@ -105,7 +105,8 @@ From the RFP's UI/UX section. Applies to every screen.
 `P0` scaffold · `P1` schema + seed · `P2` API + wire frontend · `P3` RAG bot ·
 `P4` eval harness · `P5` RBAC + audit · `P6` case study + demo
 
-Current phase: **M1 done → M2 (self-reported profile + deterministic planning engine)**
+Current phase: **M4 done (error decoder) → M5 (registration mission agent: persistent task
+state, multi-turn context)**
 
 ## Product direction (as of 2026-08)
 
@@ -127,6 +128,32 @@ portfolio demo. Consequences that shape every decision from here:
   not share a door with real ones.
 - **Disclaimers live where the advice is**, not only in a footer — the assistant panel
   carries one, because that is the text a student screenshots and acts on.
+- **The error decoder is the entry point.** Every other student view needs a record entered
+  before it can say anything, which is a wall in front of someone who is stuck at the
+  registration screen right now. A student with an empty profile lands on the decoder; one
+  with courses entered lands on the planner.
+
+## The decoder (`app/decoder/`, M4)
+
+Three rules, and they are the same rules as everywhere else in a new shape:
+
+- **Classification is computed, not generated.** A rule table in `patterns.py` scores the
+  message; the model narrates the result and may not overrule it. Same reason the planner
+  works this way — a wrong table entry is fixable at one line and covered by a test, and a
+  model that misclassifies is wrong probabilistically.
+- **Ambiguity is an outcome, not a failure.** Generic hold text scores identically for
+  `financial_hold` and `other` by construction, so the decoder returns both readings plus
+  the question that separates them. Never encode a hold-code → office mapping; this project
+  has never seen the university's hold-code table, and a plausible guess sends a student to
+  pay a balance while an advising hold keeps blocking them.
+- **A retrieved passage is not a source until it mentions the cause.** Retrieval always
+  returns its top k, so `must_mention` stems verify each passage and the absence gets
+  reported (`no_policy_note`). Two of the nine causes have no coverage in the corpus at all;
+  citing the nearest neighbours instead would put a fetch date under an unfounded claim.
+
+Follow-up answers are appended to the message and the whole thing is re-classified. There is
+no decoder session state — the second reading cannot differ except through what the student
+added, and there is nothing to expire or diverge between two open tabs.
 
 ## Data layers
 
@@ -136,9 +163,14 @@ portfolio demo. Consequences that shape every decision from here:
   `rule` in (all_of, credits, one_track) and 4 concentration tracks
 - everything `source='demo'` — the seeded scenarios the eval and screenshots depend on
 
-P4 facts: golden set in api/eval/golden.py (15 retrieval + 35 behavior cases); runner is
-scripts/run_eval.py (--gate for thresholds, --only for subsets, --reseed to restore the
-demo db). Official run 2026-08-03: 35/35, high-stakes recall 1.0, leakage 0, gate PASS.
+P4 facts: golden set in api/eval/golden.py (15 retrieval + 35 behavior cases) plus
+api/eval/decoder_cases.py (32 error messages); runner is scripts/run_eval.py (--gate for
+thresholds, --only for subsets, --only-decoder for the model-free part, --reseed to restore
+the demo db). Official run 2026-08-03: 35/35, high-stakes recall 1.0, leakage 0, gate PASS.
+Decoder run 2026-08-06: 28/32, coverage 0.8333, accuracy 1.00, 0 confidently wrong. The
+decoder set's `held_out` family is written to fail — its misses are the table's backlog, and
+adding those exact phrasings to the table is the one way of moving coverage that means
+nothing.
 The behavior prompt was tuned against these cases — treat the set as a regression gate,
 and add held-out cases before claiming generalization.
 

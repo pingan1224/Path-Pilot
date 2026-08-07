@@ -4,6 +4,7 @@ import { api, UnauthenticatedError } from "./api";
 import { ErrorState, Loading } from "./components";
 import AdvisorView from "./views/AdvisorView";
 import AskAlbert from "./views/AskAlbert";
+import DecoderView from "./views/DecoderView";
 import DemoLogin from "./views/DemoLogin";
 import Login from "./views/Login";
 import PlannerView from "./views/PlannerView";
@@ -29,9 +30,10 @@ export default function App() {
   const [error, setError] = useState(null);
   // Advisor drill-down into one advisee; null means "own home view".
   const [viewStudentId, setViewStudentId] = useState(null);
-  // Student tabs. The planner is the product; the dashboard shows the seeded demo record
-  // and only exists for accounts that have one.
-  const [studentTab, setStudentTab] = useState("planner");
+  // Student tabs. The planner is the product; the decoder is the door into it, because it
+  // is the only view that works before anything has been entered. The dashboard shows the
+  // seeded demo record and only exists for accounts that have one. null = not decided yet.
+  const [studentTab, setStudentTab] = useState(null);
 
   useEffect(() => {
     api
@@ -42,6 +44,22 @@ export default function App() {
       })
       .finally(() => setChecking(false));
   }, []);
+
+  // Where a student lands depends on whether there is a record to plan against. Sending
+  // someone with an empty profile to the planner shows them an empty form and asks for a
+  // dozen courses; the decoder answers a question on first contact. Returning students go
+  // straight back to the planner, which is what they came for.
+  useEffect(() => {
+    if (!me) return;
+    if (me.role !== "student") {
+      setStudentTab("planner");
+      return;
+    }
+    api
+      .profileCourses()
+      .then((courses) => setStudentTab(courses.length > 0 ? "planner" : "decoder"))
+      .catch(() => setStudentTab("decoder"));
+  }, [me]);
 
   async function signOut() {
     try {
@@ -111,11 +129,12 @@ export default function App() {
       <div className="subbar">
         <div className="subbar__inner">
           <p className="subbar__question">{ROLE_QUESTIONS[me.role] ?? ""}</p>
-          {me.role === "student" && me.student_id ? (
+          {me.role === "student" ? (
             <nav className="roles" aria-label="Student views">
               {[
+                ["decoder", "Decode an error"],
                 ["planner", "Degree planner"],
-                ["dashboard", "Dashboard (demo)"],
+                ...(me.student_id ? [["dashboard", "Dashboard (demo)"]] : []),
               ].map(([id, label]) => (
                 <button
                   key={id}
@@ -139,7 +158,11 @@ export default function App() {
 
       <main id="main" className="main">
         {me.role === "student" ? (
-          me.student_id && studentTab === "dashboard" ? (
+          studentTab === null ? (
+            <Loading what="your view" />
+          ) : studentTab === "decoder" ? (
+            <DecoderView onOpenPlanner={() => setStudentTab("planner")} />
+          ) : me.student_id && studentTab === "dashboard" ? (
             <StudentView studentId={me.student_id} />
           ) : (
             <PlannerView />

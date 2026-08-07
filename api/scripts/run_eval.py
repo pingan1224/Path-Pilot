@@ -5,10 +5,13 @@
     .venv/Scripts/python -m scripts.run_eval --only B13,B14  # subset of behavior cases
     .venv/Scripts/python -m scripts.run_eval --gate          # exit 1 if thresholds fail
 
-Three parts:
+Four parts:
 1. Retrieval — recall@5 and MRR over 15 labelled queries.
 2. Behavior — 35 agent runs scored on decision, tool choice, citations, and leakage.
-3. Consistency — the set-based readiness (advisor queue) must agree with the per-student
+3. Decoder — 32 labelled error messages scored on coverage, accuracy, ambiguity, and
+   grounding. No model involved, so this part is deterministic and cheap; it runs even
+   under --skip-agent.
+4. Consistency — the set-based readiness (advisor queue) must agree with the per-student
    readiness service for every student; the two implementations were promised to stay in
    step in P2 and this is the promise being kept.
 
@@ -61,6 +64,29 @@ GATE = {
     "over_escalation_rate_max": 0.40,
     "citation_coverage_answered": 0.90,
     "consistency_mismatches": 0,             # hard zero
+    # Decoder. Two hard zeros and one floor, and the floor is deliberately the loose one.
+    #
+    # `confidently_wrong` and `unsafe_hold_reads` are the properties a student is harmed
+    # by: an error read as the wrong cause, or a hold read as financial when the message
+    # never said so. Neither is allowed to happen once.
+    #
+    # `decoder_coverage` is set under the measured value the way the retrieval floors are.
+    # It is not a target: the held_out family is written to fail, and driving this number
+    # up by adding those phrasings to the table is exactly the move the number must not
+    # reward. Coverage rises when the table earns it against phrasings nobody has seen yet.
+    #
+    # Baselines, 2026-08-06:
+    #   literal phrases only    coverage 0.7500  held_out 0/5
+    #   gap patterns            coverage 0.8333  held_out 1/5   <- current, floor under it
+    #
+    # The gap-pattern change is the distinction the floor is meant to protect. It was
+    # motivated by one paraphrase case (D15, "the requisites were not met") and fixed a
+    # held-out case nobody wrote a pattern for (D30, "requires a permission code"). Adding
+    # D30's wording to the table would have moved the same number without meaning anything.
+    "decoder_confidently_wrong": 0,          # hard zero
+    "decoder_unsafe_hold_reads": 0,          # hard zero
+    "decoder_coverage": 0.80,
+    "decoder_ambiguity_held": 1.00,
 }
 
 
@@ -286,7 +312,153 @@ def eval_behavior(session, only: set[str] | None) -> dict:
 
 
 # --------------------------------------------------------------------------------------
-# Part 3 — readiness consistency
+# Part 3 — error decoder
+# --------------------------------------------------------------------------------------
+
+
+def check_decoder(case, result) -> tuple[bool, list[str]]:
+    """Score one decode. Returns (passed, failures)."""
+    failures: list[str] = []
+    classification = result.classification
+    outcome = classification.outcome.value
+    got = classification.reason
+
+    if outcome != case.expect_outcome:
+        failures.append(f"expected {case.expect_outcome}, got {outcome}")
+
+    if case.expect_outcome == "identified" and outcome == "identified":
+        if got is not case.expected:
+            # Prefixed so the aggregate can count these separately. A wrong confident
+            # answer is not one failure among many — it is the failure this eval exists
+            # for, and it must never average away against passing cases.
+            failures.append(
+                f"WRONG: identified {got.value if got else None}, expected {case.expected.value}"
+            )
+
+    if case.expect_outcome == "ambiguous":
+        candidates = {c.reason for c in classification.candidates}
+        missing = [r.value for r in case.expect_candidates if r not in candidates]
+        if missing:
+            failures.append(f"candidates missing {missing}")
+        if not classification.follow_ups:
+            failures.append("ambiguous with no question to resolve it")
+
+    extracted = classification.extracted
+    for label, wanted, actual in (
+        ("course_codes", case.expect_course_codes, extracted.course_codes),
+        ("class_numbers", case.expect_class_numbers, extracted.class_numbers),
+        ("hold_codes", case.expect_hold_codes, extracted.hold_codes),
+    ):
+        for value in wanted:
+            if value not in actual:
+                failures.append(f"{label} missing {value!r} (got {list(actual)})")
+    if case.expect_term and extracted.term != case.expect_term:
+        failures.append(f"term {extracted.term!r} != {case.expect_term!r}")
+
+    # Grounding, both directions. A cause the corpus covers must arrive with a passage;
+    # a cause it does not cover must arrive with the absence stated rather than padded.
+    if outcome == "identified":
+        if case.expect_no_policy:
+            if result.passages:
+                failures.append(
+                    f"expected no grounded policy, got {len(result.passages)} passage(s)"
+                )
+            if not result.no_policy_note:
+                failures.append("uncovered cause did not disclose the missing source")
+        elif not result.passages:
+            failures.append("identified with no grounded policy passage")
+
+    return (not failures, failures)
+
+
+def eval_decoder(session) -> dict:
+    from app.decoder import decode
+    from eval.decoder_cases import CASES, family_counts
+    from eval.decoder_cases import validate as validate_decoder_labels
+
+    problems = validate_decoder_labels()
+    if problems:
+        raise SystemExit("Invalid decoder labels:\n  " + "\n  ".join(problems))
+
+    rows = []
+    for case in CASES:
+        result = decode(session, case.text, role="student")
+        passed, failures = check_decoder(case, result)
+        classification = result.classification
+        rows.append(
+            {
+                "id": case.id,
+                "family": case.family,
+                "text": case.text,
+                "expect_outcome": case.expect_outcome,
+                "expected": case.expected.value if case.expected else None,
+                "outcome": classification.outcome.value,
+                "reason": classification.reason.value if classification.reason else None,
+                "confidence": classification.confidence,
+                "safety_critical": case.safety_critical,
+                "passages": len(result.passages),
+                "no_policy": bool(result.no_policy_note),
+                "follow_ups": [f.question for f in classification.follow_ups],
+                "passed": passed,
+                "failures": failures,
+                "note": case.note,
+            }
+        )
+
+    labelled = [r for r in rows if r["expect_outcome"] == "identified"]
+    named = [r for r in labelled if r["outcome"] == "identified"]
+    wrong = [r for r in rows if any(f.startswith("WRONG") for f in r["failures"])]
+
+    # Coverage and accuracy are reported separately on purpose. A decoder that names
+    # nothing has perfect accuracy, and one that names everything has perfect coverage;
+    # only the pair says whether it is useful.
+    coverage = len(named) / len(labelled) if labelled else None
+    accuracy = (len(named) - len(wrong)) / len(named) if named else None
+
+    ambiguous_cases = [r for r in rows if r["expect_outcome"] == "ambiguous"]
+    ambiguity_held = (
+        sum(1 for r in ambiguous_cases if r["outcome"] == "ambiguous")
+        / len(ambiguous_cases)
+        if ambiguous_cases
+        else None
+    )
+
+    # The safety property, stated as a count rather than a rate: how many times a message
+    # that does not name a hold's office got read as one that does.
+    unsafe_hold_reads = sum(
+        1
+        for r in rows
+        if r["safety_critical"]
+        and r["expect_outcome"] == "ambiguous"
+        and r["outcome"] == "identified"
+    )
+
+    by_family: dict[str, list[dict]] = {}
+    for row in rows:
+        by_family.setdefault(row["family"], []).append(row)
+
+    return {
+        "cases": rows,
+        "counts": family_counts(),
+        "passed": sum(1 for r in rows if r["passed"]),
+        "total": len(rows),
+        "coverage": round(coverage, 4) if coverage is not None else None,
+        "accuracy_when_named": round(accuracy, 4) if accuracy is not None else None,
+        "confidently_wrong": len(wrong),
+        "ambiguity_held": round(ambiguity_held, 4) if ambiguity_held is not None else None,
+        "unsafe_hold_reads": unsafe_hold_reads,
+        "families": {
+            name: {
+                "cases": len(group),
+                "passed": sum(1 for r in group if r["passed"]),
+            }
+            for name, group in sorted(by_family.items())
+        },
+    }
+
+
+# --------------------------------------------------------------------------------------
+# Part 4 — readiness consistency
 # --------------------------------------------------------------------------------------
 
 
@@ -314,7 +486,7 @@ def eval_consistency(session) -> dict:
 # --------------------------------------------------------------------------------------
 
 
-def apply_gate(retrieval, behavior, consistency) -> list[str]:
+def apply_gate(retrieval, behavior, decoder, consistency) -> list[str]:
     problems = []
     if retrieval and retrieval["recall_at_5"] < GATE["retrieval_recall_at_5"]:
         problems.append(f"recall@5 {retrieval['recall_at_5']} < {GATE['retrieval_recall_at_5']}")
@@ -332,12 +504,30 @@ def apply_gate(retrieval, behavior, consistency) -> list[str]:
         cc = behavior["citation_coverage_answered"]
         if cc is not None and cc < GATE["citation_coverage_answered"]:
             problems.append(f"citation coverage {cc} < {GATE['citation_coverage_answered']}")
+    if decoder:
+        if decoder["confidently_wrong"] > GATE["decoder_confidently_wrong"]:
+            problems.append(
+                f"decoder confidently wrong: {decoder['confidently_wrong']} (must be 0)"
+            )
+        if decoder["unsafe_hold_reads"] > GATE["decoder_unsafe_hold_reads"]:
+            problems.append(
+                f"decoder named a hold's office from a message that did not: "
+                f"{decoder['unsafe_hold_reads']} (must be 0)"
+            )
+        cov = decoder["coverage"]
+        if cov is not None and cov < GATE["decoder_coverage"]:
+            problems.append(f"decoder coverage {cov} < {GATE['decoder_coverage']}")
+        held = decoder["ambiguity_held"]
+        if held is not None and held < GATE["decoder_ambiguity_held"]:
+            problems.append(
+                f"decoder ambiguity held {held} < {GATE['decoder_ambiguity_held']}"
+            )
     if consistency and consistency["mismatches"]:
         problems.append(f"readiness consistency mismatches: {len(consistency['mismatches'])}")
     return problems
 
 
-def write_report(retrieval, behavior, consistency, gate_problems, elapsed_s) -> Path:
+def write_report(retrieval, behavior, decoder, consistency, gate_problems, elapsed_s) -> Path:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
 
@@ -404,6 +594,49 @@ def write_report(retrieval, behavior, consistency, gate_problems, elapsed_s) -> 
                 lines.append(f"- **{r['id']}** ({r['decision']}): {'; '.join(r['failures'])}")
         lines.append("")
 
+    if decoder:
+        lines += [
+            f"## Error decoder ({decoder['total']} labelled messages · {decoder['counts']})",
+            "",
+            "| metric | value | gate |",
+            "|---|---|---|",
+            f"| cases passed | {decoder['passed']}/{decoder['total']} | — |",
+            f"| coverage (labelled causes named) | {decoder['coverage']} | ≥ {GATE['decoder_coverage']} |",
+            f"| accuracy when named | {decoder['accuracy_when_named']} | reported |",
+            f"| confidently wrong | {decoder['confidently_wrong']} | = 0 |",
+            f"| ambiguity held | {decoder['ambiguity_held']} | ≥ {GATE['decoder_ambiguity_held']} |",
+            f"| hold office invented | {decoder['unsafe_hold_reads']} | = 0 |",
+            "",
+            "### By family",
+            "",
+            "| family | cases | passed |",
+            "|---|---|---|",
+        ]
+        for name, stats in decoder["families"].items():
+            lines.append(f"| {name} | {stats['cases']} | {stats['passed']} |")
+
+        misses = [
+            r
+            for r in decoder["cases"]
+            if r["expect_outcome"] == "identified" and r["outcome"] != "identified"
+        ]
+        lines += ["", f"### Not decoded ({len(misses)}) — the table's backlog", ""]
+        if not misses:
+            lines.append("None.")
+        for r in misses:
+            lines.append(f"- **{r['id']}** ({r['family']}) {r['text']!r} → {r['outcome']}")
+            lines.append(f"  - wanted: {r['expected']}")
+
+        other_failures = [
+            r for r in decoder["cases"] if not r["passed"] and r not in misses
+        ]
+        lines += ["", f"### Other failures ({len(other_failures)})", ""]
+        if not other_failures:
+            lines.append("None.")
+        for r in other_failures:
+            lines.append(f"- **{r['id']}**: {'; '.join(r['failures'])}")
+        lines.append("")
+
     if consistency:
         lines += [
             "## Readiness consistency (set-based vs per-student)",
@@ -417,28 +650,44 @@ def write_report(retrieval, behavior, consistency, gate_problems, elapsed_s) -> 
 
     report_path = RESULTS_DIR / f"report-{stamp}.md"
     report_path.write_text("\n".join(lines), encoding="utf-8")
-    (RESULTS_DIR / "latest.json").write_text(
-        json.dumps(
-            {
-                "stamp": stamp,
-                "model": settings.chat_model,
-                "retrieval": retrieval,
-                "behavior": behavior,
-                "consistency": consistency,
-                "gate_problems": gate_problems,
-            },
-            indent=2,
-            ensure_ascii=False,
-            default=str,
-        ),
-        encoding="utf-8",
-    )
+
+    # latest.json is the record of the last COMPLETE run, and a partial run must not
+    # become it. Writing one part and nulling the rest looked harmless until
+    # `--only-decoder` erased the retrieval and behavior numbers from the only file that
+    # held them; merging instead would be worse, presenting an old measurement as current.
+    # The timestamped report above is still written either way, so nothing is lost.
+    if all(part is not None for part in (retrieval, behavior, decoder, consistency)):
+        (RESULTS_DIR / "latest.json").write_text(
+            json.dumps(
+                {
+                    "stamp": stamp,
+                    "model": settings.chat_model,
+                    "retrieval": retrieval,
+                    "behavior": behavior,
+                    "decoder": decoder,
+                    "consistency": consistency,
+                    "gate_problems": gate_problems,
+                },
+                indent=2,
+                ensure_ascii=False,
+                default=str,
+            ),
+            encoding="utf-8",
+        )
+    else:
+        print("  (partial run — latest.json left as the last complete run)")
     return report_path
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--skip-agent", action="store_true")
+    parser.add_argument("--skip-decoder", action="store_true")
+    parser.add_argument(
+        "--only-decoder",
+        action="store_true",
+        help="decoder part alone — no model calls, seconds not minutes",
+    )
     parser.add_argument("--only", type=str, default=None, help="comma-separated behavior case ids")
     parser.add_argument("--gate", action="store_true", help="exit 1 when thresholds fail")
     parser.add_argument("--reseed", action="store_true", help="reset + re-embed the demo db afterwards")
@@ -448,30 +697,49 @@ def main() -> None:
     only = set(args.only.split(",")) if args.only else None
 
     with get_sessionmaker()() as session:
-        print(f"part 1/3: retrieval ({len(RETRIEVAL_CASES)} cases, {family_counts()}) ...")
-        retrieval = eval_retrieval(session)
-        print(f"  recall@5={retrieval['recall_at_5']}  MRR={retrieval['mrr']}")
-        for name, stats in retrieval["families"].items():
-            print(f"    {name:<12} n={stats['cases']:<3} recall={stats['recall_at_5']:<8} mrr={stats['mrr']}")
-
+        retrieval = None
         behavior = None
-        if not args.skip_agent:
-            print(f"part 2/3: agent behavior ({settings.chat_model}) ...")
-            behavior = eval_behavior(session, only)
+        decoder = None
+        consistency = None
+
+        if not args.only_decoder:
+            print(f"part 1/4: retrieval ({len(RETRIEVAL_CASES)} cases, {family_counts()}) ...")
+            retrieval = eval_retrieval(session)
+            print(f"  recall@5={retrieval['recall_at_5']}  MRR={retrieval['mrr']}")
+            for name, stats in retrieval["families"].items():
+                print(f"    {name:<12} n={stats['cases']:<3} recall={stats['recall_at_5']:<8} mrr={stats['mrr']}")
+
+            if not args.skip_agent:
+                print(f"part 2/4: agent behavior ({settings.chat_model}) ...")
+                behavior = eval_behavior(session, only)
+                print(
+                    f"  passed {behavior['passed']}/{behavior['total']}  "
+                    f"hs-recall={behavior['high_stakes_escalation_recall']}  "
+                    f"over-esc={behavior['over_escalation_rate']}  "
+                    f"leaks={behavior['leakage_failures']}"
+                )
+
+        if not args.skip_decoder:
+            print("part 3/4: error decoder ...")
+            decoder = eval_decoder(session)
             print(
-                f"  passed {behavior['passed']}/{behavior['total']}  "
-                f"hs-recall={behavior['high_stakes_escalation_recall']}  "
-                f"over-esc={behavior['over_escalation_rate']}  "
-                f"leaks={behavior['leakage_failures']}"
+                f"  passed {decoder['passed']}/{decoder['total']}  "
+                f"coverage={decoder['coverage']}  "
+                f"accuracy={decoder['accuracy_when_named']}  "
+                f"wrong={decoder['confidently_wrong']}  "
+                f"unsafe-hold={decoder['unsafe_hold_reads']}"
             )
+            for name, stats in decoder["families"].items():
+                print(f"    {name:<14} {stats['passed']}/{stats['cases']}")
 
-        print("part 3/3: readiness consistency ...")
-        consistency = eval_consistency(session)
-        print(f"  {consistency['students']} students, {len(consistency['mismatches'])} mismatches")
+        if not args.only_decoder:
+            print("part 4/4: readiness consistency ...")
+            consistency = eval_consistency(session)
+            print(f"  {consistency['students']} students, {len(consistency['mismatches'])} mismatches")
 
-    gate_problems = apply_gate(retrieval, behavior, consistency)
+    gate_problems = apply_gate(retrieval, behavior, decoder, consistency)
     elapsed = (datetime.now(UTC) - started).total_seconds()
-    report_path = write_report(retrieval, behavior, consistency, gate_problems, elapsed)
+    report_path = write_report(retrieval, behavior, decoder, consistency, gate_problems, elapsed)
     print(f"\nreport: {report_path}")
     print("gate  :", "PASS" if not gate_problems else f"FAIL — {'; '.join(gate_problems)}")
 

@@ -46,6 +46,15 @@ office placed one, so the decoder says both readings are live and asks which off
 names — because reading that as a financial hold would send a student to pay a balance
 while an advising hold went on blocking them.
 
+**A registration mission** is the task that entry point leads into: five steps from an
+empty record to a summary you can send your advisor, resumable weeks later. Its progress is
+never stored — it is recomputed from what you have entered, chosen, and decided, so it
+cannot drift out of step with the facts underneath it.
+
+The assistant can suggest courses for it and can report what is left. It cannot confirm one,
+accept a risk, or finish the mission, and it cannot un-finish one either. Those are actions
+with a person's name on them.
+
 **Try it:** `/demo` signs you in as any role with one click. Everything there is fictional,
 and each role is blocked from the others' data — which you are invited to test.
 
@@ -82,6 +91,8 @@ Latest full run — see `api/eval/results/` for the reports.
 | Decoder coverage (labelled causes named) | 0.83 | ≥ 0.80 |
 | Decoder ambiguity held (hold office never invented) | 1.00 | = 1.00 |
 | Authorization boundary checks | 29/29 | all |
+| Mission end-to-end probe | 33/33 | all |
+| Unit tests (rule engine, decoder, missions) | 110/110 | all |
 | Readiness consistency (two implementations) | 48/48 | 0 mismatches |
 | Assistant latency p50 / p95 | 4.7s / 17.2s | reported |
 
@@ -171,6 +182,7 @@ cd api
 cd api
 .venv/Scripts/python -m pytest tests/ -q      # rule engine + decoder classifier, no I/O
 .venv/Scripts/python -m scripts.authz_probe   # 29 adversarial permission checks
+.venv/Scripts/python -m scripts.mission_probe # 33 checks: a mission end to end, plus cheating at it
 .venv/Scripts/python -m scripts.smoke         # authenticated happy path
 .venv/Scripts/python -m scripts.run_eval --only-decoder   # decoder alone, seconds, no LLM
 .venv/Scripts/python -m scripts.run_eval --gate   # full eval, ~4 min, calls the LLM
@@ -192,8 +204,9 @@ Ablations: `scripts.ablate_chunking`, `scripts.ablate_scope`, `scripts.ablate_hy
 | M2 | Self-reported profile, deterministic planning rule engine | ✅ |
 | M3 | Student portal, what-if planner, advisor handoff | ✅ |
 | M4 | Error decoder: paste-and-explain entry, ambiguity as a first-class outcome | ✅ |
-| M5 | Registration mission agent: persistent task state, multi-turn context | ◻ Next |
-| M6 | Invite-only beta, rate limits, deployment | ◻ |
+| M5 | Registration mission: derived task state, a decidable end, agent proposes only | ✅ |
+| M6 | Sequence planner: constraint solving over terms, offering patterns, credit caps | ◻ Next |
+| M7 | Invite-only beta, rate limits, deployment | ◻ |
 
 ## Honest limitations
 
@@ -204,6 +217,10 @@ Ablations: `scripts.ablate_chunking`, `scripts.ablate_scope`, `scripts.ablate_hy
   and registration guidance, not a degree audit.
 - **Agent behaviour was tuned against its 35 eval cases.** That set is a regression gate,
   not proof of generalization; held-out cases are needed for that claim.
+- **A mission proves preparation, not availability.** Finishing one means every published
+  rule the tool can check is satisfied or knowingly accepted. It says nothing about whether
+  a seat exists, whether your appointment has opened, or whether a hold is waiting — none
+  of which UAX can see.
 - **The decoder recognises the phrasings in its table and no others.** It matches patterns,
   so a message worded in a way nobody has written down comes back undecoded — 4 of 32
   labelled cases do, and the eval lists them as the backlog rather than rounding coverage

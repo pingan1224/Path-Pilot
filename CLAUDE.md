@@ -105,8 +105,8 @@ From the RFP's UI/UX section. Applies to every screen.
 `P0` scaffold · `P1` schema + seed · `P2` API + wire frontend · `P3` RAG bot ·
 `P4` eval harness · `P5` RBAC + audit · `P6` case study + demo
 
-Current phase: **M4 done (error decoder) → M5 (registration mission agent: persistent task
-state, multi-turn context)**
+Current phase: **M5 done (registration mission) → M6 (sequence planner: constraint solving
+over terms, offering patterns, and credit caps)**
 
 ## Product direction (as of 2026-08)
 
@@ -154,6 +154,35 @@ Three rules, and they are the same rules as everywhere else in a new shape:
 Follow-up answers are appended to the message and the whole thing is re-classified. There is
 no decoder session state — the second reading cannot differ except through what the student
 added, and there is nothing to expire or diverge between two open tabs.
+
+## Registration missions (`app/missions/`, M5)
+
+A resumable task: get ready to register for one term, in five steps, each needing a human
+act. What it gives the rest of the system is a **termination condition** — every turn
+before this was a stateless question and answer, so "done" was not a concept the agent had.
+
+- **No status column, anywhere.** Progress is recomputed from facts on every read
+  (`steps.compute_state`). A stored status is a second source of truth that drifts from the
+  profile and the candidate list, and drifts invisibly, because it still looks
+  authoritative while it lies. `missions`, `mission_candidates`, and `mission_decisions`
+  store only things somebody did at a time.
+- **The agent proposes; only the student decides.** `propose_mission_candidates` writes
+  rows with `confirmed_at IS NULL` and has no parameter that could change that — the same
+  design as no tool accepting a `student_id`. This boundary has two directions and both are
+  probed: a proposal cannot complete a step, and a proposal cannot un-complete a finished
+  mission either (a pending suggestion is not a material change).
+- **Termination is decidable.** Every blocker on the *confirmed* courses is resolved or
+  accepted by name. Degree-level gaps are reported separately and never block, or the
+  mission would be unfinishable for anyone who has not already graduated.
+- **Acceptance is per finding, by key.** `Finding.key` is stable across re-evaluations and
+  independent of both verdict and wording, so "I know about this one" still points at the
+  same thing next week. When the wording changes the acceptance holds but is flagged, and a
+  handoff produced before a later change re-opens its step rather than being flagged —
+  that document gets sent to a human who acts on it.
+
+Add a step only if a student can work on it. An earlier draft had a sixth ("run the
+prerequisite checks") that completed itself the instant the previous one did; a step nobody
+can act on is a progress bar pretending to be a checklist.
 
 ## Data layers
 

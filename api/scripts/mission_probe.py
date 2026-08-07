@@ -322,6 +322,38 @@ def main() -> None:
     )
     check("MISSION COMPLETE", mission["complete"] is True, f"current={mission['current_step']}")
 
+    # --- the assistant must not be able to un-finish it either.
+    #
+    # The obvious direction of this boundary is "a proposal cannot complete a step". The
+    # direction that actually broke was the reverse: a pending suggestion counted as a
+    # material change, so the assistant could reopen a finished mission just by suggesting
+    # something. Found by running the real agent against a completed mission.
+    with get_sessionmaker()() as session:
+        from app.models import UserRole
+        from app.services.agent_tools import ToolContext, tool_propose_mission_candidates
+
+        ctx = ToolContext(
+            session=session, acting_role=UserRole.student, subject_student_id=None,
+            user_id=user_id, mode="live",
+        )
+        tool_propose_mission_candidates(
+            ctx, courses=[{"course_code": "MASY1-GC 1700", "why": "an idea for later"}]
+        )
+    mission = student.get(f"/api/v1/missions/{mission_id}").json()
+    check(
+        "A PROPOSAL CANNOT UN-FINISH A COMPLETED MISSION",
+        mission["complete"] is True,
+        f"complete={mission['complete']} current={mission['current_step']}",
+    )
+    check(
+        "but the suggestion is still visible for the student to consider",
+        any(
+            c["course_code"] == "MASY1-GC 1700" and c["state"] == "proposed"
+            for c in mission["candidates"]
+        ),
+        "",
+    )
+
     # --- and a later change must un-finish it.
     #
     # Confirming another course rather than re-saving a profile row: an idempotent PUT that

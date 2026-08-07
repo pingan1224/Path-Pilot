@@ -124,6 +124,34 @@ CASES: list[IntakeCase] = [
         note="The rows that decide whether the reader is honest rather than confident.",
     ),
     IntakeCase(
+        "T06",
+        "transcript_sis_export.pdf",
+        "SIS export, whole row on one line",
+        rows=(
+            ExpectedRow("MASY1-GC 1015", M, "Fall 2024", "A-"),
+            # Title long enough to wrap, so the code lands on its own line with its title
+            # stranded above it — the case T01 cannot produce, because there every field is
+            # already on its own line.
+            ExpectedRow("MASY1-GC 1115", M, "Fall 2024", "A-"),
+            ExpectedRow("MASY1-GC 1500", M, "Spring 2025", "A"),
+            ExpectedRow("MASY1-GC 1600", M, "Spring 2025", "A-"),
+            # Enrolled, ungraded. The term's summary line directly below it reads
+            # `Current 12.0 0.0 0.0 0.000 0.000` — six numbers where a grade would be.
+            ExpectedRow("MASY1-GC 2400", R, "Fall 2025", None, CourseState.in_progress),
+        ),
+        note=(
+            "Modelled on the first real transcript this reader ever saw (2026-08-07), which "
+            "was not copied into the repo — a genuine NYU SPS export carries a name, a "
+            "birthdate and a student number. Its *shape* is what is reproduced here, and it "
+            "differs from all four reasoned-about layouts: the whole row arrives on one line "
+            "with the title first, the code carries a section suffix (`-400`), long titles "
+            "wrap away from their code, and every term ends with a GPA block whose six "
+            "numbers sit exactly where a credits-and-grade parser is looking. The reader "
+            "handled the real document 12/12 on the first attempt; this case is what keeps "
+            "that true."
+        ),
+    ),
+    IntakeCase(
         "T05",
         "transcript_scanned.pdf",
         "no text layer",

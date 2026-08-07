@@ -8,12 +8,15 @@ this project already ingested, and the names, grades, and layouts are made up. T
 same rule the demo students follow, and it matters more here: a transcript is the most
 sensitive document this product will ever touch, so the test corpus must not contain one.
 
-Three layouts, chosen because they fail differently rather than to pad the count:
+Four layouts, chosen because they fail differently rather than to pad the count:
 
-- `table`     — ruled columns, the shape a student information system exports
-- `labelled`  — "Course: X / Grade: Y" prose lines, the shape of an advising letter
-- `twocolumn` — two terms side by side, which is where naive line-based parsing breaks,
-                because a single extracted line contains two unrelated courses
+- `table`      — ruled columns, the shape a student information system exports
+- `labelled`   — "Course: X / Grade: Y" prose lines, the shape of an advising letter
+- `twocolumn`  — two terms side by side, which is where naive line-based parsing breaks,
+                 because a single extracted line contains two unrelated courses
+- `sis_export` — the shape a real Albert export has: the whole row on one line with the
+                 title first, a section suffix on the code, wrapped titles, and a per-term
+                 GPA summary block that looks like a course row to a careless parser
 
 `messy` adds the cases that decide whether the parser is honest: a course code that is not
 in the catalog, a grade the scale does not contain, an in-progress row with no grade at all,
@@ -149,6 +152,89 @@ def build_messy() -> None:
     )
 
 
+def build_sis_export() -> None:
+    """The shape a real Albert unofficial-transcript export actually has.
+
+    Added 2026-08-07 after the reader met its first real transcript. The other four layouts
+    were reasoned from how PDFs extract; this one is drawn from a genuine NYU SPS export,
+    and it differs from all of them in four ways that each break a different assumption:
+
+    - **The whole row is one extracted line**, title first: `Database Management
+      MASY1-GC 1500-400 3.0 A-`. The `table` fixture emits one cell per line, so a parser
+      tuned only on that has never seen the fields arrive together.
+    - **The course code carries a section suffix** (`-400`) that is not part of the code.
+    - **Long titles wrap**, putting the code on a line of its own with its title stranded
+      one or two lines above it.
+    - **Each term ends with a GPA summary block** — `Current 12.0 12.0 12.0 45.003 3.750` —
+      six numbers on a line, sitting exactly where a credits-and-grade parser is looking.
+      This is the row most likely to be read as a course.
+
+    Everything identifying is invented, as everywhere else here: the real document that
+    prompted this fixture carried a name, a birthdate, and a student number, and was never
+    copied into this repository. What was copied is the shape.
+    """
+    styles = getSampleStyleSheet()
+    story = [
+        Paragraph("Unofficial", styles["Normal"]),
+        Paragraph(
+            "Name: Jordan Sample<br/>Birthdate (MM/DD): 01/01<br/>"
+            "Print Date: 08/03/2026<br/>Student ID: N00000001",
+            styles["Normal"],
+        ),
+        Paragraph("Fictional University", styles["Normal"]),
+        Paragraph("Beginning of Graduate Record", styles["Normal"]),
+        Spacer(1, 0.12 * inch),
+    ]
+
+    terms = [
+        (
+            "Fall 2024",
+            [
+                ("Quantitative Methods for Business Analysis", "MASY1-GC 1015-400", "3.0", "A-"),
+                # Long enough to wrap, stranding the code on its own line.
+                ("Management Skills for Technology Professionals", "MASY1-GC 1115-400", "3.0", "A-"),
+            ],
+            "12.0 12.0 12.0 45.003 3.750",
+            "12.0 12.0 12.0 45.003 3.750",
+        ),
+        (
+            "Spring 2025",
+            [
+                ("Database Management", "MASY1-GC 1500-400", "3.0", "A"),
+                ("Managing Technical Projects", "MASY1-GC 1600-400", "3.0", "A-"),
+            ],
+            "12.0 12.0 12.0 47.001 3.917",
+            "24.0 24.0 24.0 92.004 3.834",
+        ),
+        (
+            # In progress: credits enrolled, nothing earned, no grade column at all.
+            "Fall 2025",
+            [("Foundations of Business Informatics", "MASY1-GC 2400-400", "3.0", "")],
+            "12.0 0.0 0.0 0.000 0.000",
+            "36.0 24.0 24.0 92.004 3.834",
+        ),
+    ]
+
+    for term, rows, current, cumulative in terms:
+        story += [
+            Paragraph(term, styles["Normal"]),
+            Paragraph("School of Professional Studies", styles["Normal"]),
+            Paragraph("Master of Science", styles["Normal"]),
+            Paragraph("Major: Management and Analytics", styles["Normal"]),
+        ]
+        for title, code, credits, grade in rows:
+            story.append(Paragraph(f"{title} {code} {credits} {grade}".rstrip(), styles["Normal"]))
+        story += [
+            Paragraph("AHRS EHRS QHRS QPTS GPA", styles["Normal"]),
+            Paragraph(f"Current {current}", styles["Normal"]),
+            Paragraph(f"Cumulative {cumulative}", styles["Normal"]),
+            Spacer(1, 0.1 * inch),
+        ]
+
+    story.append(Paragraph("End of Graduate Record", styles["Normal"]))
+    _doc("transcript_sis_export.pdf").build(story)
+
+
 def build_no_text_layer() -> None:
     """A page with no extractable text — stands in for a scanned transcript.
 
@@ -171,6 +257,7 @@ def main() -> None:
     build_labelled()
     build_twocolumn()
     build_messy()
+    build_sis_export()
     build_no_text_layer()
     for path in sorted(HERE.glob("transcript_*.pdf")):
         print(f"  {path.name:32} {path.stat().st_size:>7,} bytes")

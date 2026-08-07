@@ -124,7 +124,7 @@ Latest full run — see `api/eval/results/` for the reports.
 | Decoder ambiguity held (hold office never invented) | 1.00 | = 1.00 |
 | Authorization boundary checks | 36/36 | all |
 | Mission end-to-end probe | 37/37 | all |
-| Transcript intake (5 layouts, 18 rows) | recall 1.00, 0 wrong | 0 silently wrong |
+| Transcript intake (6 layouts incl. a real SIS export shape, 23 rows) | recall 1.00, 0 wrong | 0 silently wrong |
 | Unit tests (rule engine, decoder, missions, sequence, intake, search budget, faults) | 252/252 | all |
 | Fault-injection scenarios | 6/6 | all |
 | Degradation coverage (declared modes ever executed) | **4/4** *(was 0/4 before M9)* | all |
@@ -419,10 +419,24 @@ actually costs).
   and registration guidance, not a degree audit.
 - **Agent behaviour was tuned against its 35 eval cases.** That set is a regression gate,
   not proof of generalization; held-out cases are needed for that claim.
-- **Transcript reading has no OCR, so a scan cannot be read.** Measured over four layouts:
+- **Transcript reading has no OCR, so a scan cannot be read.** Measured over five layouts:
   text-layer PDFs parse reliably, and a scan is cleanly detectable — so it is refused with an
   explanation rather than guessed at. Term association in side-by-side column layouts is
-  genuinely ambiguous and the term is dropped rather than inferred.
+  genuinely ambiguous and the term is dropped rather than inferred. The one real transcript
+  this has been tried on turned out to *have* a text layer, which is weak evidence that the
+  scanned case is rarer than assumed — and one document is not evidence of much, so OCR
+  stays unbuilt rather than being justified by a sample of one in either direction.
+- **The reader has now met exactly one real transcript, and read it 12/12.** A genuine NYU
+  SPS export, in a layout none of the four invented fixtures had: the whole row on one
+  extracted line with the title first, a section suffix on the course code, long titles
+  wrapping away from their code, and a per-term GPA block (`Current 12.0 12.0 12.0 45.003
+  3.750`) whose six numbers sit exactly where a credits-and-grade parser is looking. It
+  read every row, put the four ungraded in-progress rows in `needs_review`, ignored the
+  summary blocks, and its credit totals reconciled against the transcript's own. The
+  code-anchored strategy was chosen from synthetic evidence and the first real document did
+  not dent it. **That document is not in this repository** — a real transcript carries a
+  name, a birthdate and a student number. `transcript_sis_export.pdf` reproduces its shape
+  with invented data, so the layout is covered permanently and the record is not.
 - **A sequence is only as good as the offering data, and a third of the catalog has none.**
   18 of 57 courses do not say when they run and 2 say "occasionally". Those placements are
   marked as guesses rather than quietly treated as available every term, and the per-term

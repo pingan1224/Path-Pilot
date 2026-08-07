@@ -193,12 +193,20 @@ the product (typing a dozen courses before anything else works) without changing
 data *is*: a transcript-sourced course enters `profile_courses` as a self-reported claim,
 identical to a typed one, with no "imported" marker — the file was never verified either.
 
-**There is no OCR, by measurement rather than omission.** An experiment over four synthetic
+**There is no OCR, by measurement rather than omission.** An experiment over five synthetic
 layouts found text-layer PDFs parse well and a scan is cleanly detectable at zero extractable
 characters. A scanned upload can therefore be answered honestly today ("no text layer, export
 a text PDF from Albert instead") without a tesseract system dependency and the
 character-confusion error class that would need its own accuracy eval. Revisit only on
-evidence that students actually upload scans.
+evidence that students actually upload scans — and note that the first real transcript
+offered as a scan turned out to have a text layer, which is one data point *against*, not
+enough to conclude anything either way.
+
+**Real transcripts are never committed.** The reader met its first one on 2026-08-07 and
+read it 12/12 — a genuine Albert export, in a shape none of the four invented fixtures had.
+The document carried a name, birthdate and student number and stayed out of the repo;
+`transcript_sis_export.pdf` (case T06) reproduces its *layout* with invented data. Do the
+same with any future one: copy the shape, never the record.
 
 **Parsing anchors on the course code**, because that is the only field every layout preserves
 intact. Three measured findings drove this and are all defended by tests:

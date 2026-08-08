@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { ErrorNote, Eyebrow, INPUT_CLASS, Muted, Tone, WarnNote } from "@/components/nocturne"
 
 /**
  * The registration mission: a resumable task, shown as the five steps it actually is.
@@ -41,43 +42,6 @@ const STEP_META = {
 }
 
 const TERM_SUGGESTIONS = ["Fall 2026", "Spring 2027", "Summer 2027"]
-
-function Eyebrow({ children }) {
-  return (
-    <p className="text-[11px] font-medium tracking-[0.12em] text-subtle uppercase">
-      {children}
-    </p>
-  )
-}
-
-function Tone({ tone, children }) {
-  const text = { good: "text-success", warn: "text-warning", neutral: "text-subtle" }[tone]
-  const border = {
-    good: "border-success",
-    warn: "border-warning",
-    neutral: "border-border",
-  }[tone]
-  return (
-    <span className={`rounded border px-2 py-0.5 text-[11px] ${text} ${border}`}>
-      {children}
-    </span>
-  )
-}
-
-function ErrorNote({ children }) {
-  return (
-    <p
-      role="alert"
-      className="rounded-md border border-destructive/45 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-destructive"
-    >
-      {children}
-    </p>
-  )
-}
-
-const INPUT_CLASS =
-  "min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-2 text-[14px] " +
-  "outline-none placeholder:text-subtle focus-visible:ring-2 focus-visible:ring-primary/40"
 
 export default function MissionView({ onOpenPlanner }) {
   const [missions, setMissions] = useState(null)
@@ -315,11 +279,7 @@ function Mission({ mission, busy, act, onMission, onOpenPlanner }) {
                   {step.what_now ? (
                     <p className="text-[12.5px] leading-relaxed">→ {step.what_now}</p>
                   ) : null}
-                  {step.note ? (
-                    <p className="rounded-md border border-warning/45 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
-                      {step.note}
-                    </p>
-                  ) : null}
+                  {step.note ? <WarnNote>{step.note}</WarnNote> : null}
                 </li>
               )
             })}
@@ -357,10 +317,6 @@ function Panel({ state, eyebrow, title, children }) {
       <CardContent className="flex flex-col gap-3">{children}</CardContent>
     </Card>
   )
-}
-
-function Muted({ children }) {
-  return <p className="text-[13px] leading-relaxed text-muted-foreground">{children}</p>
 }
 
 function GapsCard({ mission, state, busy, act, onOpenPlanner }) {
@@ -575,10 +531,10 @@ function OpenItemsCard({ mission, state, busy, act }) {
                 detail={r.note ? `Your note: ${r.note}` : null}
               >
                 {r.reads_differently_now ? (
-                  <p className="rounded-md border border-warning/45 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
+                  <WarnNote>
                     This now reads differently than when you accepted it. Worth a second
                     look — your acceptance still stands, but it was for the earlier version.
-                  </p>
+                  </WarnNote>
                 ) : null}
                 <Button
                   size="xs"

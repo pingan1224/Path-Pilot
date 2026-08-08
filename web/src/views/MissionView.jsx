@@ -167,7 +167,7 @@ export default function MissionView({ onOpenPlanner }) {
                   type="button"
                   aria-current={m.id === activeId ? "page" : undefined}
                   onClick={() => setActiveId(m.id)}
-                  className={`rounded-md px-2.5 py-1 text-meta transition-colors ${
+                  className={`rounded-md px-2.5 py-2 text-meta transition-colors md:py-1 ${
                     m.id === activeId
                       ? "text-primary shadow-[inset_0_0_0_1px_var(--accent)]"
                       : "text-muted-foreground hover:bg-secondary"

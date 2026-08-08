@@ -97,7 +97,7 @@ export default function StudentShell({ me, onSignOut }) {
                   type="button"
                   aria-pressed={pane === id}
                   onClick={() => setPane(id)}
-                  className={`rounded-md px-2.5 py-1 text-meta transition-colors ${
+                  className={`rounded-md px-2.5 py-2 text-meta transition-colors md:py-1 ${
                     pane === id
                       ? "text-primary shadow-[inset_0_0_0_1px_var(--accent)]"
                       : "text-muted-foreground hover:bg-secondary"
@@ -152,6 +152,7 @@ export default function StudentShell({ me, onSignOut }) {
               ready={ready}
               loadFailed={failed}
               showAudit={inChat && pane === "audit"}
+              railVisible={railVisible}
               onOpenView={setView}
               onTurn={refresh}
             />
@@ -225,10 +226,17 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
   const active = mission?.steps.find((s) => s.state === "active")
 
   return (
+    /* Two zones, and only the top one scrolls.
+       The rail used to be a single scrolling column with the tool nav at its foot. On a
+       900px window a five-step mission overflows it, so clicking a tool scrolled the
+       focused button into view and took the readiness state — the answer to the question
+       this product exists for — off the top of the screen. Splitting them means status
+       can be as long as it needs to be, and choosing a tool never hides where you stand. */
     <aside
-      className="nx-scroll flex max-h-[40vh] w-full flex-none flex-col overflow-auto border-b border-border px-4 py-5 md:max-h-none md:w-[clamp(280px,30%,420px)] md:border-r md:border-b-0 md:px-5"
+      className="flex max-h-[40vh] w-full flex-none flex-col border-b border-border md:max-h-none md:w-[clamp(280px,30%,420px)] md:border-r md:border-b-0"
       aria-label="Registration readiness and tools"
     >
+      <div className="nx-scroll min-h-0 flex-1 overflow-auto px-4 pt-5 pb-4 md:px-5">
       <div className="mb-3.5 nx-label">
         {mission ? `Registration readiness · ${mission.term}` : "Your record"}
       </div>
@@ -317,37 +325,43 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
         Recomputed on every read. Your completed courses are self-reported — UAX cannot see
         Albert.
       </p>
-
-      <div className="mt-6 mb-2 nx-label">
-        Records &amp; tools
       </div>
-      <nav aria-label="Records and tools">
-        <div className="flex flex-col gap-0.5">
-          {nav.map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              aria-current={view === id ? "page" : undefined}
-              onClick={() => onOpenView(id)}
-              className={`rounded-md px-2.5 py-1.5 text-left text-body transition-colors ${
-                view === id
-                  ? "text-primary shadow-[inset_0_0_0_1px_var(--accent)]"
-                  : "text-muted-foreground hover:bg-secondary"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </nav>
 
-      {/* Anchored to the foot of the rail rather than trailing the nav, so the space under
-          a short record reads as a margin instead of the column having stopped. */}
-      <p className="mt-auto border-t border-border pt-4 text-micro leading-relaxed text-subtle">
-        Personal portfolio project. All students, records, and policies are fictional or
-        quoted from public NYU bulletins with source links. Not an official NYU system —
-        Albert is always authoritative.
-      </p>
+      {/* Kept deliberately tight. This is the way *out* of the current task, not the task;
+          before it was trimmed it stood at 374px against the readiness zone's 472px, which
+          is most of a column spent on secondary navigation. */}
+      <div className="flex-none border-t border-border px-4 pt-3.5 pb-4 md:px-5">
+        <div className="mb-1.5 nx-label">Records &amp; tools</div>
+        <nav aria-label="Records and tools">
+          <div className="flex flex-col">
+            {nav.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                aria-current={view === id ? "page" : undefined}
+                onClick={() => onOpenView(id)}
+                /* Roomy for a thumb, tight for a cursor: the rail is a drawer on a phone
+                   where these are touch targets, and a contested column on a desktop
+                   where they are not. */
+                className={`rounded-md px-2.5 py-2 text-left text-body transition-colors md:py-1 md:text-meta ${
+                  view === id
+                    ? "text-primary shadow-[inset_0_0_0_1px_var(--accent)]"
+                    : "text-muted-foreground hover:bg-secondary"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        {/* Two claims, and both have to survive being skimmed: this is not NYU, and the
+            student data is invented while the policy text is really NYU's. */}
+        <p className="mt-3 text-micro leading-relaxed text-subtle">
+          Personal portfolio project — not an official NYU system. Students and records are
+          fictional; policy text is quoted from public NYU bulletins with source links.
+        </p>
+      </div>
     </aside>
   )
 }

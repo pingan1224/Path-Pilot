@@ -137,7 +137,11 @@ function BotAvatar() {
  * returning to a half-finished mission, and it is the one part of the greeting the rail
  * does not already say in the same words.
  */
-function LandingHero({ notes }) {
+function LandingHero({ notes, railVisible }) {
+  // The routine greeting restates the rail. Printed beside it, it reads as the screen
+  // saying the same thing twice; with the rail closed it is the only place that says it.
+  const shown = notes.filter((n) => !n.routine || !railVisible)
+
   return (
     <div className="nx-msg flex flex-col items-start gap-5">
       <div
@@ -154,7 +158,7 @@ function LandingHero({ notes }) {
         I cannot see Albert, so anything I cannot check, I name instead of guessing.
       </p>
 
-      {notes.map((note, i) => (
+      {shown.map((note, i) => (
         <p key={i} className="max-w-[54ch] text-meta leading-relaxed text-subtle">
           {note.text}
         </p>
@@ -306,6 +310,7 @@ export default function ChatHome({
   ready,
   loadFailed,
   showAudit,
+  railVisible,
   onOpenView,
   onTurn,
 }) {
@@ -330,6 +335,10 @@ export default function ChatHome({
       const greeting = greetingFor(missions, courses.length)
       const note = {
         kind: "assistant-note",
+        // `routine` is what the rail is already saying in its own words. The recovery
+        // note is not routine — "your record is readable again" is news, and it has to
+        // reach a student who is looking at the conversation on its own.
+        routine: !recovering,
         text: recovering
           ? `Your record is readable again — ${greeting.status}`
           : `Hi ${first} — ${greeting.status}`,
@@ -412,7 +421,7 @@ export default function ChatHome({
             }
           >
             <div className="mx-auto flex w-full max-w-[760px] flex-col gap-5">
-              {landing ? <LandingHero notes={thread} /> : null}
+              {landing ? <LandingHero notes={thread} railVisible={railVisible} /> : null}
               {landing ? null : thread.map((entry, i) => {
                 if (entry.kind === "user") {
                   return (

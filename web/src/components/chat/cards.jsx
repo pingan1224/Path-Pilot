@@ -13,20 +13,46 @@ import {
 import { Progress } from "@/components/ui/progress"
 
 /**
- * Inline tool-result cards for the chat surface.
+ * Inline artifact cards for the chat surface.
  *
- * The design decision that shapes every component here: cards render **authoritative
- * current state fetched after the turn**, not a snapshot of what the tool returned
- * mid-conversation. ChatHome re-fetches the mission / re-runs the deterministic sequence
- * and decoder endpoints once the answer lands, and hands the results in as props. That is
- * the same "no stored status, recompute on read" rule the mission engine lives by — a
- * card the student acts on must never disagree with the page they would see elsewhere.
+ * The server's Artifact Contract decides what appears here: each answer carries
+ * `artifacts`, each one re-read from authoritative state at answer time — never a
+ * snapshot from mid-turn, and never inferred client-side from the audit trail the way
+ * this file's first version did. That is the same "no stored status, recompute on read"
+ * rule the mission engine lives by: a card the student acts on must never disagree with
+ * the page they would see elsewhere.
+ *
+ * The type → component mapping below is this client's action registry. The server
+ * describes what an artifact is; which endpoints its buttons call is decided here and
+ * nowhere else — an artifact cannot smuggle in a URL. A type this build does not know
+ * falls back to a plain note rather than failing the whole answer.
  *
  * And the buttons are real. "Add to my plan" calls the same student-authenticated
  * endpoint the Mission page uses, and the server's recomputed mission replaces the card
  * state. Before this file existed, the agent's one actionable output — a proposed course
  * — was invisible in the chat that produced it; acting on it meant finding another tab.
  */
+
+/** One artifact from the server, rendered by this client's registry — or the fallback. */
+export function ArtifactCard({ artifact, onOpenView }) {
+  switch (artifact.type) {
+    case "mission_state":
+      return <MissionCard mission={artifact.data} onOpenView={onOpenView} />
+    case "course_sequence":
+      return <SequenceCard plan={artifact.data} onOpenView={onOpenView} />
+    case "decoder_result":
+      return <DecodeCard decoded={artifact.data} onOpenView={onOpenView} />
+    default:
+      return (
+        <Card>
+          <CardContent className="pt-4 text-[12.5px] text-muted-foreground">
+            The assistant produced a result ({artifact.type}) this version of the app
+            cannot display. The answer above still stands on its own.
+          </CardContent>
+        </Card>
+      )
+  }
+}
 
 const TERM_SUGGESTIONS = ["Fall 2026", "Spring 2027", "Summer 2027"]
 

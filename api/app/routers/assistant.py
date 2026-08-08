@@ -7,7 +7,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
+from app.models import UserRole
 from app.services.agent import run_agent
+from app.services.artifacts import ArtifactOut, build_artifacts, specs_from_trace
 from app.services.auth import Identity, current_user
 from app.services.llm import LlmNotConfiguredError
 
@@ -52,6 +54,9 @@ class AskResponse(BaseModel):
     case_number: str | None
     degraded_modes: list[str]
     iterations: int
+    # What the UI should render, said outright — see services/artifacts.py. `tool_trace`
+    # below is the audit record and nothing else; clients must not infer cards from it.
+    artifacts: list[ArtifactOut]
     tool_trace: list[dict]
     latency_ms: int
     interaction_id: int
@@ -81,6 +86,14 @@ def ask(
     except LlmNotConfiguredError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
+    artifacts = build_artifacts(
+        session,
+        identity,
+        specs_from_trace(
+            result.tool_trace, student_caller=identity.role == UserRole.student
+        ),
+    )
+
     return AskResponse(
         answer=result.answer,
         citations=[CitationOut(**c) for c in result.citations],
@@ -90,6 +103,7 @@ def ask(
         case_number=result.case_number,
         degraded_modes=result.degraded_modes,
         iterations=result.iterations,
+        artifacts=artifacts,
         tool_trace=result.tool_trace,
         latency_ms=result.latency_ms,
         interaction_id=result.interaction_id,

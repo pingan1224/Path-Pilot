@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { api } from "@/api"
 import { Button } from "@/components/ui/button"
-import { DecodeCard, MissionCard, SequenceCard } from "@/components/chat/cards"
+import { ArtifactCard } from "@/components/chat/cards"
 import { describeDegradations } from "@/lib/degradations"
 
 /**
@@ -10,15 +10,13 @@ import { describeDegradations } from "@/lib/degradations"
  *
  * Three decisions define it:
  *
- * **Tool results become cards the student can act on, in place.** After each answer, the
- * tool trace says what the agent consulted; for the tools whose output is actionable or
- * worth seeing whole, this view re-fetches the authoritative state (the mission) or
- * re-runs the deterministic computation (sequence, decoder) and renders it as an inline
- * card with live buttons. Confirming a proposed course happens here, through the same
- * student-authenticated endpoint as the Mission page — not by being told to go find
- * another tab. Re-fetching rather than trusting a mid-conversation snapshot is the
- * mission engine's own rule applied to the UI: what the student acts on must be what is
- * true now.
+ * **The server says what to render; this view renders it.** Each answer carries
+ * `artifacts` under the Artifact Contract (api services/artifacts.py) — the server
+ * re-reads authoritative state at answer time and hands over typed, versioned results.
+ * This view maps them through the card registry and infers nothing from `tool_trace`,
+ * which is the audit record, not a UI protocol. Confirming a proposed course happens in
+ * the card, through the same student-authenticated endpoint as the Mission page — not by
+ * being told to go find another tab.
  *
  * **The greeting is computed, not generated.** The shell reads the profile and missions;
  * the first time both arrive, this view says where the student stands — instantly,
@@ -71,8 +69,6 @@ const BOUNDARY_NOTE =
   "right office. I cannot clear a hold, waive a prerequisite, approve an exception, or " +
   "change your enrollment — those stay with the offices that decide them."
 
-const MISSION_TOOLS = ["get_mission_state", "propose_mission_candidates"]
-
 const TONE_TEXT = {
   accent: "text-primary",
   good: "text-success",
@@ -122,53 +118,6 @@ function Thinking() {
       </div>
     </div>
   )
-}
-
-/** Build the tool-result cards for one finished turn. Failures skip the card, never the answer. */
-async function cardsForTurn(toolTrace) {
-  const cards = []
-  const tools = toolTrace.map((t) => t.tool)
-
-  if (tools.some((t) => MISSION_TOOLS.includes(t))) {
-    try {
-      const missions = await api.missions()
-      cards.push({ type: "mission", mission: missions[0] ?? null })
-    } catch {
-      /* staff or fetch failure — no card */
-    }
-  }
-
-  const seen = new Set()
-  for (const call of toolTrace.filter((t) => t.tool === "get_course_sequence")) {
-    const key = JSON.stringify(call.args ?? {})
-    if (seen.has(key)) continue
-    seen.add(key)
-    try {
-      cards.push({
-        type: "sequence",
-        plan: await api.sequence({
-          deadline: call.args?.finish_by,
-          maxCredits: call.args?.max_credits_per_term,
-        }),
-      })
-    } catch {
-      /* skip */
-    }
-    if (seen.size === 2) break // two schedules is a comparison; more is noise
-  }
-
-  const decodeCall = toolTrace.find(
-    (t) => t.tool === "decode_registration_error" && t.args?.error_text,
-  )
-  if (decodeCall) {
-    try {
-      cards.push({ type: "decode", decoded: await api.decode(decodeCall.args.error_text) })
-    } catch {
-      /* skip */
-    }
-  }
-
-  return cards
 }
 
 /** Where the student stands, without the salutation — the caller decides how it opens. */
@@ -356,8 +305,7 @@ export default function ChatHome({
     setBusy(true)
     try {
       const result = await api.ask(trimmed, history)
-      const cards = await cardsForTurn(result.tool_trace)
-      setThread((t) => [...t, { kind: "assistant", result, cards }])
+      setThread((t) => [...t, { kind: "assistant", result }])
       // The answer may have moved the mission; the shell's rail must not keep showing
       // the old one.
       onTurn?.()
@@ -423,7 +371,8 @@ export default function ChatHome({
                   )
                 }
 
-                const { result, cards } = entry
+                const { result } = entry
+                const artifacts = result.artifacts ?? []
                 const kicker = DECISION_KICKER[result.decision] ?? DECISION_KICKER.answered
                 const consulted = [
                   ...new Set(result.tool_trace.map((t) => TOOL_LABEL[t.tool] ?? t.tool)),
@@ -448,34 +397,15 @@ export default function ChatHome({
                         </div>
                       ) : null}
 
-                      {cards.length > 0 ? (
+                      {artifacts.length > 0 ? (
                         <div className="flex flex-col gap-2.5">
-                          {cards.map((card, j) => {
-                            if (card.type === "mission") {
-                              return (
-                                <MissionCard
-                                  key={j}
-                                  mission={card.mission}
-                                  onOpenView={onOpenView}
-                                />
-                              )
-                            }
-                            if (card.type === "sequence") {
-                              return (
-                                <SequenceCard key={j} plan={card.plan} onOpenView={onOpenView} />
-                              )
-                            }
-                            if (card.type === "decode") {
-                              return (
-                                <DecodeCard
-                                  key={j}
-                                  decoded={card.decoded}
-                                  onOpenView={onOpenView}
-                                />
-                              )
-                            }
-                            return null
-                          })}
+                          {artifacts.map((artifact) => (
+                            <ArtifactCard
+                              key={artifact.id}
+                              artifact={artifact}
+                              onOpenView={onOpenView}
+                            />
+                          ))}
                         </div>
                       ) : null}
 

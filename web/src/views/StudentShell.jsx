@@ -206,7 +206,11 @@ function StatusRow({ tone = "neutral", label, meta, value }) {
 
 function RowGroup({ children }) {
   return (
-    <div className="flex flex-col gap-px overflow-hidden rounded-md bg-border">{children}</div>
+    /* `flex-none` is load-bearing: the rail is a flex column so its disclaimer can sit at
+       the bottom, and without this a five-row group gets squeezed to the height of one. */
+    <div className="flex flex-none flex-col gap-px overflow-hidden rounded-md bg-border">
+      {children}
+    </div>
   )
 }
 
@@ -222,7 +226,7 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
 
   return (
     <aside
-      className="nx-scroll max-h-[40vh] w-full flex-none overflow-auto border-b border-border px-4 py-5 md:max-h-none md:w-[clamp(280px,30%,420px)] md:border-r md:border-b-0 md:px-5"
+      className="nx-scroll flex max-h-[40vh] w-full flex-none flex-col overflow-auto border-b border-border px-4 py-5 md:max-h-none md:w-[clamp(280px,30%,420px)] md:border-r md:border-b-0 md:px-5"
       aria-label="Registration readiness and tools"
     >
       <div className="mb-3.5 nx-label">
@@ -337,7 +341,9 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
         </div>
       </nav>
 
-      <p className="mt-6 border-t border-border pt-4 text-micro leading-relaxed text-subtle">
+      {/* Anchored to the foot of the rail rather than trailing the nav, so the space under
+          a short record reads as a margin instead of the column having stopped. */}
+      <p className="mt-auto border-t border-border pt-4 text-micro leading-relaxed text-subtle">
         Personal portfolio project. All students, records, and policies are fictional or
         quoted from public NYU bulletins with source links. Not an official NYU system —
         Albert is always authoritative.

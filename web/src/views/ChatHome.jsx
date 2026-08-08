@@ -90,24 +90,75 @@ function Kicker({ tone, children }) {
  * a conditional one, and one that can only be projected. The thing the assistant actually
  * does, drawn at 16px.
  */
+function MarkGlyph({ className }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+    >
+      <path d="M2 4h12" />
+      <path d="M2 8h12" strokeDasharray="3.2 2.6" />
+      <path d="M2 12h9" strokeDasharray="0.1 3" />
+    </svg>
+  )
+}
+
 function BotAvatar() {
   return (
     <div
       aria-hidden="true"
       className="grid size-[30px] flex-none place-items-center rounded-[9px] bg-accent text-accent-foreground"
     >
-      <svg
-        viewBox="0 0 16 16"
-        className="size-4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
+      <MarkGlyph className="size-4" />
+    </div>
+  )
+}
+
+/**
+ * The front door, before anything has been asked.
+ *
+ * What this replaced put a greeting at the top of roughly a thousand pixels of nothing,
+ * with the composer pinned to the far bottom — a chat app with the chat missing. Two
+ * things were wrong beyond the empty space. Most of the greeting restated what the rail
+ * was already showing two hundred pixels to the left, and then listed the same three
+ * options as the suggestion chips directly beneath it.
+ *
+ * So the centre column stops reporting status, which the rail owns, and says the thing
+ * that actually separates this from asking a chatbot the same question: it reads
+ * published rules and what the student entered, it cannot see Albert, and it will name
+ * what it cannot check rather than fill the gap. That claim was previously a footnote
+ * under the composer. It is the product's whole argument, so it goes at the top.
+ *
+ * The computed standing survives as one quiet line — it is genuinely useful for a student
+ * returning to a half-finished mission, and it is the one part of the greeting the rail
+ * does not already say in the same words.
+ */
+function LandingHero({ notes }) {
+  return (
+    <div className="nx-msg flex flex-col items-start gap-5">
+      <div
+        aria-hidden="true"
+        className="grid size-12 place-items-center rounded-xl bg-accent text-accent-foreground"
       >
-        <path d="M2 4h12" />
-        <path d="M2 8h12" strokeDasharray="3.2 2.6" />
-        <path d="M2 12h9" strokeDasharray="0.1 3" />
-      </svg>
+        <MarkGlyph className="size-6" />
+      </div>
+
+      <h1 className="nx-statement text-display">What&rsquo;s in your way?</h1>
+
+      <p className="max-w-[54ch] text-lead leading-relaxed text-muted-foreground">
+        I read NYU&rsquo;s published rules and the courses you have entered — nothing else.
+        I cannot see Albert, so anything I cannot check, I name instead of guessing.
+      </p>
+
+      {notes.map((note, i) => (
+        <p key={i} className="max-w-[54ch] text-meta leading-relaxed text-subtle">
+          {note.text}
+        </p>
+      ))}
     </div>
   )
 }
@@ -151,7 +202,7 @@ function greetingFor(missions, profileCount) {
     const active = openMission.steps.find((s) => s.state === "active")
     return {
       status:
-        `your ${openMission.term} registration mission is ` +
+        `your ${openMission.term} mission is ` +
         `${openMission.steps.filter((s) => s.state === "done").length} of ${openMission.steps.length} steps done.` +
         (active?.what_now ? ` Next: ${active.what_now}` : ""),
       chips: ["Where am I in my registration prep?", "Suggest courses for my mission"],
@@ -160,15 +211,13 @@ function greetingFor(missions, profileCount) {
   if (profileCount > 0) {
     return {
       status:
-        `you have ${profileCount} course${profileCount === 1 ? "" : "s"} in your record. ` +
-        "I can check what your degree still needs, sequence the remaining terms, or help you prepare to register.",
+        `you have ${profileCount} course${profileCount === 1 ? "" : "s"} on record ` +
+        "and no term being prepared.",
       chips: ["Plan my next semester", "Am I on track to graduate?"],
     }
   }
   return {
-    status:
-      "I can explain a registration error right away, nothing to set up. " +
-      "If you tell me what you've taken, I can also check your degree and plan your next term.",
+    status: "there is nothing on record yet.",
     chips: ["What does ERR_PREREQ mean?", "What should I do first?"],
   }
 }
@@ -339,14 +388,32 @@ export default function ChatHome({
     }
   }
 
+  // Nothing has been asked yet: the greeting notes are UI copy, not conversation. The
+  // hero and the composer centre as one group in that state, and the thread takes over
+  // the moment there is anything to scroll.
+  const landing = !busy && thread.every((e) => e.kind === "assistant-note")
+
   return (
     /* Stacks on a phone rather than hiding: the audit pane takes `order-last` at lg so it
        sits right of the conversation there while sitting above it when stacked. */
     <div className={`flex min-h-0 flex-1 flex-col ${showAudit ? "lg:flex-row" : ""}`}>
-        <section aria-label="Conversation" className="flex min-w-0 flex-1 flex-col">
-          <div className="nx-scroll flex-1 overflow-auto px-4 pt-6 pb-2 sm:px-7">
-            <div className="mx-auto flex max-w-[760px] flex-col gap-5">
-              {thread.map((entry, i) => {
+        <section
+          aria-label="Conversation"
+          className={`flex min-w-0 flex-1 flex-col ${landing ? "justify-center" : ""}`}
+        >
+          {/* Same element in the same position in both states, so switching out of the
+              landing layout re-styles the column rather than remounting the composer
+              below it and taking the caret with it. */}
+          <div
+            className={
+              landing
+                ? "px-4 pt-6 sm:px-7"
+                : "nx-scroll flex-1 overflow-auto px-4 pt-6 pb-2 sm:px-7"
+            }
+          >
+            <div className="mx-auto flex w-full max-w-[760px] flex-col gap-5">
+              {landing ? <LandingHero notes={thread} /> : null}
+              {landing ? null : thread.map((entry, i) => {
                 if (entry.kind === "user") {
                   return (
                     <div key={i} className="nx-msg flex justify-end">
@@ -469,7 +536,7 @@ export default function ChatHome({
                     </div>
                   </div>
                 )
-              })}
+                })}
 
               {busy ? <Thinking /> : null}
               <div ref={endRef} />
@@ -519,12 +586,17 @@ export default function ChatHome({
 
               {/* The disclaimer sits with the advice, not only in the page footer — this is
                   the text a student screenshots and acts on. Set in --ink-2, not the subtle
-                  step, so it clears AA at this size in both themes. */}
-              <p className="text-meta leading-relaxed text-muted-foreground">
-                Answers cite what they rest on and say when something could not be verified.
-                Not an NYU system, and it cannot see Albert — verify anything that affects
-                registration there before you act on it.
-              </p>
+                  step, so it clears AA at this size in both themes.
+                  Hidden on the landing screen alone, where the hero above makes the same
+                  claim in better words and printing it twice is how a warning stops being
+                  read. It returns with the first answer, which is what it is for. */}
+              {landing ? null : (
+                <p className="text-meta leading-relaxed text-muted-foreground">
+                  Answers cite what they rest on and say when something could not be
+                  verified. Not an NYU system, and it cannot see Albert — verify anything
+                  that affects registration there before you act on it.
+                </p>
+              )}
             </div>
           </div>
         </section>

@@ -71,10 +71,7 @@ export default function StudentShell({ me, onSignOut }) {
   const nav = me.student_id ? [...NAV, ["dashboard", "Dashboard (demo)"]] : NAV
 
   return (
-    <div
-      data-surface="nocturne"
-      className="flex h-dvh flex-col bg-background text-foreground"
-    >
+    <div className="flex h-dvh flex-col bg-background text-foreground">
       <a className="skip" href="#main">
         Skip to content
       </a>

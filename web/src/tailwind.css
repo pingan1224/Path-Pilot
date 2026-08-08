@@ -14,7 +14,7 @@
    `@media (prefers-color-scheme: dark)` block and the `[data-theme="dark"]` override —
    drive shadcn components with no dark-mode code of their own.
 
-   Verified: flipping data-theme moves a shadcn Button's background from #57068c to #c49ae9,
+   Verified: flipping data-theme moves a shadcn Button's background from #5e4e9e to #9589da,
    which is exactly the light/dark pair for --accent. */
 
 @import "tailwindcss";
@@ -32,8 +32,10 @@
      brand purple already on .btn--primary) is exactly that, and NOT shadcn's own "accent",
      which is a lighter secondary highlight and is mapped to --accent-soft below. Getting
      these two the wrong way round is the easiest way to make every button look washed out. */
+  /* Not #ffffff. White on the dark accent measures 3.06:1 — under AA on every primary
+     button in dark mode. --on-filled flips with the theme; see the note in App.css. */
   --color-primary: var(--accent);
-  --color-primary-foreground: #ffffff;
+  --color-primary-foreground: var(--on-filled);
 
   --color-secondary: var(--surface-2);
   --color-secondary-foreground: var(--ink);
@@ -45,7 +47,7 @@
   --color-accent-foreground: var(--accent);
 
   --color-destructive: var(--danger);
-  --color-destructive-foreground: #ffffff;
+  --color-destructive-foreground: var(--on-filled);
 
   /* The semantic trio and the third ink step, aliased so Tailwind-side work can reach the
      tones the hand-written CSS already had. shadcn only names one of them (destructive),

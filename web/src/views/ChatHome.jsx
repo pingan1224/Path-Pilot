@@ -327,10 +327,11 @@ export default function ChatHome({
                 if (entry.kind === "user") {
                   return (
                     <div key={i} className="nx-msg flex justify-end">
-                      {/* --ink on the accent tint, not --accent: the accent-on-its-own-tint
-                          pair measures 4.43 in dark, which is under AA for body text. It
-                          is fine on the avatar below, where the mark is decorative and the
-                          3:1 graphical threshold applies. */}
+                      {/* --ink on the accent tint, not --accent. The accent-on-its-own-tint
+                          pair now clears AA in dark (4.67 after the palette promotion
+                          lightened --accent, up from 4.43), but --ink measures 11.80 on the
+                          same tint, and this is the student's own words being read back —
+                          the one place in the thread with no reason to be near the floor. */}
                       <div className="max-w-[76%] rounded-[14px] rounded-br-sm bg-accent px-4 py-2.5 text-[14px] leading-relaxed text-foreground">
                         {entry.text}
                       </div>

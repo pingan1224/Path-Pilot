@@ -45,9 +45,25 @@ Three things about the setup that are not obvious and will bite if forgotten:
   none of them and scaffolding no `lib/utils.js`. Expect to add missing deps by hand after
   pulling a new component.
 
-Old hand-written CSS (`App.css`, the `.card` / `.finding` / `.msg` families) and Tailwind
-coexist deliberately. Existing views were not rewritten; new work uses shadcn. Do not
-migrate a working view without a reason to touch it.
+Every student view is now shadcn over Tailwind; the migration deleted eighteen orphaned
+`App.css` families along the way (`.msg`, `.mstep`, `.decoder__*`, `.seq__*`, the
+`.course-*` family, …). What is left in `App.css` is the token block, the `.nx-*` Nocturne
+signatures, shared semantic families every surface uses (`.finding`, `.passage`, `.ev`,
+`.tag`, `.visually-hidden`), and the staff-view shell — Advisor, Registrar, Finance and the
+student dashboard are demo/portfolio scope and were deliberately left on the old shell.
+
+**There is one palette and it is global.** `--accent` and friends live on `:root`; nothing
+is scoped to a container any more, and the theme flips through
+`prefers-color-scheme` with a `[data-theme]` override that beats it in both directions.
+Two rules when touching colour:
+
+- **Never hardcode a hex in a component.** A stock Tailwind colour (`border-amber-500`)
+  is invisible to the theme toggle — that bug shipped once in the intake OCR notice.
+  Reach for `--good`/`--warn`/`--danger` or their `-soft` pairs.
+- **Text on a filled accent or danger background uses `--on-filled`, never `#fff`.** White
+  on the dark-mode accent measures 3.06:1. `--on-filled` is white in light and near-black
+  in dark, and every combination in the palette clears 4.5:1 on all three surfaces in both
+  themes — verified by sweeping the painted DOM, not by eye.
 
 ## Non-negotiable architecture rules
 

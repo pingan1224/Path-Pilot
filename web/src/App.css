@@ -1,19 +1,49 @@
 /* ---------------------------------------------------------------------------
-   Tokens
-   --------------------------------------------------------------------------- */
+   Tokens — the Nocturne palette, applied to the whole product
+   ---------------------------------------------------------------------------
+
+   A cool blue-grey ground, a blurple accent, 8px radii, compact density. It arrived
+   scoped to the assistant surface while only that view had been rebuilt on it; every
+   student view now speaks it, so the scope is gone and these are simply the tokens.
+
+   Nocturne's *values* are mapped onto this project's *token names*, never imported under
+   their own (`--color-bg`, `--color-surface`, …). That is what keeps one vocabulary, and
+   it is what makes shadcn come along for free: tailwind.css aliases
+   `--color-primary: var(--accent)` with `@theme inline`, so a utility re-reads --accent
+   from the cascade at paint time and every shadcn component re-themes with no
+   per-component work.
+
+   Three departures from Nocturne as shipped, all measured:
+
+   - The system carries no semantic ramp — it is explicitly mono, and its own Albert
+     mockup hardcoded `#7fbfa8/#d8b26a/#e08b8b` in a script to get status colour. This
+     product's status hierarchy is load-bearing, so good/warn/danger below are this
+     project's own and were re-checked against the new grounds: every one clears 4.5:1 on
+     all three surfaces in both themes.
+   - `--ink-3` carries meta text including disclaimers. Nocturne's neutral-500 measured
+     4.38:1 on --surface-2 in light — AA for large text only, and this is not large text.
+     Solved down to 4.64:1 against the worst of the three surfaces.
+   - `--accent` in dark measured 4.38:1 as text on --surface-2 for the same reason, and is
+     lightened to clear 4.63:1.
+
+   `--on-filled` is what goes *on* a filled accent or danger background. It is not white
+   in dark mode: white on the dark accent measures 3.06:1 and on dark danger 2.57:1, both
+   well under AA. This was a real defect on every primary button in dark mode — inherited,
+   not introduced here, and worse before the promotion (2.30:1) than after. */
 
 :root {
-  --ground: #f8f7fa;
-  --surface: #ffffff;
-  --surface-2: #f2eff6;
-  --ink: #191325;
-  --ink-2: #4d4659;
-  --ink-3: #7b7389;
-  --line: #e3dfea;
-  --line-soft: #efecf3;
+  --ground: #f5f7fe;
+  --surface: #fdfdff;
+  --surface-2: #edf0f7;
+  --ink: #1e1e21;
+  --ink-2: #505360;
+  --ink-3: #686b79;
+  --line: #dcdee5;
+  --line-soft: #eaedf4;
 
-  --accent: #57068c;
-  --accent-soft: #f2ebf9;
+  --accent: #5e4e9e;
+  --accent-soft: #f0eff7;
+  --on-filled: #ffffff;
 
   --good: #1a6b50;
   --good-soft: #e6f3ee;
@@ -31,23 +61,28 @@
 /* Dark values live in one block and are repeated for the explicit data-theme
    override, so a viewer toggle beats the OS preference in both directions.
 
+   Nocturne ships a dark ground only; the light values above were derived from these by
+   mirroring lightness in OKLCH on the system's own shared perceptual scale, holding hue
+   and re-tuning chroma to what the gamut allows at the new lightness.
+
    The `:not([data-theme="light"])` is what makes "both directions" true. Without it only
    the dark direction worked: `[data-theme="dark"]` outranks `:root`, but a `light` request
    had nothing to match, and this media block — equal specificity, later in the file — kept
    winning on a dark-preference OS. Cheaper than repeating the light values a third time. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ground: #121019;
-    --surface: #1a1724;
-    --surface-2: #221d2e;
-    --ink: #eeeaf4;
-    --ink-2: #b3accd;
-    --ink-3: #857d96;
-    --line: #2e2839;
-    --line-soft: #262031;
+    --ground: #161826;
+    --surface: #232532;
+    --surface-2: #292b31;
+    --ink: #e9e9ed;
+    --ink-2: #b2b6ca;
+    --ink-3: #9397ab;
+    --line: #3f424d;
+    --line-soft: #292b31;
 
-    --accent: #c49ae9;
-    --accent-soft: #2a2038;
+    --accent: #9589da;
+    --accent-soft: #2b2741;
+    --on-filled: #161826;
 
     --good: #63c3a0;
     --good-soft: #16302a;
@@ -61,16 +96,17 @@
 }
 
 :root[data-theme="dark"] {
-  --ground: #121019;
-  --surface: #1a1724;
-  --surface-2: #221d2e;
-  --ink: #eeeaf4;
-  --ink-2: #b3accd;
-  --ink-3: #857d96;
-  --line: #2e2839;
-  --line-soft: #262031;
-  --accent: #c49ae9;
-  --accent-soft: #2a2038;
+  --ground: #161826;
+  --surface: #232532;
+  --surface-2: #292b31;
+  --ink: #e9e9ed;
+  --ink-2: #b2b6ca;
+  --ink-3: #9397ab;
+  --line: #3f424d;
+  --line-soft: #292b31;
+  --accent: #9589da;
+  --accent-soft: #2b2741;
+  --on-filled: #161826;
   --good: #63c3a0;
   --good-soft: #16302a;
   --warn: #e3a75a;
@@ -81,80 +117,8 @@
   --neutral-soft: #23262d;
 }
 
-/* ---------------------------------------------------------------------------
-   Nocturne — scoped to the assistant surface
-   ---------------------------------------------------------------------------
-
-   The chat was rebuilt on the Nocturne design system (a cool blue-grey ground, a blurple
-   accent, 8px radii, outlined actions, compact density). Only that view was rebuilt, so
-   the palette is scoped to its container rather than replacing the one above — a staged
-   migration, not a second permanent palette. Delete this block and move the values up if
-   the rest of the app follows.
-
-   Nocturne's *values* are mapped onto this project's *token names*, not imported under
-   their own (`--color-bg`, `--color-surface`, …). That is what keeps one vocabulary, and
-   it is also what makes shadcn come along for free: tailwind.css aliases
-   `--color-primary: var(--accent)` with `@theme inline`, so the utility re-reads --accent
-   from the cascade at paint time and every shadcn component inside this container
-   re-themes with no per-component work.
-
-   Two departures from Nocturne as shipped, both measured:
-
-   - The system carries no semantic ramp — it is explicitly mono, and its own Albert
-     mockup had to hardcode `#7fbfa8/#d8b26a/#e08b8b` in a script to get status colour.
-     This project's good/warn/danger are kept instead (they land within 0.5 of those
-     hexes on contrast anyway) and are therefore *not* redefined below.
-   - The mockup's meta text used neutral-600 (#75798c, 4.08:1 on the ground — below AA at
-     the 10.5px it was set in, and it carried the FERPA disclaimer). --ink-3 takes
-     neutral-500 on dark, and a value solved for 4.5:1 on light. */
-
-[data-surface="nocturne"] {
-  --ground: #f5f7fe;
-  --surface: #fdfdff;
-  --surface-2: #edf0f7;
-  --ink: #1e1e21;
-  --ink-2: #505360;
-  --ink-3: #6c6f7d;
-  --line: #dcdee5;
-  --line-soft: #eaedf4;
-  --accent: #5e4e9e;
-  --accent-soft: #f0eff7;
-  --radius: 8px;
-}
-
-/* Nocturne ships a dark ground only; the light values above were derived from these by
-   mirroring lightness in OKLCH on the system's own shared perceptual scale, holding hue
-   and re-tuning chroma to what the gamut allows at the new lightness. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) [data-surface="nocturne"] {
-    --ground: #161826;
-    --surface: #232532;
-    --surface-2: #292b31;
-    --ink: #e9e9ed;
-    --ink-2: #b2b6ca;
-    --ink-3: #9397ab;
-    --line: #3f424d;
-    --line-soft: #292b31;
-    --accent: #9184d9;
-    --accent-soft: #2b2741;
-  }
-}
-
-:root[data-theme="dark"] [data-surface="nocturne"] {
-  --ground: #161826;
-  --surface: #232532;
-  --surface-2: #292b31;
-  --ink: #e9e9ed;
-  --ink-2: #b2b6ca;
-  --ink-3: #9397ab;
-  --line: #3f424d;
-  --line-soft: #292b31;
-  --accent: #9184d9;
-  --accent-soft: #2b2741;
-}
-
-/* Nocturne signatures Tailwind cannot say cleanly. Everything else on the assistant
-   surface is utility classes reading the tokens above. */
+/* Nocturne signatures Tailwind cannot say cleanly. Everything else is utility classes
+   reading the tokens above. */
 
 /* Rules fade to transparent 48px from each end instead of stopping cleanly — the system's
    most recognisable mark. Box outlines and in-control separators stay solid; only
@@ -226,7 +190,7 @@
   top: 0;
   z-index: 100;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-filled);
   padding: 0.6rem 1rem;
   border-radius: 0 0 var(--radius) 0;
 }
@@ -269,7 +233,14 @@
   width: 26px;
   height: 26px;
   border-radius: 6px;
-  background: linear-gradient(135deg, var(--accent), #9a5ec9);
+  /* The gradient partner is derived from --accent rather than a second hex: the old one
+     was a violet tuned to the old violet accent, and read as a different brand once the
+     accent went blurple. */
+  background: linear-gradient(
+    135deg,
+    var(--accent),
+    color-mix(in oklab, var(--accent) 55%, #6f8fd8)
+  );
   flex: none;
 }
 .brand__text {
@@ -557,13 +528,13 @@
 .btn--primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-filled);
   text-decoration: none;
   display: inline-block;
 }
 .btn--primary:hover:not(:disabled) {
   filter: brightness(1.1);
-  color: #fff;
+  color: var(--on-filled);
 }
 
 .state {
@@ -716,7 +687,7 @@
 }
 .alert__flag {
   background: var(--danger);
-  color: #fff;
+  color: var(--on-filled);
   padding: 0.1rem 0.45rem;
   border-radius: 4px;
   font-size: 0.7rem;

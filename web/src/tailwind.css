@@ -67,4 +67,17 @@
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
+
+  /* The six-step scale, aliased so views ask for a role (`text-body`, `text-micro`)
+     instead of an arbitrary pixel value. Ten hardcoded px sizes between 10 and 14.5 were
+     what this replaced, and none of them moved when a reader zoomed text. */
+  --text-display: var(--t-display);
+  --text-title: var(--t-title);
+  --text-lead: var(--t-lead);
+  --text-body: var(--t-body);
+  --text-meta: var(--t-meta);
+  --text-micro: var(--t-micro);
+
+  --font-sans: var(--font-ui);
+  --font-mono: var(--mono);
 }

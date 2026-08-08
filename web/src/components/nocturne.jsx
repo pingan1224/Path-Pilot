@@ -8,13 +8,11 @@
  * carry the statement on their own — same rule as everywhere else, no colour-only signals.
  */
 
+/** Names the thing that follows. Condensed and tracked — the label width of the scale. */
 export function Eyebrow({ children }) {
-  return (
-    <p className="text-[11px] font-medium tracking-[0.12em] text-subtle uppercase">
-      {children}
-    </p>
-  )
+  return <p className="nx-label">{children}</p>
 }
+
 
 const TONE_TEXT = {
   good: "text-success",
@@ -33,7 +31,7 @@ const TONE_BORDER = {
 export function Tone({ tone = "neutral", children }) {
   return (
     <span
-      className={`rounded border px-2 py-0.5 text-[11px] ${TONE_TEXT[tone]} ${TONE_BORDER[tone]}`}
+      className={`rounded border px-2 py-0.5 text-micro ${TONE_TEXT[tone]} ${TONE_BORDER[tone]}`}
     >
       {children}
     </span>
@@ -44,7 +42,7 @@ export function ErrorNote({ children }) {
   return (
     <p
       role="alert"
-      className="rounded-md border border-destructive/45 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-destructive"
+      className="rounded-md border border-destructive/45 px-3.5 py-2.5 text-meta leading-relaxed text-destructive"
     >
       {children}
     </p>
@@ -53,16 +51,16 @@ export function ErrorNote({ children }) {
 
 export function WarnNote({ children }) {
   return (
-    <p className="rounded-md border border-warning/45 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
+    <p className="rounded-md border border-warning/45 px-3 py-2 text-meta leading-relaxed text-muted-foreground">
       {children}
     </p>
   )
 }
 
 export function Muted({ children }) {
-  return <p className="text-[13px] leading-relaxed text-muted-foreground">{children}</p>
+  return <p className="text-body leading-relaxed text-muted-foreground">{children}</p>
 }
 
 export const INPUT_CLASS =
-  "min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-2 text-[14px] " +
+  "min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-2 text-lead " +
   "outline-none placeholder:text-subtle focus-visible:ring-2 focus-visible:ring-primary/40"

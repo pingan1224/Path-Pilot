@@ -82,7 +82,7 @@ export default function SequenceView({ onOpenPlanner }) {
   }
   if (!plan) {
     return (
-      <p role="status" className="text-[13px] text-muted-foreground">
+      <p role="status" className="text-body text-muted-foreground">
         Solving your sequence…
       </p>
     )
@@ -110,7 +110,7 @@ export default function SequenceView({ onOpenPlanner }) {
               load()
             }}
           >
-            <label className="flex min-w-[150px] flex-1 flex-col gap-1 text-[12px] text-muted-foreground">
+            <label className="flex min-w-[150px] flex-1 flex-col gap-1 text-meta text-muted-foreground">
               Starting term
               <input
                 className={INPUT_CLASS}
@@ -120,7 +120,7 @@ export default function SequenceView({ onOpenPlanner }) {
                 disabled={busy}
               />
             </label>
-            <label className="flex min-w-[150px] flex-1 flex-col gap-1 text-[12px] text-muted-foreground">
+            <label className="flex min-w-[150px] flex-1 flex-col gap-1 text-meta text-muted-foreground">
               Finish by (optional)
               <input
                 className={INPUT_CLASS}
@@ -130,7 +130,7 @@ export default function SequenceView({ onOpenPlanner }) {
                 disabled={busy}
               />
             </label>
-            <label className="flex min-w-[130px] flex-col gap-1 text-[12px] text-muted-foreground">
+            <label className="flex min-w-[130px] flex-col gap-1 text-meta text-muted-foreground">
               Credits per term
               <select
                 className={INPUT_CLASS}
@@ -154,7 +154,7 @@ export default function SequenceView({ onOpenPlanner }) {
             </Button>
           </form>
 
-          <p className="text-[11.5px] leading-relaxed text-subtle">{plan.disclaimer}</p>
+          <p className="text-meta leading-relaxed text-subtle">{plan.disclaimer}</p>
         </CardContent>
       </Card>
 
@@ -208,7 +208,7 @@ function Schedule({ plan }) {
         <Eyebrow>
           {plan.chosen_track ? `Concentration: ${plan.chosen_track}` : "Sequence"}
         </Eyebrow>
-        <CardTitle className="text-[22px]">
+        <CardTitle className="nx-statement text-title">
           {plan.terms_needed} more term{plan.terms_needed === 1 ? "" : "s"}, finishing{" "}
           {plan.finish_term}
         </CardTitle>
@@ -228,8 +228,8 @@ function Schedule({ plan }) {
               className="flex flex-col gap-2 rounded-md border border-border bg-muted/40 p-3"
             >
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[13.5px] font-medium">{term.term}</span>
-                <span className="text-[12px] text-muted-foreground">
+                <span className="text-body font-medium">{term.term}</span>
+                <span className="text-meta text-muted-foreground">
                   {term.credits} credits
                 </span>
               </div>
@@ -245,8 +245,8 @@ function Schedule({ plan }) {
                         <span className="font-mono text-sm">{course.course_code}</span>
                         <Tone tone={meta.tone}>{meta.label}</Tone>
                       </div>
-                      <p className="text-[13px] leading-snug">{course.title}</p>
-                      <p className="text-[12px] leading-relaxed text-muted-foreground">
+                      <p className="text-body leading-snug">{course.title}</p>
+                      <p className="text-meta leading-relaxed text-muted-foreground">
                         {course.requirement ? `${course.requirement} · ` : ""}
                         {course.credits} cr · {course.offering_note}
                         {course.offering_source ? ` (“${course.offering_source}”)` : ""}

@@ -45,7 +45,7 @@ export function ArtifactCard({ artifact, onOpenView }) {
     default:
       return (
         <Card>
-          <CardContent className="pt-4 text-[12.5px] text-muted-foreground">
+          <CardContent className="pt-4 text-meta text-muted-foreground">
             The assistant produced a result ({artifact.type}) this version of the app
             cannot display. The answer above still stands on its own.
           </CardContent>

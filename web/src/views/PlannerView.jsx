@@ -90,7 +90,7 @@ export default function PlannerView() {
   }
   if (!courses || !plan) {
     return (
-      <p role="status" className="text-[13px] text-muted-foreground">
+      <p role="status" className="text-body text-muted-foreground">
         Reading your plan…
       </p>
     )
@@ -170,17 +170,17 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
                 key={r.code}
                 className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 p-2.5"
               >
-                <div className="min-w-0 flex-1 text-[13px] leading-relaxed">
+                <div className="min-w-0 flex-1 text-body leading-relaxed">
                   <span className="font-mono">{r.code}</span> {r.title}
                   <span className="text-muted-foreground"> · {r.credits}cr</span>
                   {r.prerequisites_text ? (
-                    <span className="block text-[12px] text-muted-foreground">
+                    <span className="block text-meta text-muted-foreground">
                       Prereq: {r.prerequisites_text}
                     </span>
                   ) : null}
                 </div>
                 {held.has(r.code) ? (
-                  <span className="text-[12px] text-muted-foreground">added</span>
+                  <span className="text-meta text-muted-foreground">added</span>
                 ) : (
                   <span className="flex flex-wrap gap-1.5">
                     {["completed", "in_progress", "planned"].map((state) => (
@@ -204,7 +204,7 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
           </ul>
         ) : null}
 
-        <details className="rounded-md border border-border bg-muted/40 p-2.5 text-[13px]">
+        <details className="rounded-md border border-border bg-muted/40 p-2.5 text-body">
           <summary className="cursor-pointer text-muted-foreground">
             Course not in this catalog? Add it by code
           </summary>
@@ -248,13 +248,13 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
                 className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2.5"
               >
                 <span className="font-mono text-sm">{c.course_code}</span>
-                <span className="min-w-0 flex-1 text-[13px] leading-snug">
+                <span className="min-w-0 flex-1 text-body leading-snug">
                   {c.title ?? "Not in this catalog"}{" "}
                   {!c.in_catalog ? <Tone tone="warn">unverified</Tone> : null}
                 </span>
                 <span className="flex flex-wrap items-center gap-1.5">
                   <select
-                    className="rounded-md border border-border bg-card px-2 py-1 text-[13px]"
+                    className="rounded-md border border-border bg-card px-2 py-1 text-body"
                     value={c.state}
                     disabled={busy}
                     aria-label={`Status of ${c.course_code}`}
@@ -270,7 +270,7 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
                   </select>
                   {c.state === "completed" ? (
                     <input
-                      className="w-16 rounded-md border border-border bg-card px-2 py-1 text-[13px] uppercase"
+                      className="w-16 rounded-md border border-border bg-card px-2 py-1 text-body uppercase"
                       value={c.grade ?? ""}
                       placeholder="grade"
                       maxLength={2}
@@ -320,12 +320,12 @@ function PlanCard({ plan, includePlanned, onTogglePlanned }) {
         <CardTitle id="plan-heading">{plan.program_name} — degree check</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
+        <label className="flex items-center gap-2 text-body text-muted-foreground">
           <input type="checkbox" checked={includePlanned} onChange={onTogglePlanned} />
           Count planned &amp; in-progress courses
         </label>
 
-        <p className="flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+        <p className="flex flex-wrap gap-x-4 gap-y-1 text-body">
           <span>
             <strong className="font-medium">{plan.credits_completed}</strong> completed
           </span>
@@ -361,7 +361,7 @@ function PlanCard({ plan, includePlanned, onTogglePlanned }) {
           </>
         ) : null}
 
-        <p className="text-[11.5px] leading-relaxed text-subtle">{plan.disclaimer}</p>
+        <p className="text-meta leading-relaxed text-subtle">{plan.disclaimer}</p>
       </CardContent>
     </Card>
   )
@@ -545,7 +545,7 @@ function HandoffCard({ courses, plan }) {
           aria-label="Your question for the advisor"
         />
         <textarea
-          className="nx-scroll w-full rounded-md border border-border bg-card p-3 font-mono text-[12.5px] leading-relaxed outline-none"
+          className="nx-scroll w-full rounded-md border border-border bg-card p-3 font-mono text-meta leading-relaxed outline-none"
           readOnly
           value={text}
           rows={14}

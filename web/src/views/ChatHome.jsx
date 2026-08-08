@@ -78,26 +78,50 @@ const TONE_TEXT = {
 }
 
 function Kicker({ tone, children }) {
-  return (
-    <div className={`text-[10px] font-medium tracking-[0.13em] uppercase ${TONE_TEXT[tone]}`}>
-      {children}
-    </div>
-  )
+  return <div className={`nx-label ${TONE_TEXT[tone]}`}>{children}</div>
 }
 
+/**
+ * The assistant's mark: three rules — solid, dashed, dotted.
+ *
+ * It was a four-point sparkle, which is the one glyph every AI product on earth is
+ * currently wearing and says nothing about this one. These three lines are the legend for
+ * the verdict edge running down the side of every finding on the page: an observed claim,
+ * a conditional one, and one that can only be projected. The thing the assistant actually
+ * does, drawn at 16px.
+ */
 function BotAvatar() {
   return (
     <div
       aria-hidden="true"
       className="grid size-[30px] flex-none place-items-center rounded-[9px] bg-accent text-accent-foreground"
     >
-      <svg viewBox="0 0 24 24" className="size-4" fill="currentColor">
-        <path d="M12 2l1.9 5.6L19.5 9.5 13.9 11.4 12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2zM18.5 14l.9 2.6 2.6.9-2.6.9-.9 2.6-.9-2.6-2.6-.9 2.6-.9.9-2.6z" />
+      <svg
+        viewBox="0 0 16 16"
+        className="size-4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      >
+        <path d="M2 4h12" />
+        <path d="M2 8h12" strokeDasharray="3.2 2.6" />
+        <path d="M2 12h9" strokeDasharray="0.1 3" />
       </svg>
     </div>
   )
 }
 
+/**
+ * The wait, which is nine to twenty seconds and the most-looked-at state in the product.
+ *
+ * A sweep, not a bar that fills. There is no tool-event stream behind this yet, so a bar
+ * travelling toward a target would be drawing progress the frontend cannot see — the same
+ * "step 2 of 5" theatre this view has refused from the start. A sweep says work is
+ * happening and claims nothing about how much is left, which is the whole of what is
+ * known. The elapsed count is the one real number available, so it gets tabular figures
+ * and stops jittering as it ticks.
+ */
 function Thinking() {
   const [seconds, setSeconds] = useState(0)
   useEffect(() => {
@@ -105,15 +129,14 @@ function Thinking() {
     return () => clearInterval(timer)
   }, [])
   return (
-    <div className="flex items-center gap-3.5" role="status">
+    <div className="nx-msg flex gap-3.5" role="status">
       <BotAvatar />
-      <div className="flex h-[30px] items-center gap-1.5">
-        <span className="nx-tick size-1.5 rounded-full bg-primary" />
-        <span className="nx-tick size-1.5 rounded-full bg-primary" />
-        <span className="nx-tick size-1.5 rounded-full bg-primary" />
-        <span className="ml-2 text-[11.5px] text-muted-foreground">
-          Checking your record, policy, and plans as needed… {seconds}s
-          {seconds > 20 ? " (thorough answers take a moment)" : ""}
+      <div className="flex min-w-0 flex-1 flex-col gap-2 pt-2.5">
+        <div className="nx-scan h-[2px] w-full max-w-[260px] rounded-full" aria-hidden="true" />
+        <span className="text-meta leading-relaxed text-muted-foreground">
+          Checking your record, policy and plans as needed ·{" "}
+          <span className="nx-figure">{seconds}s</span>
+          {seconds > 20 ? " · still working, longer answers mean more lookups" : ""}
         </span>
       </div>
     </div>
@@ -191,15 +214,15 @@ function AuditPane({ thread }) {
       className="nx-scroll max-h-[45vh] w-full flex-none overflow-auto border-b border-border px-4 py-5 lg:order-last lg:max-h-none lg:w-[300px] lg:border-l lg:border-b-0 lg:px-5"
       aria-label="What the assistant checked"
     >
-      <div className="mb-1.5 text-[11px] font-medium tracking-[0.12em] text-subtle uppercase">
+      <div className="mb-1.5 nx-label">
         What was checked
       </div>
-      <p className="mb-4 text-[11.5px] leading-relaxed text-muted-foreground">
+      <p className="mb-4 text-meta leading-relaxed text-muted-foreground">
         Every lookup is scoped to your record before it runs, and written to the audit log.
       </p>
 
       {entries.length === 0 ? (
-        <p className="text-[12.5px] text-muted-foreground">
+        <p className="text-meta text-muted-foreground">
           Nothing yet — this fills in as you ask.
         </p>
       ) : (
@@ -211,8 +234,8 @@ function AuditPane({ thread }) {
                 {i < entries.length - 1 ? <span className="w-px flex-1 bg-border" /> : null}
               </div>
               <div className="min-w-0 pb-4">
-                <div className="text-[12.5px] leading-snug">{e.label}</div>
-                <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                <div className="text-meta leading-snug">{e.label}</div>
+                <div className="mt-0.5 text-micro leading-snug text-muted-foreground">
                   {e.meta}
                 </div>
               </div>
@@ -332,7 +355,7 @@ export default function ChatHome({
                           lightened --accent, up from 4.43), but --ink measures 11.80 on the
                           same tint, and this is the student's own words being read back —
                           the one place in the thread with no reason to be near the floor. */}
-                      <div className="max-w-[76%] rounded-[14px] rounded-br-sm bg-accent px-4 py-2.5 text-[14px] leading-relaxed text-foreground">
+                      <div className="max-w-[76%] rounded-[14px] rounded-br-sm bg-accent px-4 py-2.5 text-lead leading-relaxed text-foreground">
                         {entry.text}
                       </div>
                     </div>
@@ -345,7 +368,7 @@ export default function ChatHome({
                       <BotAvatar />
                       <div className="flex min-w-0 flex-1 flex-col gap-2">
                         <Kicker tone="danger">Could not answer</Kicker>
-                        <p className="text-[14.5px] leading-relaxed">{entry.message}</p>
+                        <p className="text-lead leading-relaxed">{entry.message}</p>
                         <div>
                           <Button
                             variant="outline"
@@ -365,7 +388,7 @@ export default function ChatHome({
                   return (
                     <div key={i} className="nx-msg flex gap-3.5">
                       <BotAvatar />
-                      <p className="min-w-0 flex-1 pt-1 text-[14.5px] leading-relaxed whitespace-pre-wrap">
+                      <p className="min-w-0 flex-1 pt-1 text-lead leading-relaxed whitespace-pre-wrap">
                         {entry.text}
                       </p>
                     </div>
@@ -387,12 +410,12 @@ export default function ChatHome({
                     <div className="flex min-w-0 flex-1 flex-col gap-2.5">
                       <Kicker tone={kicker.tone}>{kicker.label}</Kicker>
 
-                      <p className="text-[14.5px] leading-relaxed whitespace-pre-wrap text-pretty">
+                      <p className="text-lead leading-relaxed whitespace-pre-wrap text-pretty">
                         {result.answer}
                       </p>
 
                       {result.case_number ? (
-                        <div className="rounded-md border border-primary/45 bg-accent px-3.5 py-2.5 text-[12.5px] leading-relaxed">
+                        <div className="rounded-md border border-primary/45 bg-accent px-3.5 py-2.5 text-meta leading-relaxed">
                           Case <strong className="font-medium">{result.case_number}</strong> has
                           been opened — quote it when you contact the office.
                         </div>
@@ -411,20 +434,20 @@ export default function ChatHome({
                       ) : null}
 
                       {result.degraded_modes.length > 0 ? (
-                        <div className="rounded-md border border-warning/45 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
+                        <div className="rounded-md border border-warning/45 px-3.5 py-2.5 text-meta leading-relaxed text-muted-foreground">
                           <span className="font-medium text-warning">Ran degraded — </span>
                           {describeDegradations(result.degraded_modes)}.
                         </div>
                       ) : null}
 
                       {showBoundary ? (
-                        <div className="rounded-md border border-primary/40 bg-accent px-3.5 py-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
+                        <div className="rounded-md border border-primary/40 bg-accent px-3.5 py-2.5 text-meta leading-relaxed text-muted-foreground">
                           {BOUNDARY_NOTE}
                         </div>
                       ) : null}
 
                       {consulted.length > 0 || result.citations.length > 0 ? (
-                        <div className="flex flex-col gap-1 text-[11px] text-subtle">
+                        <div className="flex flex-col gap-1 text-micro text-subtle">
                           {consulted.length > 0 ? (
                             <div>Checked: {consulted.join(" · ")}</div>
                           ) : null}
@@ -483,7 +506,7 @@ export default function ChatHome({
                 </label>
                 <input
                   id="chat-input"
-                  className="min-w-0 flex-1 bg-transparent py-1.5 text-[14px] outline-none placeholder:text-subtle"
+                  className="min-w-0 flex-1 bg-transparent py-1.5 text-lead outline-none placeholder:text-subtle"
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   placeholder="Ask about holds, enrollment errors, courses, or your degree…"
@@ -497,7 +520,7 @@ export default function ChatHome({
               {/* The disclaimer sits with the advice, not only in the page footer — this is
                   the text a student screenshots and acts on. Set in --ink-2, not the subtle
                   step, so it clears AA at this size in both themes. */}
-              <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+              <p className="text-meta leading-relaxed text-muted-foreground">
                 Answers cite what they rest on and say when something could not be verified.
                 Not an NYU system, and it cannot see Albert — verify anything that affects
                 registration there before you act on it.

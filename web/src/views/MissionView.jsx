@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { api } from "@/api"
 import { Finding } from "@/components/Finding"
 import { Badge } from "@/components/ui/badge"
@@ -42,6 +42,41 @@ const STEP_META = {
 }
 
 const TERM_SUGGESTIONS = ["Fall 2026", "Spring 2027", "Summer 2027"]
+
+/**
+ * Which step states changed since the last server answer.
+ *
+ * The mission's progress is derived server-side and arrives whole on every mutation, so a
+ * student who confirms a course can have step 3 and step 4 both flip in one response —
+ * two rows down the page from the button they pressed. Marking exactly those rows is the
+ * "recompute on read" rule made visible; without it the click appears to do nothing.
+ *
+ * Nothing is marked on first load: an unchanged page has no news, and flashing every row
+ * on arrival would teach the student to ignore the one that matters. The set clears
+ * itself so a later re-render cannot replay an old change.
+ */
+function useSettledSteps(steps) {
+  const [settled, setSettled] = useState(() => new Set())
+  const previous = useRef(null)
+
+  useEffect(() => {
+    const now = new Map(steps.map((s) => [s.id, s.state]))
+    const before = previous.current
+    previous.current = now
+    if (!before) return
+
+    const changed = [...now]
+      .filter(([id, state]) => before.has(id) && before.get(id) !== state)
+      .map(([id]) => id)
+    if (changed.length === 0) return
+
+    setSettled(new Set(changed))
+    const timer = setTimeout(() => setSettled(new Set()), 1000)
+    return () => clearTimeout(timer)
+  }, [steps])
+
+  return settled
+}
 
 export default function MissionView({ onOpenPlanner }) {
   const [missions, setMissions] = useState(null)
@@ -105,7 +140,7 @@ export default function MissionView({ onOpenPlanner }) {
   }
   if (!missions) {
     return (
-      <p role="status" className="text-[13px] text-muted-foreground">
+      <p role="status" className="text-body text-muted-foreground">
         Reading your mission…
       </p>
     )
@@ -132,7 +167,7 @@ export default function MissionView({ onOpenPlanner }) {
                   type="button"
                   aria-current={m.id === activeId ? "page" : undefined}
                   onClick={() => setActiveId(m.id)}
-                  className={`rounded-md px-2.5 py-1 text-[12.5px] transition-colors ${
+                  className={`rounded-md px-2.5 py-1 text-meta transition-colors ${
                     m.id === activeId
                       ? "text-primary shadow-[inset_0_0_0_1px_var(--accent)]"
                       : "text-muted-foreground hover:bg-secondary"
@@ -223,13 +258,16 @@ function StartCard({ onStart, busy, compact = false }) {
 function Mission({ mission, busy, act, onMission, onOpenPlanner }) {
   const done = mission.steps.filter((s) => s.state === "done").length
   const stepState = (id) => mission.steps.find((s) => s.id === id)?.state
+  const settled = useSettledSteps(mission.steps)
 
   return (
     <>
       <Card className={mission.complete ? "border-success/45" : "border-primary/30"}>
         <CardHeader>
           <Eyebrow>Registration mission</Eyebrow>
-          <CardTitle className="flex flex-wrap items-center gap-2 text-[22px]">
+          {/* Expanded, but a step below the rail's readiness verdict. The rail answers
+              "am I ready"; this only says which term — two peaks would be no peak. */}
+          <CardTitle className="nx-statement flex flex-wrap items-center gap-2 text-title">
             {mission.term}
             {mission.complete ? <Badge>Complete</Badge> : null}
           </CardTitle>
@@ -242,11 +280,11 @@ function Mission({ mission, busy, act, onMission, onOpenPlanner }) {
         <CardContent className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <Progress value={(done / mission.steps.length) * 100} className="flex-1" />
-            <span className="text-[12.5px] text-muted-foreground">
+            <span className="text-meta text-muted-foreground">
               {done}/{mission.steps.length}
             </span>
           </div>
-          <p className="text-[11.5px] leading-relaxed text-subtle">{mission.disclaimer}</p>
+          <p className="text-meta leading-relaxed text-subtle">{mission.disclaimer}</p>
         </CardContent>
       </Card>
 
@@ -260,24 +298,29 @@ function Mission({ mission, busy, act, onMission, onOpenPlanner }) {
             {mission.steps.map((step) => {
               const meta = STEP_META[step.state] ?? STEP_META.blocked
               return (
-                <li key={step.id} className="flex flex-col gap-1.5 bg-card px-3.5 py-3">
+                <li
+                  key={step.id}
+                  className={`flex flex-col gap-1.5 bg-card px-3.5 py-3 ${
+                    settled.has(step.id) ? "nx-settle" : ""
+                  }`}
+                >
                   <div className="flex flex-wrap items-center gap-2.5">
                     <span className={`nx-dot nx-dot--${meta.tone}`} aria-hidden="true" />
-                    <span className="min-w-0 flex-1 text-[13.5px] leading-snug">
+                    <span className="min-w-0 flex-1 text-body leading-snug">
                       {step.title}
                     </span>
                     <Tone tone={meta.tone}>{meta.label}</Tone>
                   </div>
-                  <p className="text-[12px] leading-relaxed text-muted-foreground">
+                  <p className="text-meta leading-relaxed text-muted-foreground">
                     {step.criterion}
                   </p>
                   {step.evidence.map((line, i) => (
-                    <p key={i} className="text-[12px] leading-relaxed text-subtle">
+                    <p key={i} className="text-meta leading-relaxed text-subtle">
                       {line}
                     </p>
                   ))}
                   {step.what_now ? (
-                    <p className="text-[12.5px] leading-relaxed">→ {step.what_now}</p>
+                    <p className="text-meta leading-relaxed">→ {step.what_now}</p>
                   ) : null}
                   {step.note ? <WarnNote>{step.note}</WarnNote> : null}
                 </li>
@@ -398,7 +441,7 @@ function CandidatesCard({ mission, state, busy, act }) {
                 <span className="font-mono text-sm">{c.course_code}</span>
                 <Badge variant="outline">Suggestion</Badge>
                 {c.rationale ? (
-                  <span className="min-w-0 flex-1 basis-full text-[13px] leading-relaxed text-muted-foreground sm:basis-auto">
+                  <span className="min-w-0 flex-1 basis-full text-body leading-relaxed text-muted-foreground sm:basis-auto">
                     {c.rationale}
                   </span>
                 ) : null}
@@ -616,7 +659,7 @@ function HandoffCard({ mission, state, busy, onMission }) {
       {error ? <ErrorNote>{error}</ErrorNote> : null}
       {text ? (
         <textarea
-          className="nx-scroll w-full rounded-md border border-border bg-card p-3 font-mono text-[12.5px] leading-relaxed outline-none"
+          className="nx-scroll w-full rounded-md border border-border bg-card p-3 font-mono text-meta leading-relaxed outline-none"
           readOnly
           value={text}
           rows={16}

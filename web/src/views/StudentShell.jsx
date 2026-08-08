@@ -78,8 +78,8 @@ export default function StudentShell({ me, onSignOut }) {
 
       <header className="flex flex-none flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-2.5 sm:px-5">
         <div className="flex items-baseline gap-2">
-          <span className="text-[17px] font-semibold tracking-tight">UAX</span>
-          <span className="hidden text-[10.5px] font-medium tracking-[0.13em] text-subtle uppercase sm:inline">
+          <span className="nx-statement text-title">UAX</span>
+          <span className="hidden nx-label sm:inline">
             Unified Academic Experience
           </span>
         </div>
@@ -97,7 +97,7 @@ export default function StudentShell({ me, onSignOut }) {
                   type="button"
                   aria-pressed={pane === id}
                   onClick={() => setPane(id)}
-                  className={`rounded-md px-2.5 py-1 text-[12.5px] transition-colors ${
+                  className={`rounded-md px-2.5 py-1 text-meta transition-colors ${
                     pane === id
                       ? "text-primary shadow-[inset_0_0_0_1px_var(--accent)]"
                       : "text-muted-foreground hover:bg-secondary"
@@ -116,8 +116,8 @@ export default function StudentShell({ me, onSignOut }) {
 
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <div className="text-[13px] leading-tight">{me.full_name}</div>
-            <div className="text-[11px] text-subtle">
+            <div className="text-body leading-tight">{me.full_name}</div>
+            <div className="text-micro text-subtle">
               {me.student_number ?? me.role}
             </div>
           </div>
@@ -194,8 +194,8 @@ function StatusRow({ tone = "neutral", label, meta, value }) {
     <div className="flex items-center gap-3 bg-card px-3.5 py-2.5">
       <span className={`nx-dot nx-dot--${tone}`} aria-hidden="true" />
       <div className="min-w-0 flex-1">
-        <div className="text-[13.5px] leading-snug">{label}</div>
-        {meta ? <div className="text-[11px] text-subtle">{meta}</div> : null}
+        <div className="text-body leading-snug">{label}</div>
+        {meta ? <div className="text-micro text-subtle">{meta}</div> : null}
       </div>
       {value ? (
         <span className="shrink-0 text-right text-xs text-muted-foreground">{value}</span>
@@ -225,7 +225,7 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
       className="nx-scroll max-h-[40vh] w-full flex-none overflow-auto border-b border-border px-4 py-5 md:max-h-none md:w-[clamp(280px,30%,420px)] md:border-r md:border-b-0 md:px-5"
       aria-label="Registration readiness and tools"
     >
-      <div className="mb-3.5 text-[11px] font-medium tracking-[0.12em] text-subtle uppercase">
+      <div className="mb-3.5 nx-label">
         {mission ? `Registration readiness · ${mission.term}` : "Your record"}
       </div>
 
@@ -244,16 +244,17 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
           </Button>
         </>
       ) : !ready ? (
-        <p className="text-[13px] text-muted-foreground">Reading your record…</p>
+        <p className="text-body text-muted-foreground">Reading your record…</p>
       ) : mission ? (
         <>
           <div className="mb-4 rounded-lg border border-border bg-card p-4">
             <div className="flex flex-wrap items-center gap-2.5">
-              <span className="text-[22px] leading-tight">
+              {/* The one statement on the screen: the answer to "am I ready to register?" */}
+              <span className="nx-statement text-display">
                 {blockers.length > 0 ? "Blocked" : mission.complete ? "Ready" : "In progress"}
               </span>
               <span
-                className={`rounded border px-2 py-0.5 text-[11px] ${
+                className={`rounded border px-2 py-0.5 text-micro ${
                   blockers.length > 0
                     ? "border-destructive text-destructive"
                     : "border-primary text-primary"
@@ -265,7 +266,7 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
               </span>
             </div>
             {active?.what_now ? (
-              <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">
+              <p className="mt-2 text-body leading-relaxed text-muted-foreground">
                 Next: {active.what_now}
               </p>
             ) : null}
@@ -289,7 +290,7 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
 
           {blockers.length > 0 ? (
             <>
-              <div className="mt-5 mb-2.5 text-[11px] font-medium tracking-[0.12em] text-subtle uppercase">
+              <div className="mt-5 mb-2.5 nx-label">
                 In the way
               </div>
               <RowGroup>
@@ -301,19 +302,19 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
           ) : null}
         </>
       ) : (
-        <p className="text-[13px] leading-relaxed text-muted-foreground">
+        <p className="text-body leading-relaxed text-muted-foreground">
           {courseCount > 0
             ? `${courseCount} course${courseCount === 1 ? "" : "s"} in your record and no open registration mission. Ask about your degree, or start preparing for a term.`
             : "Nothing in your record yet. Ask about a registration error — that needs nothing set up — or add your courses from a transcript."}
         </p>
       )}
 
-      <p className="mt-4 text-[11.5px] leading-relaxed text-subtle">
+      <p className="mt-4 text-meta leading-relaxed text-subtle">
         Recomputed on every read. Your completed courses are self-reported — UAX cannot see
         Albert.
       </p>
 
-      <div className="mt-6 mb-2 text-[11px] font-medium tracking-[0.12em] text-subtle uppercase">
+      <div className="mt-6 mb-2 nx-label">
         Records &amp; tools
       </div>
       <nav aria-label="Records and tools">
@@ -324,7 +325,7 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
               type="button"
               aria-current={view === id ? "page" : undefined}
               onClick={() => onOpenView(id)}
-              className={`rounded-md px-2.5 py-1.5 text-left text-[13px] transition-colors ${
+              className={`rounded-md px-2.5 py-1.5 text-left text-body transition-colors ${
                 view === id
                   ? "text-primary shadow-[inset_0_0_0_1px_var(--accent)]"
                   : "text-muted-foreground hover:bg-secondary"
@@ -336,7 +337,7 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
         </div>
       </nav>
 
-      <p className="mt-6 border-t border-border pt-4 text-[11px] leading-relaxed text-subtle">
+      <p className="mt-6 border-t border-border pt-4 text-micro leading-relaxed text-subtle">
         Personal portfolio project. All students, records, and policies are fictional or
         quoted from public NYU bulletins with source links. Not an official NYU system —
         Albert is always authoritative.

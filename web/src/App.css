@@ -56,6 +56,19 @@
 
   --radius: 8px;
   --mono: "Cascadia Code", Consolas, ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* One superfamily, three widths, three jobs — see the type note below. */
+  --font-ui: "Archivo Variable", "Segoe UI Variable Text", "Segoe UI", system-ui,
+    -apple-system, sans-serif;
+
+  /* The scale. Six steps, in rem so browser text-zoom actually moves them; the px values
+     this replaced (ten of them between 10 and 14.5) did not. */
+  --t-display: 1.875rem;
+  --t-title: 1.25rem;
+  --t-lead: 0.9375rem;
+  --t-body: 0.84375rem;
+  --t-meta: 0.75rem;
+  --t-micro: 0.6875rem;
 }
 
 /* Dark values live in one block and are repeated for the explicit data-theme
@@ -117,8 +130,54 @@
   --neutral-soft: #23262d;
 }
 
-/* Nocturne signatures Tailwind cannot say cleanly. Everything else is utility classes
-   reading the tokens above. */
+/* ---------------------------------------------------------------------------
+   Type — width as hierarchy
+   ---------------------------------------------------------------------------
+
+   Archivo carries a width axis (62–125%) as well as weight, and this product uses it
+   instead of reaching for a second, unrelated display face. Three widths, three jobs:
+
+     condensed 86%   labels, eyebrows, table headers — things that name other things
+     normal   100%   prose, the readable middle
+     expanded 110%   statements of where the student stands ("Spring 2027", "1 more term")
+
+   The reason it fits rather than decorates: this is a records product, and records
+   vernacular — audit sheets, drawing title blocks, transcripts — has always set labels
+   narrow and tracked, and figures wide. One family holding all three keeps the page from
+   reading as two fonts bolted together.
+
+   Numerals are tabular everywhere. Credits, terms, counts and elapsed seconds all sit in
+   columns or update in place, and proportional digits make a changing number jitter. */
+
+.nx-label {
+  font-stretch: 86%;
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Where the student stands — "Blocked", "Spring 2027", "1 more term".
+   Size carries the ranking, not the width: the readiness verdict in the rail is the only
+   statement set at --t-display, because it answers the question the product exists for.
+   Everything else that qualifies sits a step down at --t-title. Two display-size
+   statements on one screen is no statement at all. */
+.nx-statement {
+  font-stretch: 110%;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+
+.nx-figure {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   Nocturne signatures Tailwind cannot say cleanly. Everything else is utility classes
+   reading the tokens above.
+   --------------------------------------------------------------------------- */
 
 /* Rules fade to transparent 48px from each end instead of stopping cleanly — the system's
    most recognisable mark. Box outlines and in-control separators stay solid; only
@@ -159,24 +218,78 @@
   border-radius: 9px;
 }
 
+/* ---------------------------------------------------------------------------
+   Motion — four moments, each of which says something
+   ---------------------------------------------------------------------------
+
+   The product's own UI contract bans animation that carries no meaning, which is a useful
+   filter rather than a restriction. What survived it:
+
+     nx-in       something arrived in the thread
+     nx-stagger  a list resolved in reading order, rather than being dumped
+     nx-scan     work is in progress, duration unknown — deliberately indeterminate
+     nx-settle   the server recomputed this row and it changed
+
+   `nx-scan` is the honest one. There is no backend event stream yet, so any bar that
+   filled toward a target would be inventing progress it cannot see. A sweep says
+   "working" and claims nothing else — which is exactly what is true. */
+
 @keyframes nx-in {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
 .nx-msg { animation: nx-in 0.28s ease both; }
 
-@keyframes nx-pulse {
-  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
-  30% { opacity: 1; transform: translateY(-3px); }
+/* Reading order, made physical. Capped at eight: past that the last item would wait a
+   third of a second, and a slow list reads as a slow product. */
+.nx-stagger > * { animation: nx-in 0.34s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+.nx-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.nx-stagger > *:nth-child(2) { animation-delay: 40ms; }
+.nx-stagger > *:nth-child(3) { animation-delay: 80ms; }
+.nx-stagger > *:nth-child(4) { animation-delay: 120ms; }
+.nx-stagger > *:nth-child(5) { animation-delay: 160ms; }
+.nx-stagger > *:nth-child(6) { animation-delay: 200ms; }
+.nx-stagger > *:nth-child(7) { animation-delay: 240ms; }
+.nx-stagger > *:nth-child(n + 8) { animation-delay: 280ms; }
+
+@keyframes nx-scan {
+  0% { transform: translateX(-105%); }
+  100% { transform: translateX(105%); }
 }
-.nx-tick { animation: nx-pulse 1.1s infinite; }
-.nx-tick:nth-child(2) { animation-delay: 0.15s; }
-.nx-tick:nth-child(3) { animation-delay: 0.3s; }
+.nx-scan {
+  position: relative;
+  overflow: hidden;
+  background: var(--line-soft);
+}
+.nx-scan::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: nx-scan 1.5s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+/* The edge the verdict system uses, borrowed for a moment to say "this row is the
+   server's new answer". Drawn as an inset shadow so it never fights the background
+   utility the row already carries. */
+@keyframes nx-settle {
+  from { box-shadow: inset 3px 0 0 var(--accent); }
+  to { box-shadow: inset 3px 0 0 transparent; }
+}
+.nx-settle { animation: nx-settle 1s ease-out both; }
 
 @media (prefers-reduced-motion: reduce) {
   .nx-msg,
-  .nx-tick {
+  .nx-settle,
+  .nx-stagger > * {
     animation: none;
+  }
+  /* The sweep is the only indicator that anything is happening during a 20-second
+     answer, so it degrades to a static fill rather than disappearing. */
+  .nx-scan::after {
+    animation: none;
+    background: var(--accent);
+    opacity: 0.5;
   }
 }
 
@@ -1051,20 +1164,104 @@
   flex-direction: column;
   gap: 0.7rem;
 }
+
+/* Verdicts resolve in reading order rather than appearing all at once. Applied to the
+   list rather than asked for per view, because every findings list in the product wants
+   the same behaviour and the ones that forgot to ask would have been the tell. */
+.findings > li {
+  animation: nx-in 0.34s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+.findings > li:nth-child(1) { animation-delay: 0ms; }
+.findings > li:nth-child(2) { animation-delay: 40ms; }
+.findings > li:nth-child(3) { animation-delay: 80ms; }
+.findings > li:nth-child(4) { animation-delay: 120ms; }
+.findings > li:nth-child(5) { animation-delay: 160ms; }
+.findings > li:nth-child(6) { animation-delay: 200ms; }
+.findings > li:nth-child(7) { animation-delay: 240ms; }
+.findings > li:nth-child(n + 8) { animation-delay: 280ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .findings > li {
+    animation: none;
+  }
+}
+/* The verdict edge — this product's signature, and the reason it is a drawn gradient
+   rather than a border-colour.
+   ---------------------------------------------------------------------------
+
+   Four verdicts used to be one object in four colours. They are not one kind of thing:
+   "verified" and "nobody can verify this" are different *sorts* of claim, and a product
+   whose entire argument is about what it knows should not leave that difference to hue.
+
+   So the edge takes its convention from technical drawing, which is the vernacular this
+   subject already lives in — audit sheets, degree plans, dependency charts:
+
+     solid    an observed edge          satisfied
+     dashed   a conditional edge        conditional  ("holds if…")
+     dotted   a projection, not seen    unverifiable ("ask a human")
+     double   a hard stop               not_satisfied
+
+   The payoff is that the verdict survives every channel failure at once — greyscale,
+   colour-blindness, a screenshot compressed to nothing on somebody's phone. Colour and
+   the text label still say it too; this is the third channel, not a replacement for
+   either. Dash geometry is set in pixels so it stays legible at any card height. */
+
 .finding {
+  position: relative;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--neutral);
   border-radius: 6px;
   padding: 0.75rem 0.95rem;
+  padding-left: 1.15rem;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  font-size: 0.88rem;
+  font-size: var(--t-body);
 }
-.finding--good { border-left-color: var(--good); }
-.finding--warn { border-left-color: var(--warn); }
-.finding--danger { border-left-color: var(--danger); }
-.finding--neutral { border-left-color: var(--neutral); }
+
+.finding::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -1px;
+  bottom: -1px;
+  width: 3px;
+  border-radius: 6px 0 0 6px;
+  background: var(--neutral);
+}
+
+/* satisfied — an observed edge, drawn unbroken */
+.finding--good::before {
+  background: var(--good);
+}
+
+/* conditional — dashed: the edge exists only while the condition does */
+.finding--warn::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--warn) 0 7px,
+    transparent 7px 12px
+  );
+}
+
+/* unverifiable — dotted: projected from what is known, never observed here */
+.finding--neutral::before {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--neutral) 0 2px,
+    transparent 2px 6px
+  );
+}
+
+/* not_satisfied — doubled: the drawing convention for a boundary you do not cross */
+.finding--danger::before {
+  width: 4px;
+  background: linear-gradient(
+    to right,
+    var(--danger) 0 1px,
+    transparent 1px 3px,
+    var(--danger) 3px 4px
+  );
+}
 .finding__head {
   display: flex;
   align-items: center;

@@ -145,7 +145,7 @@ export default function DecoderView({ onOpenPlanner }) {
             </label>
             <textarea
               id="decoder-input"
-              className={`${INPUT_CLASS} w-full font-mono text-[13px]`}
+              className={`${INPUT_CLASS} w-full font-mono text-body`}
               rows={3}
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -172,7 +172,7 @@ export default function DecoderView({ onOpenPlanner }) {
                   key={sample}
                   size="sm"
                   variant="outline"
-                  className="h-auto rounded-full py-1.5 text-left font-mono text-[12px] whitespace-normal"
+                  className="h-auto rounded-full py-1.5 text-left font-mono text-meta whitespace-normal"
                   onClick={() => {
                     setText(sample)
                     setAnswers({})
@@ -230,7 +230,7 @@ function Result({ result, answers, onAnswer, onResubmit, busy, onOpenPlanner }) 
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <div className="rounded-md border border-border bg-muted/40 p-3 font-mono text-[13px] leading-relaxed whitespace-pre-wrap">
+          <div className="rounded-md border border-border bg-muted/40 p-3 font-mono text-body leading-relaxed whitespace-pre-wrap">
             {segment(result.text_used, evidence).map((run, i) =>
               run.kind ? (
                 <mark key={i} className={`ev ev--${run.kind}`} title={EVIDENCE_TITLE[run.kind]}>
@@ -241,7 +241,7 @@ function Result({ result, answers, onAnswer, onResubmit, busy, onOpenPlanner }) 
               ),
             )}
           </div>
-          <p className="text-[12px] text-muted-foreground">
+          <p className="text-meta text-muted-foreground">
             Highlighted: what the reading is based on.{" "}
             <span className="ev ev--code">error code</span>{" "}
             <span className="ev ev--phrase">phrase</span>{" "}
@@ -249,7 +249,7 @@ function Result({ result, answers, onAnswer, onResubmit, busy, onOpenPlanner }) 
           </p>
 
           {result.reading ? (
-            <p className="text-[14px] leading-relaxed">{result.reading}</p>
+            <p className="text-lead leading-relaxed">{result.reading}</p>
           ) : null}
 
           {result.outcome === "ambiguous" ? (
@@ -265,8 +265,8 @@ function Result({ result, answers, onAnswer, onResubmit, busy, onOpenPlanner }) 
                     key={candidate.reason}
                     className="flex flex-col gap-1 rounded-md border border-border bg-card p-3"
                   >
-                    <p className="text-[13.5px] leading-snug font-medium">{candidate.label}</p>
-                    <p className="text-[12px] leading-relaxed text-muted-foreground">
+                    <p className="text-body leading-snug font-medium">{candidate.label}</p>
+                    <p className="text-meta leading-relaxed text-muted-foreground">
                       Matched: {candidate.evidence.map((e) => `“${e.matched}”`).join(", ")}
                     </p>
                   </div>
@@ -284,7 +284,7 @@ function Result({ result, answers, onAnswer, onResubmit, busy, onOpenPlanner }) 
           ) : null}
 
           {result.responsible_office ? (
-            <p className="text-[13px]">
+            <p className="text-body">
               Who can act on it:{" "}
               <strong className="font-medium">
                 {OFFICE_LABEL[result.responsible_office] ?? result.responsible_office}
@@ -295,7 +295,7 @@ function Result({ result, answers, onAnswer, onResubmit, busy, onOpenPlanner }) 
           {result.what_to_do.length > 0 ? (
             <div className="flex flex-col gap-1.5">
               <Eyebrow>What to do</Eyebrow>
-              <ol className="flex list-decimal flex-col gap-1 pl-5 text-[13px] leading-relaxed">
+              <ol className="flex list-decimal flex-col gap-1 pl-5 text-body leading-relaxed">
                 {result.what_to_do.map((step, i) => (
                   <li key={i}>{step}</li>
                 ))}
@@ -310,7 +310,7 @@ function Result({ result, answers, onAnswer, onResubmit, busy, onOpenPlanner }) 
             </WarnNote>
           ) : null}
 
-          <p className="text-[11.5px] leading-relaxed text-subtle">{result.disclaimer}</p>
+          <p className="text-meta leading-relaxed text-subtle">{result.disclaimer}</p>
         </CardContent>
       </Card>
 
@@ -331,7 +331,7 @@ function Result({ result, answers, onAnswer, onResubmit, busy, onOpenPlanner }) 
           <CardContent className="flex flex-col gap-3">
             {result.follow_ups.map((followUp, i) => (
               <div key={i} className="flex flex-col gap-1.5">
-                <p className="text-[13.5px] leading-relaxed font-medium">
+                <p className="text-body leading-relaxed font-medium">
                   {followUp.question}
                 </p>
                 <Muted>{followUp.why}</Muted>
@@ -438,7 +438,7 @@ function Result({ result, answers, onAnswer, onResubmit, busy, onOpenPlanner }) 
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
             {result.albert.where_to_look ? (
-              <p className="text-[13px] leading-relaxed">
+              <p className="text-body leading-relaxed">
                 <strong className="font-medium">Where to look:</strong>{" "}
                 {result.albert.where_to_look}
               </p>

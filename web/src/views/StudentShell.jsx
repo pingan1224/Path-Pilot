@@ -99,8 +99,8 @@ export default function StudentShell({ me, onSignOut }) {
                   onClick={() => setPane(id)}
                   className={`rounded-md px-2.5 py-2 text-meta transition-colors md:py-1 ${
                     pane === id
-                      ? "text-primary shadow-[inset_0_0_0_1px_var(--accent)]"
-                      : "text-muted-foreground hover:bg-secondary"
+                      ? "bg-accent font-medium text-accent-foreground"
+                      : "text-muted-foreground hover:bg-secondary active:bg-secondary/70"
                   }`}
                 >
                   {label}
@@ -160,7 +160,11 @@ export default function StudentShell({ me, onSignOut }) {
 
           {!inChat ? (
             <div className="nx-scroll min-h-0 flex-1 overflow-auto">
-              <div className="mx-auto w-full max-w-[920px] px-4 py-6 sm:px-6">
+              {/* Keyed so switching tools re-runs the arrival — the same movement a
+                  message makes when it enters the thread. One kind of change, one
+                  animation. The chat pane is exempt: it is revealed, not re-created,
+                  because remounting it would cost the conversation. */}
+              <div key={view} className="nx-view mx-auto w-full max-w-[920px] px-4 py-6 sm:px-6">
                 {view === "intake" ? (
                   <IntakeView onOpenView={setView} />
                 ) : view === "decoder" ? (
@@ -233,7 +237,7 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
        this product exists for — off the top of the screen. Splitting them means status
        can be as long as it needs to be, and choosing a tool never hides where you stand. */
     <aside
-      className="flex max-h-[40vh] w-full flex-none flex-col border-b border-border md:max-h-none md:w-[clamp(280px,30%,420px)] md:border-r md:border-b-0"
+      className="flex max-h-[40vh] w-full flex-none flex-col border-b border-border bg-well md:max-h-none md:w-[clamp(280px,30%,420px)] md:border-r md:border-b-0"
       aria-label="Registration readiness and tools"
     >
       <div className="nx-scroll min-h-0 flex-1 overflow-auto px-4 pt-5 pb-4 md:px-5">
@@ -342,14 +346,32 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
                 onClick={() => onOpenView(id)}
                 /* Roomy for a thumb, tight for a cursor: the rail is a drawer on a phone
                    where these are touch targets, and a contested column on a desktop
-                   where they are not. */
-                className={`rounded-md px-2.5 py-2 text-left text-body transition-colors md:py-1 md:text-meta ${
+                   where they are not.
+
+                   Selected = a chip lifted off the well: fill, ink and weight all say it,
+                   because the rail's left edge belongs to the verdict system and a lone
+                   ring reads as an outline, not a place. */
+                className={`flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-left text-body transition-colors md:py-1 md:text-meta ${
                   view === id
-                    ? "text-primary shadow-[inset_0_0_0_1px_var(--accent)]"
-                    : "text-muted-foreground hover:bg-secondary"
+                    ? "bg-card font-medium text-primary shadow-xs"
+                    : "text-muted-foreground hover:bg-card/60 active:bg-card"
                 }`}
               >
                 {label}
+                {/* The one nav entry with live state gets it, in words and figures — not
+                    an icon. "blocked" outranks the count because a blocked mission's step
+                    tally is not the news. */}
+                {id === "mission" && mission ? (
+                  <span
+                    className={`nx-figure text-micro ${
+                      blockers.length > 0 ? "text-destructive" : "text-subtle"
+                    }`}
+                  >
+                    {blockers.length > 0
+                      ? "blocked"
+                      : `${done}/${mission.steps.length}`}
+                  </span>
+                ) : null}
               </button>
             ))}
           </div>

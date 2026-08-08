@@ -63,4 +63,5 @@ export function Muted({ children }) {
 
 export const INPUT_CLASS =
   "min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-2 text-lead " +
-  "outline-none placeholder:text-subtle focus-visible:ring-2 focus-visible:ring-primary/40"
+  "outline-none transition-colors placeholder:text-subtle hover:border-subtle " +
+  "focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"

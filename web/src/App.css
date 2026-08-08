@@ -31,13 +31,24 @@
    well under AA. This was a real defect on every primary button in dark mode — inherited,
    not introduced here, and worse before the promotion (2.30:1) than after. */
 
+/* Three depths, one story: the rail sits in a --well (recessed — persistent context and
+   the way around), work happens on --ground, and the things work produces (cards,
+   findings, artifacts) float on --surface.
+
+   The well and --ink-3 were solved together. A first attempt kept ink-3 and took the
+   deepest well that still cleared AA — 1.08:1 against the ground, which vanished in a
+   compressed screenshot, and a zone boundary that does not survive a screenshot is not
+   doing its job. Darkening ink-3 one step bought a well at 1.16:1 separation while
+   *raising* the meta-text contrast everywhere else (4.63 worst case on the well itself,
+   5.06 on surface-2, up from 4.64). */
 :root {
   --ground: #f5f7fe;
+  --well: #e3e6f2;
   --surface: #fdfdff;
   --surface-2: #edf0f7;
   --ink: #1e1e21;
   --ink-2: #505360;
-  --ink-3: #686b79;
+  --ink-3: #636573;
   --line: #dcdee5;
   --line-soft: #eaedf4;
 
@@ -56,6 +67,15 @@
 
   --radius: 8px;
   --mono: "Cascadia Code", Consolas, ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Motion speaks with two durations and one easing. --motion-fast is control feedback
+     (hover, press); --motion-view is anything that arrives or leaves (messages, views,
+     list items). The two long-running exceptions — the 1.5s scan and the 1s settle —
+     stay literal in their own rules because nothing else may reuse them: an indeterminate
+     wait and a server-recompute mark are not paces, they are specific meanings. */
+  --motion-fast: 140ms;
+  --motion-view: 220ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
 
   /* One superfamily, three widths, three jobs — see the type note below. */
   --font-ui: "Archivo Variable", "Segoe UI Variable Text", "Segoe UI", system-ui,
@@ -85,6 +105,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --ground: #161826;
+    --well: #111320;
     --surface: #232532;
     --surface-2: #292b31;
     --ink: #e9e9ed;
@@ -110,6 +131,7 @@
 
 :root[data-theme="dark"] {
   --ground: #161826;
+  --well: #111320;
   --surface: #232532;
   --surface-2: #292b31;
   --ink: #e9e9ed;
@@ -179,22 +201,6 @@
    reading the tokens above.
    --------------------------------------------------------------------------- */
 
-/* Rules fade to transparent 48px from each end instead of stopping cleanly — the system's
-   most recognisable mark. Box outlines and in-control separators stay solid; only
-   freestanding rules fade. */
-.nx-rule {
-  height: 1px;
-  border: 0;
-  margin: 0;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--line) 48px,
-    var(--line) calc(100% - 48px),
-    transparent
-  );
-}
-
 /* The status dot. Never alone — every one of these sits beside a text value that says the
    same thing, which is the rule the whole product is built on. */
 .nx-dot {
@@ -219,38 +225,31 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Motion — four moments, each of which says something
+   Motion — one arrival, two meanings of their own
    ---------------------------------------------------------------------------
 
    The product's own UI contract bans animation that carries no meaning, which is a useful
    filter rather than a restriction. What survived it:
 
-     nx-in       something arrived in the thread
-     nx-stagger  a list resolved in reading order, rather than being dumped
-     nx-scan     work is in progress, duration unknown — deliberately indeterminate
-     nx-settle   the server recomputed this row and it changed
+     nx-in / nx-msg / nx-view   something arrived — a message, a view, a list item.
+                                One movement (fade + 6px rise), one duration, one easing,
+                                wherever anything enters. Lists add per-child delays so
+                                verdicts resolve in reading order (see .findings).
+     nx-scan                    work in progress, duration unknown — deliberately
+                                indeterminate; no event stream exists to fill a bar from
+     nx-settle                  the server recomputed this row and it changed
 
-   `nx-scan` is the honest one. There is no backend event stream yet, so any bar that
-   filled toward a target would be inventing progress it cannot see. A sweep says
-   "working" and claims nothing else — which is exactly what is true. */
+   The last two keep literal durations because nothing else may reuse them: an
+   indeterminate wait and a recompute mark are specific meanings, not paces. */
 
 @keyframes nx-in {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
-.nx-msg { animation: nx-in 0.28s ease both; }
-
-/* Reading order, made physical. Capped at eight: past that the last item would wait a
-   third of a second, and a slow list reads as a slow product. */
-.nx-stagger > * { animation: nx-in 0.34s cubic-bezier(0.2, 0.7, 0.3, 1) both; }
-.nx-stagger > *:nth-child(1) { animation-delay: 0ms; }
-.nx-stagger > *:nth-child(2) { animation-delay: 40ms; }
-.nx-stagger > *:nth-child(3) { animation-delay: 80ms; }
-.nx-stagger > *:nth-child(4) { animation-delay: 120ms; }
-.nx-stagger > *:nth-child(5) { animation-delay: 160ms; }
-.nx-stagger > *:nth-child(6) { animation-delay: 200ms; }
-.nx-stagger > *:nth-child(7) { animation-delay: 240ms; }
-.nx-stagger > *:nth-child(n + 8) { animation-delay: 280ms; }
+.nx-msg,
+.nx-view {
+  animation: nx-in var(--motion-view) var(--ease-out) both;
+}
 
 @keyframes nx-scan {
   0% { transform: translateX(-105%); }
@@ -280,8 +279,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .nx-msg,
-  .nx-settle,
-  .nx-stagger > * {
+  .nx-view,
+  .nx-settle {
     animation: none;
   }
   /* The sweep is the only indicator that anything is happening during a 20-second
@@ -1169,7 +1168,7 @@
    list rather than asked for per view, because every findings list in the product wants
    the same behaviour and the ones that forgot to ask would have been the tell. */
 .findings > li {
-  animation: nx-in 0.34s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation: nx-in var(--motion-view) var(--ease-out) both;
 }
 .findings > li:nth-child(1) { animation-delay: 0ms; }
 .findings > li:nth-child(2) { animation-delay: 40ms; }

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api";
 import { ErrorState } from "../components";
+import { Finding, Passage } from "@/components/Finding";
 
 /**
  * The error decoder: paste what Albert said, get a reading with its evidence.
@@ -37,13 +38,6 @@ const OFFICE_LABEL = {
   advising: "Academic advising",
   department: "The department or program",
   international: "Office of Global Services",
-};
-
-const VERDICT_META = {
-  satisfied: { mark: "✓", tone: "good" },
-  conditional: { mark: "◐", tone: "warn" },
-  unverifiable: { mark: "?", tone: "neutral" },
-  not_satisfied: { mark: "✕", tone: "danger" },
 };
 
 const SAMPLES = [
@@ -335,41 +329,9 @@ function Result({ result, answers, onAnswer, onResubmit, busy, onOpenPlanner }) 
 
           {result.record_check.findings.length > 0 ? (
             <ul className="findings">
-              {result.record_check.findings.map((finding, i) => {
-                const verdict = VERDICT_META[finding.verdict] ?? VERDICT_META.unverifiable;
-                return (
-                  <li key={i} className={`finding finding--${verdict.tone}`}>
-                    <div className="finding__head">
-                      <span className="finding__mark">{verdict.mark}</span>
-                      <span className="finding__summary">{finding.summary}</span>
-                    </div>
-                    <p className="finding__detail">{finding.detail}</p>
-                    {finding.next_step ? (
-                      <p className="finding__next">{finding.next_step}</p>
-                    ) : null}
-                    {finding.citations.length > 0 ? (
-                      <details className="finding__sources">
-                        <summary>Source</summary>
-                        {finding.citations.map((cite, j) => (
-                          <p key={j} className="finding__cite">
-                            {cite.url ? (
-                              <a href={cite.url} target="_blank" rel="noreferrer">
-                                {cite.label}
-                              </a>
-                            ) : (
-                              cite.label
-                            )}
-                            {cite.verified_on ? ` · checked ${cite.verified_on}` : ""}
-                            {cite.quote ? (
-                              <span className="finding__quote">“{cite.quote}”</span>
-                            ) : null}
-                          </p>
-                        ))}
-                      </details>
-                    ) : null}
-                  </li>
-                );
-              })}
+              {result.record_check.findings.map((finding, i) => (
+                <Finding key={i} finding={finding} />
+              ))}
             </ul>
           ) : null}
 
@@ -389,23 +351,15 @@ function Result({ result, answers, onAnswer, onResubmit, busy, onOpenPlanner }) 
           <h2>What the bulletin says</h2>
           <ul className="findings">
             {result.passages.map((passage) => (
-              <li key={passage.source_id} className="finding">
-                <div className="finding__head">
-                  <span className="finding__summary">
-                    {passage.section ?? passage.document}
-                  </span>
-                </div>
-                <p className="finding__detail">{passage.text}</p>
-                <p className="finding__cite">
-                  <a href={passage.url} target="_blank" rel="noreferrer">
-                    {passage.document}
-                  </a>
-                  {" · "}
-                  {passage.office.replace(/_/g, " ")}
-                  {" · fetched "}
-                  {passage.verified_at?.slice(0, 10)}
-                </p>
-              </li>
+              <Passage
+                key={passage.source_id}
+                title={passage.section ?? passage.document}
+                text={passage.text}
+                source={passage.document}
+                office={passage.office}
+                fetchedOn={passage.verified_at?.slice(0, 10)}
+                url={passage.url}
+              />
             ))}
           </ul>
         </section>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { ErrorState, Loading } from "../components";
+import { Finding } from "@/components/Finding";
 
 /**
  * The sequence planner: what order the remaining requirements can be taken in.
@@ -144,12 +145,13 @@ export default function SequenceView({ onOpenPlanner }) {
           </p>
           <ul className="findings">
             {plan.rejected_tracks.map((t) => (
-              <li key={t.track} className="finding finding--warn">
-                <div className="finding__head">
-                  <span className="finding__summary">{t.track}</span>
-                </div>
-                <p className="finding__detail">{t.why}</p>
-              </li>
+              <Finding
+                key={t.track}
+                verdict="conditional"
+                label="Does not fit"
+                summary={t.track}
+                detail={t.why}
+              />
             ))}
           </ul>
         </section>
@@ -232,14 +234,13 @@ function Blocked({ plan, onOpenPlanner }) {
           <p className="eyebrow">Any one of these would unblock it</p>
           <ul className="findings">
             {why.binding_labels.map((label, i) => (
-              <li key={label} className="finding finding--warn">
-                <div className="finding__head">
-                  <span className="finding__summary">{label}</span>
-                </div>
-                {why.remedies[i] ? (
-                  <p className="finding__detail">{why.remedies[i]}</p>
-                ) : null}
-              </li>
+              <Finding
+                key={label}
+                verdict="conditional"
+                label="Binding"
+                summary={label}
+                detail={why.remedies[i] ?? null}
+              />
             ))}
           </ul>
           <p className="muted">
@@ -269,14 +270,16 @@ function Assumptions({ plan, onOpenPlanner }) {
       </p>
       <ul className="findings">
         {plan.assumptions.map((a) => (
-          <li key={a.subject} className="finding finding--neutral">
-            <div className="finding__head">
-              <span className="finding__mark">?</span>
-              <span className="finding__summary">{a.subject}</span>
-            </div>
-            <p className="finding__detail">{a.statement}</p>
-            {a.check ? <p className="finding__next">{a.check}</p> : null}
-          </li>
+          /* "Assumed" rather than the default "Ask a human": the check line below already
+             names who to ask, and this card is about what the sequence rests on. */
+          <Finding
+            key={a.subject}
+            verdict="unverifiable"
+            label="Assumed"
+            summary={a.subject}
+            detail={a.statement}
+            nextStep={a.check}
+          />
         ))}
       </ul>
       {plan.unplaceable.length > 0 ? (

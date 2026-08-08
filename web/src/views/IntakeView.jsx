@@ -57,7 +57,10 @@ export default function IntakeView({ onOpenView }) {
       setSelected(preselect)
       setEdits({})
     } catch (err) {
-      setError(err.message)
+      // Carries its own retry: the file is still in the input, so re-reading it is one
+      // click. Without this a failed read is a dead end — the only way forward was to
+      // notice the message and re-pick the same file from the OS dialog.
+      setError({ message: err.message, retry: () => upload(file) })
       setReading(null)
     } finally {
       setBusy(false)
@@ -93,7 +96,7 @@ export default function IntakeView({ onOpenView }) {
       setEdits({})
       if (fileRef.current) fileRef.current.value = ""
     } catch (err) {
-      setError(err.message)
+      setError({ message: err.message, retry: confirm })
     } finally {
       setBusy(false)
     }
@@ -140,8 +143,28 @@ export default function IntakeView({ onOpenView }) {
             <span className="font-mono">A-</span> are easy to confuse — so every row from an
             image has to be checked by you individually, and none can be added in bulk.
           </p>
-          {busy ? <p className="text-sm text-muted-foreground">Reading…</p> : null}
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {/* Both states are announced. Reading a photo goes to a vision endpoint and can
+              take many seconds, and the failure was previously a bare <p> — a screen-reader
+              user got silence in both directions, on the one screen where the wait is long
+              enough to make you wonder whether the click registered. */}
+          {busy ? (
+            <p className="text-sm text-muted-foreground" role="status">
+              Reading…
+            </p>
+          ) : null}
+          {error ? (
+            <div
+              className="flex flex-wrap items-center gap-2 text-sm text-destructive"
+              role="alert"
+            >
+              <span>{error.message}</span>
+              {error.retry ? (
+                <Button variant="outline" size="sm" disabled={busy} onClick={error.retry}>
+                  Try again
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

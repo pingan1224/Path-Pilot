@@ -29,9 +29,14 @@
 }
 
 /* Dark values live in one block and are repeated for the explicit data-theme
-   override, so a viewer toggle beats the OS preference in both directions. */
+   override, so a viewer toggle beats the OS preference in both directions.
+
+   The `:not([data-theme="light"])` is what makes "both directions" true. Without it only
+   the dark direction worked: `[data-theme="dark"]` outranks `:root`, but a `light` request
+   had nothing to match, and this media block — equal specificity, later in the file — kept
+   winning on a dark-preference OS. Cheaper than repeating the light values a third time. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --ground: #121019;
     --surface: #1a1724;
     --surface-2: #221d2e;
@@ -74,6 +79,141 @@
   --danger-soft: #37191d;
   --neutral: #98a1b0;
   --neutral-soft: #23262d;
+}
+
+/* ---------------------------------------------------------------------------
+   Nocturne — scoped to the assistant surface
+   ---------------------------------------------------------------------------
+
+   The chat was rebuilt on the Nocturne design system (a cool blue-grey ground, a blurple
+   accent, 8px radii, outlined actions, compact density). Only that view was rebuilt, so
+   the palette is scoped to its container rather than replacing the one above — a staged
+   migration, not a second permanent palette. Delete this block and move the values up if
+   the rest of the app follows.
+
+   Nocturne's *values* are mapped onto this project's *token names*, not imported under
+   their own (`--color-bg`, `--color-surface`, …). That is what keeps one vocabulary, and
+   it is also what makes shadcn come along for free: tailwind.css aliases
+   `--color-primary: var(--accent)` with `@theme inline`, so the utility re-reads --accent
+   from the cascade at paint time and every shadcn component inside this container
+   re-themes with no per-component work.
+
+   Two departures from Nocturne as shipped, both measured:
+
+   - The system carries no semantic ramp — it is explicitly mono, and its own Albert
+     mockup had to hardcode `#7fbfa8/#d8b26a/#e08b8b` in a script to get status colour.
+     This project's good/warn/danger are kept instead (they land within 0.5 of those
+     hexes on contrast anyway) and are therefore *not* redefined below.
+   - The mockup's meta text used neutral-600 (#75798c, 4.08:1 on the ground — below AA at
+     the 10.5px it was set in, and it carried the FERPA disclaimer). --ink-3 takes
+     neutral-500 on dark, and a value solved for 4.5:1 on light. */
+
+[data-surface="nocturne"] {
+  --ground: #f5f7fe;
+  --surface: #fdfdff;
+  --surface-2: #edf0f7;
+  --ink: #1e1e21;
+  --ink-2: #505360;
+  --ink-3: #6c6f7d;
+  --line: #dcdee5;
+  --line-soft: #eaedf4;
+  --accent: #5e4e9e;
+  --accent-soft: #f0eff7;
+  --radius: 8px;
+}
+
+/* Nocturne ships a dark ground only; the light values above were derived from these by
+   mirroring lightness in OKLCH on the system's own shared perceptual scale, holding hue
+   and re-tuning chroma to what the gamut allows at the new lightness. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) [data-surface="nocturne"] {
+    --ground: #161826;
+    --surface: #232532;
+    --surface-2: #292b31;
+    --ink: #e9e9ed;
+    --ink-2: #b2b6ca;
+    --ink-3: #9397ab;
+    --line: #3f424d;
+    --line-soft: #292b31;
+    --accent: #9184d9;
+    --accent-soft: #2b2741;
+  }
+}
+
+:root[data-theme="dark"] [data-surface="nocturne"] {
+  --ground: #161826;
+  --surface: #232532;
+  --surface-2: #292b31;
+  --ink: #e9e9ed;
+  --ink-2: #b2b6ca;
+  --ink-3: #9397ab;
+  --line: #3f424d;
+  --line-soft: #292b31;
+  --accent: #9184d9;
+  --accent-soft: #2b2741;
+}
+
+/* Nocturne signatures Tailwind cannot say cleanly. Everything else on the assistant
+   surface is utility classes reading the tokens above. */
+
+/* Rules fade to transparent 48px from each end instead of stopping cleanly — the system's
+   most recognisable mark. Box outlines and in-control separators stay solid; only
+   freestanding rules fade. */
+.nx-rule {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--line) 48px,
+    var(--line) calc(100% - 48px),
+    transparent
+  );
+}
+
+/* The status dot. Never alone — every one of these sits beside a text value that says the
+   same thing, which is the rule the whole product is built on. */
+.nx-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+.nx-dot--good { background: var(--good); }
+.nx-dot--warn { background: var(--warn); }
+.nx-dot--danger { background: var(--danger); }
+.nx-dot--neutral { background: var(--neutral); }
+
+.nx-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+.nx-scroll::-webkit-scrollbar { width: 9px; }
+.nx-scroll::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 9px;
+}
+
+@keyframes nx-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.nx-msg { animation: nx-in 0.28s ease both; }
+
+@keyframes nx-pulse {
+  0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+.nx-tick { animation: nx-pulse 1.1s infinite; }
+.nx-tick:nth-child(2) { animation-delay: 0.15s; }
+.nx-tick:nth-child(3) { animation-delay: 0.3s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-msg,
+  .nx-tick {
+    animation: none;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -519,6 +659,13 @@
 .tag--accent {
   background: var(--accent-soft);
   color: var(--accent);
+}
+/* `unverifiable` maps to tone "neutral", and this rule was missing — PlannerView's
+   "Ask a human" tag rendered with no background at all, which is the one verdict where
+   the reader most needs to notice the label. */
+.tag--neutral {
+  background: var(--neutral-soft);
+  color: var(--neutral);
 }
 
 /* ---------------------------------------------------------------------------
@@ -1192,6 +1339,7 @@
 .finding--good { border-left-color: var(--good); }
 .finding--warn { border-left-color: var(--warn); }
 .finding--danger { border-left-color: var(--danger); }
+.finding--neutral { border-left-color: var(--neutral); }
 .finding__head {
   display: flex;
   align-items: center;
@@ -1220,6 +1368,56 @@
   color: var(--ink-3);
   font-style: italic;
   margin-top: 0.2rem;
+}
+/* Actions sit below the evidence, never beside the summary: the card is read top-down as
+   verdict → why → what to do, and a button level with the title invites acting before
+   reading the reason. */
+.finding__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.15rem;
+}
+/* Inherited from the .mission__accept block this replaced — the accept-a-risk note field
+   is the only input that lives inside a finding, and it kept its own look. */
+.finding__actions input {
+  flex: 1;
+  min-width: 15rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.82rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Passages — somebody else's published text, quoted. Deliberately not a finding:
+   no verdict mark, no coloured edge, no claim of its own.
+   --------------------------------------------------------------------------- */
+
+.passage {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.75rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+}
+.passage__title {
+  font-weight: 600;
+}
+.passage__text {
+  margin: 0;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--line);
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+.passage__cite {
+  font-size: 0.8rem;
+  color: var(--ink-3);
 }
 
 .course-add { display: flex; flex-direction: column; gap: 0.6rem; }
@@ -1555,22 +1753,6 @@
 .card--focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.mission__accept {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-  margin-top: 0.45rem;
-}
-.mission__accept input {
-  flex: 1;
-  min-width: 15rem;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 0.35rem 0.5rem;
-  font-size: 0.82rem;
 }
 
 /* --- term sequence -------------------------------------------------------------- */

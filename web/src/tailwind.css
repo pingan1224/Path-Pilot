@@ -47,6 +47,17 @@
   --color-destructive: var(--danger);
   --color-destructive-foreground: #ffffff;
 
+  /* The semantic trio and the third ink step, aliased so Tailwind-side work can reach the
+     tones the hand-written CSS already had. shadcn only names one of them (destructive),
+     but this product's whole status hierarchy is good/warn/danger — a surface that can
+     only express "bad" would push new work back into hand-written classes. */
+  --color-success: var(--good);
+  --color-success-soft: var(--good-soft);
+  --color-warning: var(--warn);
+  --color-warning-soft: var(--warn-soft);
+  --color-destructive-soft: var(--danger-soft);
+  --color-subtle: var(--ink-3);
+
   --color-border: var(--line);
   --color-input: var(--line);
   --color-ring: var(--accent);

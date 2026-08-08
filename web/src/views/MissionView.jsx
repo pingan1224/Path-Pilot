@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { ErrorState, Loading } from "../components";
+import { Finding } from "@/components/Finding";
 
 /**
  * The registration mission: a resumable task, shown as the five steps it actually is.
@@ -26,14 +27,7 @@ const STEP_MARK = {
   blocked: { mark: "·", tone: "neutral", label: "Waiting" },
 };
 
-const VERDICT_META = {
-  satisfied: { mark: "✓", tone: "good" },
-  conditional: { mark: "◐", tone: "warn" },
-  unverifiable: { mark: "?", tone: "neutral" },
-  not_satisfied: { mark: "✕", tone: "danger" },
-};
-
-const TERM_SUGGESTIONS = ["Fall 2026", "Spring 2027", "Summer 2027"];
+const TERM_SUGGESTIONS =["Fall 2026", "Spring 2027", "Summer 2027"];
 
 export default function MissionView({ onOpenPlanner }) {
   const [missions, setMissions] = useState(null);
@@ -279,19 +273,9 @@ function GapsCard({ mission, state, busy, act, onOpenPlanner }) {
         <p className="muted">Nothing outstanding at the degree level.</p>
       ) : (
         <ul className="findings">
-          {mission.degree_findings.map((f) => {
-            const meta = VERDICT_META[f.verdict] ?? VERDICT_META.unverifiable;
-            return (
-              <li key={f.key} className={`finding finding--${meta.tone}`}>
-                <div className="finding__head">
-                  <span className="finding__mark">{meta.mark}</span>
-                  <span className="finding__summary">{f.summary}</span>
-                </div>
-                <p className="finding__detail">{f.detail}</p>
-                {f.next_step ? <p className="finding__next">{f.next_step}</p> : null}
-              </li>
-            );
-          })}
+          {mission.degree_findings.map((f) => (
+            <Finding key={f.key} finding={f} />
+          ))}
         </ul>
       )}
       <div className="decoder__actions">
@@ -437,42 +421,36 @@ function OpenItemsCard({ mission, state, busy, act }) {
       {mission.open_blockers.length > 0 ? (
         <ul className="findings">
           {mission.open_blockers.map((f) => (
-            <li key={f.key} className="finding finding--danger">
-              <div className="finding__head">
-                <span className="finding__mark">✕</span>
-                <span className="finding__summary">{f.summary}</span>
-              </div>
-              <p className="finding__detail">{f.detail}</p>
-              {f.next_step ? <p className="finding__next">{f.next_step}</p> : null}
-              <div className="mission__accept">
-                <label className="visually-hidden" htmlFor={`note-${f.key}`}>
-                  Why you are accepting this
-                </label>
-                <input
-                  id={`note-${f.key}`}
-                  value={notes[f.key] ?? ""}
-                  onChange={(e) => setNotes((n) => ({ ...n, [f.key]: e.target.value }))}
-                  placeholder="Why you are going ahead anyway (goes in the advisor summary)"
-                  disabled={busy}
-                />
-                <button
-                  type="button"
-                  className="btn btn--small"
-                  disabled={busy}
-                  onClick={() =>
-                    act(() =>
-                      api.missionAcceptRisk(mission.id, {
-                        finding_key: f.key,
-                        finding_summary: f.summary,
-                        note: notes[f.key] || null,
-                      }),
-                    )
-                  }
-                >
-                  Accept as a known risk
-                </button>
-              </div>
-            </li>
+            /* A blocker is a `not_satisfied` verdict — it was written as a hardcoded red
+               border and a ✕, which is the same statement with the label left off. */
+            <Finding key={f.key} finding={f} verdict="not_satisfied">
+              <label className="visually-hidden" htmlFor={`note-${f.key}`}>
+                Why you are accepting this
+              </label>
+              <input
+                id={`note-${f.key}`}
+                value={notes[f.key] ?? ""}
+                onChange={(e) => setNotes((n) => ({ ...n, [f.key]: e.target.value }))}
+                placeholder="Why you are going ahead anyway (goes in the advisor summary)"
+                disabled={busy}
+              />
+              <button
+                type="button"
+                className="btn btn--small"
+                disabled={busy}
+                onClick={() =>
+                  act(() =>
+                    api.missionAcceptRisk(mission.id, {
+                      finding_key: f.key,
+                      finding_summary: f.summary,
+                      note: notes[f.key] || null,
+                    }),
+                  )
+                }
+              >
+                Accept as a known risk
+              </button>
+            </Finding>
           ))}
         </ul>
       ) : null}
@@ -482,14 +460,16 @@ function OpenItemsCard({ mission, state, busy, act }) {
           <p className="eyebrow">Accepted knowingly</p>
           <ul className="findings">
             {mission.accepted_risks.map((r) => (
-              <li key={r.finding_key} className="finding finding--warn">
-                <div className="finding__head">
-                  <span className="finding__mark">◐</span>
-                  <span className="finding__summary">
-                    {r.accepted_summary ?? r.finding_key}
-                  </span>
-                </div>
-                {r.note ? <p className="finding__detail">Your note: {r.note}</p> : null}
+              /* Label overridden because the section heading above already says "Accepted
+                 knowingly" — the default "Holds if…" would describe the blocker rather than
+                 the student's decision about it. */
+              <Finding
+                key={r.finding_key}
+                verdict="conditional"
+                label="Accepted"
+                summary={r.accepted_summary ?? r.finding_key}
+                detail={r.note ? `Your note: ${r.note}` : null}
+              >
                 {r.reads_differently_now ? (
                   <p className="note note--warn">
                     This now reads differently than when you accepted it. Worth a second
@@ -504,7 +484,7 @@ function OpenItemsCard({ mission, state, busy, act }) {
                 >
                   Undo
                 </button>
-              </li>
+              </Finding>
             ))}
           </ul>
         </>

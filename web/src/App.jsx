@@ -3,25 +3,21 @@ import "./App.css";
 import { api, UnauthenticatedError } from "./api";
 import { ErrorState, Loading } from "./components";
 import AdvisorView from "./views/AdvisorView";
-import ChatHome from "./views/ChatHome";
-import DecoderView from "./views/DecoderView";
-import IntakeView from "./views/IntakeView";
 import DemoLogin from "./views/DemoLogin";
-import MissionView from "./views/MissionView";
-import SequenceView from "./views/SequenceView";
 import Login from "./views/Login";
-import PlannerView from "./views/PlannerView";
 import RegistrarView from "./views/RegistrarView";
+import StudentShell from "./views/StudentShell";
 import StudentView from "./views/StudentView";
 
 /**
- * The view is decided by who is signed in, not by a switcher. Each role lands on its own
- * question; an advisor can additionally drill into an advisee's dashboard (the API
- * enforces that it really is their advisee).
+ * The view is decided by who is signed in, not by a switcher. A student gets the
+ * full-viewport assistant workspace (StudentShell owns that frame entirely); each staff
+ * role lands on its own question inside the classic page shell, and an advisor can
+ * additionally drill into an advisee's dashboard (the API enforces that it really is
+ * their advisee).
  */
 
 const ROLE_QUESTIONS = {
-  student: "Am I ready to register?",
   advisor: "Who needs me this week?",
   registrar: "Where is the pressure?",
   finance: "Which financial cases need review?",
@@ -33,11 +29,6 @@ export default function App() {
   const [error, setError] = useState(null);
   // Advisor drill-down into one advisee; null means "own home view".
   const [viewStudentId, setViewStudentId] = useState(null);
-  // Student tabs. The chat is the front door — it greets from computed state, answers on
-  // first contact with nothing entered, and renders the agent's work as actionable cards.
-  // The other views survive as the "I want to look at the records myself" path, and the
-  // conditional landing logic they used to need is gone: the greeting does that job now.
-  const [studentTab, setStudentTab] = useState("chat");
 
   useEffect(() => {
     api
@@ -82,6 +73,10 @@ export default function App() {
     return window.location.pathname.startsWith("/demo") ? <DemoLogin /> : <Login />;
   }
 
+  if (me.role === "student") {
+    return <StudentShell me={me} onSignOut={signOut} />;
+  }
+
   return (
     <>
       <a className="skip" href="#main">
@@ -117,29 +112,6 @@ export default function App() {
       <div className="subbar">
         <div className="subbar__inner">
           <p className="subbar__question">{ROLE_QUESTIONS[me.role] ?? ""}</p>
-          {me.role === "student" ? (
-            <nav className="roles" aria-label="Student views">
-              {[
-                ["chat", "Assistant"],
-                ["intake", "Add from transcript"],
-                ["decoder", "Decode an error"],
-                ["mission", "Registration mission"],
-                ["sequence", "Term sequence"],
-                ["planner", "Degree planner"],
-                ...(me.student_id ? [["dashboard", "Dashboard (demo)"]] : []),
-              ].map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  className={`role ${studentTab === id ? "role--active" : ""}`}
-                  aria-current={studentTab === id ? "page" : undefined}
-                  onClick={() => setStudentTab(id)}
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
-          ) : null}
           {viewStudentId ? (
             <button type="button" className="btn" onClick={() => setViewStudentId(null)}>
               ← Back to my queue
@@ -149,24 +121,6 @@ export default function App() {
       </div>
 
       <main id="main" className="main">
-        {me.role === "student" ? (
-          studentTab === "chat" ? (
-            <ChatHome me={me} onOpenView={setStudentTab} />
-          ) : studentTab === "intake" ? (
-            <IntakeView onOpenView={setStudentTab} />
-          ) : studentTab === "decoder" ? (
-            <DecoderView onOpenPlanner={() => setStudentTab("planner")} />
-          ) : studentTab === "mission" ? (
-            <MissionView onOpenPlanner={() => setStudentTab("planner")} />
-          ) : studentTab === "sequence" ? (
-            <SequenceView onOpenPlanner={() => setStudentTab("planner")} />
-          ) : me.student_id && studentTab === "dashboard" ? (
-            <StudentView studentId={me.student_id} />
-          ) : (
-            <PlannerView />
-          )
-        ) : null}
-
         {me.role === "advisor" ? (
           viewStudentId ? (
             <StudentView studentId={viewStudentId} />

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { Empty, ErrorState, Loading } from "../components";
+import { Finding } from "@/components/Finding";
 
 /**
  * The degree planner: self-reported record in, verdicts with citations out.
@@ -12,13 +13,6 @@ import { Empty, ErrorState, Loading } from "../components";
  * and faithful, which matters more than prose polish in a document a student sends to
  * their advisor.
  */
-
-const VERDICT_META = {
-  satisfied: { mark: "✓", label: "Verified", tone: "good" },
-  conditional: { mark: "◐", label: "Holds if…", tone: "warn" },
-  unverifiable: { mark: "?", label: "Ask a human", tone: "neutral" },
-  not_satisfied: { mark: "✕", label: "Not met", tone: "danger" },
-};
 
 const STATE_LABEL = {
   completed: "Completed",
@@ -277,43 +271,6 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
 }
 
 /* ---------------------------------------------------------------------------------- */
-
-function Finding({ finding }) {
-  const meta = VERDICT_META[finding.verdict];
-  return (
-    <li className={`finding finding--${meta.tone}`}>
-      <div className="finding__head">
-        <span className="finding__mark" aria-hidden="true">
-          {meta.mark}
-        </span>
-        <span className="finding__summary">{finding.summary}</span>
-        <span className={`tag tag--${meta.tone}`}>{meta.label}</span>
-      </div>
-      <p className="finding__detail">{finding.detail}</p>
-      {finding.next_step ? (
-        <p className="finding__next">→ {finding.next_step}</p>
-      ) : null}
-      {finding.citations.length > 0 ? (
-        <details className="finding__sources">
-          <summary>Source</summary>
-          {finding.citations.map((c, i) => (
-            <p key={i} className="finding__cite">
-              {c.url ? (
-                <a href={c.url} target="_blank" rel="noreferrer">
-                  {c.label}
-                </a>
-              ) : (
-                c.label
-              )}
-              {c.verified_on ? ` · checked ${c.verified_on}` : ""}
-              {c.quote ? <span className="finding__quote">“{c.quote}”</span> : null}
-            </p>
-          ))}
-        </details>
-      ) : null}
-    </li>
-  );
-}
 
 function PlanCard({ plan, includePlanned, onTogglePlanned }) {
   const settled = plan.findings.filter(

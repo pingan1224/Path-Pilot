@@ -408,7 +408,13 @@ export default function ChatHome({
     <div className={`flex min-h-0 flex-1 flex-col ${showAudit ? "lg:flex-row" : ""}`}>
         <section
           aria-label="Conversation"
-          className={`flex min-w-0 flex-1 flex-col ${landing ? "justify-center" : ""}`}
+          /* min-h-0 is load-bearing, like every level of this flex chain: without it the
+             section's minimum height is its content — the whole thread — and the column
+             quietly grows past h-dvh instead of scrolling inside it. It held without the
+             constraint on first render and broke after a hidden→shown round trip through
+             a tool view, which is exactly the kind of history-dependent layout a missing
+             explicit constraint produces. */
+          className={`flex min-h-0 min-w-0 flex-1 flex-col ${landing ? "justify-center" : ""}`}
         >
           {/* Same element in the same position in both states, so switching out of the
               landing layout re-styles the column rather than remounting the composer

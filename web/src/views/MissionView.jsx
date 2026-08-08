@@ -1,7 +1,16 @@
-import { useEffect, useState } from "react";
-import { api } from "../api";
-import { ErrorState, Loading } from "../components";
-import { Finding } from "@/components/Finding";
+import { useCallback, useEffect, useState } from "react"
+import { api } from "@/api"
+import { Finding } from "@/components/Finding"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
 
 /**
  * The registration mission: a resumable task, shown as the five steps it actually is.
@@ -19,84 +28,151 @@ import { Finding } from "@/components/Finding";
  * The assistant's suggestions render in the candidate list marked as suggestions, with
  * their reason, and they do not move the progress counter. That gap between "the assistant
  * put three courses in front of me" and "I have chosen three courses" is the product.
+ *
+ * First view rebuilt off the old App.css families (M-view migration, PRD §10.6 as the
+ * checklist). Steps use the same row treatment and the same tones the shell's rail gives
+ * this data — one representation of a mission step, wherever it appears.
  */
 
-const STEP_MARK = {
-  done: { mark: "✓", tone: "good", label: "Done" },
-  active: { mark: "→", tone: "accent", label: "Now" },
-  blocked: { mark: "·", tone: "neutral", label: "Waiting" },
-};
+const STEP_META = {
+  done: { tone: "good", label: "Done" },
+  active: { tone: "warn", label: "Now" },
+  blocked: { tone: "neutral", label: "Waiting" },
+}
 
-const TERM_SUGGESTIONS =["Fall 2026", "Spring 2027", "Summer 2027"];
+const TERM_SUGGESTIONS = ["Fall 2026", "Spring 2027", "Summer 2027"]
+
+function Eyebrow({ children }) {
+  return (
+    <p className="text-[11px] font-medium tracking-[0.12em] text-subtle uppercase">
+      {children}
+    </p>
+  )
+}
+
+function Tone({ tone, children }) {
+  const text = { good: "text-success", warn: "text-warning", neutral: "text-subtle" }[tone]
+  const border = {
+    good: "border-success",
+    warn: "border-warning",
+    neutral: "border-border",
+  }[tone]
+  return (
+    <span className={`rounded border px-2 py-0.5 text-[11px] ${text} ${border}`}>
+      {children}
+    </span>
+  )
+}
+
+function ErrorNote({ children }) {
+  return (
+    <p
+      role="alert"
+      className="rounded-md border border-destructive/45 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-destructive"
+    >
+      {children}
+    </p>
+  )
+}
+
+const INPUT_CLASS =
+  "min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-2 text-[14px] " +
+  "outline-none placeholder:text-subtle focus-visible:ring-2 focus-visible:ring-primary/40"
 
 export default function MissionView({ onOpenPlanner }) {
-  const [missions, setMissions] = useState(null);
-  const [activeId, setActiveId] = useState(null);
-  const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [missions, setMissions] = useState(null)
+  const [activeId, setActiveId] = useState(null)
+  const [error, setError] = useState(null)
+  const [busy, setBusy] = useState(false)
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setError(null)
     api
       .missions()
       .then((list) => {
-        setMissions(list);
-        setActiveId(list.length > 0 ? list[0].id : null);
+        setMissions(list)
+        setActiveId((current) => current ?? (list.length > 0 ? list[0].id : null))
       })
-      .catch((err) => setError(err.message));
-  }, []);
+      .catch((err) => setError(err.message))
+  }, [])
+
+  useEffect(load, [load])
 
   /** Every mutation hands back the full mission; replace it wholesale. */
   function replace(mission) {
-    setMissions((list) => (list ?? []).map((m) => (m.id === mission.id ? mission : m)));
+    setMissions((list) => (list ?? []).map((m) => (m.id === mission.id ? mission : m)))
   }
 
   async function act(fn) {
-    setBusy(true);
-    setError(null);
+    setBusy(true)
+    setError(null)
     try {
-      replace(await fn());
+      replace(await fn())
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
   }
 
   async function start(term) {
-    setBusy(true);
-    setError(null);
+    setBusy(true)
+    setError(null)
     try {
-      const mission = await api.createMission(term);
-      setMissions((list) => [mission, ...(list ?? []).filter((m) => m.id !== mission.id)]);
-      setActiveId(mission.id);
+      const mission = await api.createMission(term)
+      setMissions((list) => [mission, ...(list ?? []).filter((m) => m.id !== mission.id)])
+      setActiveId(mission.id)
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
   }
 
-  if (error && !missions) return <ErrorState message={error} />;
-  if (!missions) return <Loading what="your mission" />;
+  if (error && !missions) {
+    return (
+      <div className="flex flex-col items-start gap-3">
+        <ErrorNote>Could not read your missions: {error}</ErrorNote>
+        <Button variant="outline" size="sm" onClick={load}>
+          Try again
+        </Button>
+      </div>
+    )
+  }
+  if (!missions) {
+    return (
+      <p role="status" className="text-[13px] text-muted-foreground">
+        Reading your mission…
+      </p>
+    )
+  }
 
-  const mission = missions.find((m) => m.id === activeId) ?? null;
+  const mission = missions.find((m) => m.id === activeId) ?? null
 
   return (
-    <div className="stack">
-      {error ? <ErrorState message={error} /> : null}
+    <div className="flex flex-col gap-4">
+      {error ? <ErrorNote>{error}</ErrorNote> : null}
 
       {missions.length === 0 ? (
         <StartCard onStart={start} busy={busy} />
       ) : (
         <>
           {missions.length > 1 ? (
-            <nav className="roles" aria-label="Your missions">
+            <nav
+              className="flex flex-wrap gap-1 self-start rounded-[10px] border border-border p-[3px]"
+              aria-label="Your missions"
+            >
               {missions.map((m) => (
                 <button
                   key={m.id}
                   type="button"
-                  className={`role ${m.id === activeId ? "role--active" : ""}`}
+                  aria-current={m.id === activeId ? "page" : undefined}
                   onClick={() => setActiveId(m.id)}
+                  className={`rounded-md px-2.5 py-1 text-[12.5px] transition-colors ${
+                    m.id === activeId
+                      ? "text-primary shadow-[inset_0_0_0_1px_var(--accent)]"
+                      : "text-muted-foreground hover:bg-secondary"
+                  }`}
                 >
                   {m.term}
                 </button>
@@ -118,120 +194,138 @@ export default function MissionView({ onOpenPlanner }) {
         </>
       )}
     </div>
-  );
+  )
 }
 
 /* ---------------------------------------------------------------------------------- */
 
 function StartCard({ onStart, busy, compact = false }) {
-  const [term, setTerm] = useState("");
+  const [term, setTerm] = useState("")
 
   return (
-    <section className="card">
-      <p className="eyebrow">{compact ? "Another term" : "Get started"}</p>
-      <h2>{compact ? "Start a mission for another term" : "Which term are you preparing for?"}</h2>
-      {!compact ? (
-        <p className="muted">
-          A mission walks you through getting ready to register: your record, where you
-          stand, the courses you want, what is in the way, and a summary for your advisor.
-          You can leave it half-finished and come back — nothing is lost.
-        </p>
-      ) : null}
-      <form
-        className="whatif__form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (term.trim()) onStart(term.trim());
-        }}
-      >
-        <input
-          value={term}
-          onChange={(e) => setTerm(e.target.value)}
-          placeholder="e.g. Spring 2027"
-          aria-label="Term"
-          disabled={busy}
-        />
-        <button type="submit" className="btn btn--primary" disabled={busy || !term.trim()}>
-          Start
-        </button>
-      </form>
-      <div className="decoder__samples">
-        {TERM_SUGGESTIONS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            className="chat__suggestion"
-            onClick={() => onStart(t)}
+    <Card>
+      <CardHeader>
+        <Eyebrow>{compact ? "Another term" : "Get started"}</Eyebrow>
+        <CardTitle>
+          {compact ? "Start a mission for another term" : "Which term are you preparing for?"}
+        </CardTitle>
+        {!compact ? (
+          <CardDescription>
+            A mission walks you through getting ready to register: your record, where you
+            stand, the courses you want, what is in the way, and a summary for your advisor.
+            You can leave it half-finished and come back — nothing is lost.
+          </CardDescription>
+        ) : null}
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <form
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (term.trim()) onStart(term.trim())
+          }}
+        >
+          <input
+            className={INPUT_CLASS}
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+            placeholder="e.g. Spring 2027"
+            aria-label="Term"
             disabled={busy}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-    </section>
-  );
+          />
+          <Button type="submit" disabled={busy || !term.trim()}>
+            Start
+          </Button>
+        </form>
+        <div className="flex flex-wrap gap-2">
+          {TERM_SUGGESTIONS.map((t) => (
+            <Button
+              key={t}
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => onStart(t)}
+              disabled={busy}
+            >
+              {t}
+            </Button>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 function Mission({ mission, busy, act, onMission, onOpenPlanner }) {
-  const done = mission.steps.filter((s) => s.state === "done").length;
-  const stepState = (id) => mission.steps.find((s) => s.id === id)?.state;
+  const done = mission.steps.filter((s) => s.state === "done").length
+  const stepState = (id) => mission.steps.find((s) => s.id === id)?.state
 
   return (
     <>
-      <section className={`card card--hero ${mission.complete ? "mission--complete" : ""}`}>
-        <div className="hero__top">
-          <div>
-            <p className="eyebrow">Registration mission</p>
-            <h2>{mission.term}</h2>
-            <p className="hero__reason">
-              {mission.complete
-                ? "Every step is done. Take the handoff to your advisor, then register in Albert."
-                : mission.steps.find((s) => s.state === "active")?.what_now}
-            </p>
-          </div>
-          <div className="hero__progress">
-            <span className="hero__pct">
+      <Card className={mission.complete ? "border-success/45" : "border-primary/30"}>
+        <CardHeader>
+          <Eyebrow>Registration mission</Eyebrow>
+          <CardTitle className="flex flex-wrap items-center gap-2 text-[22px]">
+            {mission.term}
+            {mission.complete ? <Badge>Complete</Badge> : null}
+          </CardTitle>
+          <CardDescription>
+            {mission.complete
+              ? "Every step is done. Take the handoff to your advisor, then register in Albert."
+              : mission.steps.find((s) => s.state === "active")?.what_now}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <Progress value={(done / mission.steps.length) * 100} className="flex-1" />
+            <span className="text-[12.5px] text-muted-foreground">
               {done}/{mission.steps.length}
             </span>
-            <div className="meter__track">
-              <div
-                className={`meter__fill meter__fill--${mission.complete ? "good" : "accent"}`}
-                style={{ width: `${(done / mission.steps.length) * 100}%` }}
-              />
-            </div>
           </div>
-        </div>
-        <p className="planner__disclaimer">{mission.disclaimer}</p>
-      </section>
+          <p className="text-[11.5px] leading-relaxed text-subtle">{mission.disclaimer}</p>
+        </CardContent>
+      </Card>
 
-      <section className="card">
-        <p className="eyebrow">The steps</p>
-        <h2>What finishing means</h2>
-        <ol className="mission__steps">
-          {mission.steps.map((step) => {
-            const meta = STEP_MARK[step.state] ?? STEP_MARK.blocked;
-            return (
-              <li key={step.id} className={`mstep mstep--${step.state}`}>
-                <div className="mstep__head">
-                  <span className={`mstep__mark mstep__mark--${meta.tone}`} aria-hidden="true">
-                    {meta.mark}
-                  </span>
-                  <span className="mstep__title">{step.title}</span>
-                  <span className={`tag tag--${meta.tone}`}>{meta.label}</span>
-                </div>
-                <p className="mstep__criterion">{step.criterion}</p>
-                {step.evidence.map((line, i) => (
-                  <p key={i} className="muted">
-                    {line}
+      <Card>
+        <CardHeader>
+          <Eyebrow>The steps</Eyebrow>
+          <CardTitle>What finishing means</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="flex list-none flex-col gap-px overflow-hidden rounded-md bg-border">
+            {mission.steps.map((step) => {
+              const meta = STEP_META[step.state] ?? STEP_META.blocked
+              return (
+                <li key={step.id} className="flex flex-col gap-1.5 bg-card px-3.5 py-3">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className={`nx-dot nx-dot--${meta.tone}`} aria-hidden="true" />
+                    <span className="min-w-0 flex-1 text-[13.5px] leading-snug">
+                      {step.title}
+                    </span>
+                    <Tone tone={meta.tone}>{meta.label}</Tone>
+                  </div>
+                  <p className="text-[12px] leading-relaxed text-muted-foreground">
+                    {step.criterion}
                   </p>
-                ))}
-                {step.what_now ? <p className="finding__next">{step.what_now}</p> : null}
-                {step.note ? <p className="note note--warn">{step.note}</p> : null}
-              </li>
-            );
-          })}
-        </ol>
-      </section>
+                  {step.evidence.map((line, i) => (
+                    <p key={i} className="text-[12px] leading-relaxed text-subtle">
+                      {line}
+                    </p>
+                  ))}
+                  {step.what_now ? (
+                    <p className="text-[12.5px] leading-relaxed">→ {step.what_now}</p>
+                  ) : null}
+                  {step.note ? (
+                    <p className="rounded-md border border-warning/45 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
+                      {step.note}
+                    </p>
+                  ) : null}
+                </li>
+              )
+            })}
+          </ol>
+        </CardContent>
+      </Card>
 
       <GapsCard
         mission={mission}
@@ -249,28 +343,35 @@ function Mission({ mission, busy, act, onMission, onOpenPlanner }) {
         onMission={onMission}
       />
     </>
-  );
+  )
 }
 
+/** One step panel. The active step carries the accent border the chat cards use. */
 function Panel({ state, eyebrow, title, children }) {
   return (
-    <section className={`card ${state === "active" ? "card--focus" : ""}`}>
-      <p className="eyebrow">{eyebrow}</p>
-      <h2>{title}</h2>
-      {children}
-    </section>
-  );
+    <Card className={state === "active" ? "border-primary/45" : undefined}>
+      <CardHeader>
+        <Eyebrow>{eyebrow}</Eyebrow>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">{children}</CardContent>
+    </Card>
+  )
+}
+
+function Muted({ children }) {
+  return <p className="text-[13px] leading-relaxed text-muted-foreground">{children}</p>
 }
 
 function GapsCard({ mission, state, busy, act, onOpenPlanner }) {
   return (
     <Panel state={state} eyebrow="Step 2" title="Where you stand on the degree">
-      <p className="muted">
+      <Muted>
         These are about your degree overall, not about next term. None of them stops you
         registering — you just need to have seen them.
-      </p>
+      </Muted>
       {mission.degree_findings.length === 0 ? (
-        <p className="muted">Nothing outstanding at the degree level.</p>
+        <Muted>Nothing outstanding at the degree level.</Muted>
       ) : (
         <ul className="findings">
           {mission.degree_findings.map((f) => (
@@ -278,144 +379,146 @@ function GapsCard({ mission, state, busy, act, onOpenPlanner }) {
           ))}
         </ul>
       )}
-      <div className="decoder__actions">
+      <div className="flex flex-wrap items-center gap-2">
         {state === "done" ? (
-          <span className="tag tag--good">Reviewed</span>
+          <Tone tone="good">Reviewed</Tone>
         ) : (
-          <button
-            type="button"
-            className="btn btn--primary"
+          <Button
             disabled={busy}
             onClick={() => act(() => api.missionAcknowledgeGaps(mission.id))}
           >
             I have read these
-          </button>
+          </Button>
         )}
         {onOpenPlanner ? (
-          <button type="button" className="btn" onClick={onOpenPlanner}>
+          <Button variant="outline" onClick={onOpenPlanner}>
             Edit my record →
-          </button>
+          </Button>
         ) : null}
       </div>
     </Panel>
-  );
+  )
 }
 
 function CandidatesCard({ mission, state, busy, act }) {
-  const [code, setCode] = useState("");
-  const chosen = mission.candidates.filter((c) => c.state === "confirmed");
-  const proposed = mission.candidates.filter((c) => c.state === "proposed");
-  const declined = mission.candidates.filter((c) => c.state === "declined");
+  const [code, setCode] = useState("")
+  const chosen = mission.candidates.filter((c) => c.state === "confirmed")
+  const proposed = mission.candidates.filter((c) => c.state === "proposed")
+  const declined = mission.candidates.filter((c) => c.state === "declined")
 
   return (
     <Panel state={state} eyebrow="Step 3" title={`Courses for ${mission.term}`}>
       <form
-        className="whatif__form"
+        className="flex flex-wrap items-center gap-2"
         onSubmit={(e) => {
-          e.preventDefault();
-          if (!code.trim()) return;
-          act(() => api.missionAddCandidate(mission.id, code.trim()));
-          setCode("");
+          e.preventDefault()
+          if (!code.trim()) return
+          act(() => api.missionAddCandidate(mission.id, code.trim()))
+          setCode("")
         }}
       >
         <input
+          className={INPUT_CLASS}
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="Add a course by code, e.g. MASY1-GC 2100"
           aria-label="Course code"
           disabled={busy}
         />
-        <button type="submit" className="btn btn--primary" disabled={busy || !code.trim()}>
+        <Button type="submit" disabled={busy || !code.trim()}>
           Add
-        </button>
+        </Button>
       </form>
 
       {proposed.length > 0 ? (
         <>
-          <p className="eyebrow">Suggested by the assistant — your call</p>
-          <ul className="course-list">
+          <Eyebrow>Suggested by the assistant — your call</Eyebrow>
+          <ul className="flex list-none flex-col gap-2">
             {proposed.map((c) => (
-              <li key={c.id} className="course-row">
-                <div className="course-row__id">
-                  <span className="mono">{c.course_code}</span>
-                  <span className="tag tag--accent">Suggestion</span>
-                </div>
-                {c.rationale ? <p className="course-row__title">{c.rationale}</p> : null}
-                <div className="course-row__controls">
-                  <button
-                    type="button"
-                    className="btn btn--small btn--primary"
+              <li
+                key={c.id}
+                className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 p-2.5"
+              >
+                <span className="font-mono text-sm">{c.course_code}</span>
+                <Badge variant="outline">Suggestion</Badge>
+                {c.rationale ? (
+                  <span className="min-w-0 flex-1 basis-full text-[13px] leading-relaxed text-muted-foreground sm:basis-auto">
+                    {c.rationale}
+                  </span>
+                ) : null}
+                <span className="flex gap-1.5">
+                  <Button
+                    size="xs"
                     disabled={busy}
                     onClick={() => act(() => api.missionDecideCandidate(mission.id, c.id, true))}
                   >
                     Add to my plan
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn--small"
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="outline"
                     disabled={busy}
                     onClick={() => act(() => api.missionDecideCandidate(mission.id, c.id, false))}
                   >
                     No thanks
-                  </button>
-                </div>
+                  </Button>
+                </span>
               </li>
             ))}
           </ul>
-          <p className="muted">
-            Suggestions do not count toward this step until you add one.
-          </p>
+          <Muted>Suggestions do not count toward this step until you add one.</Muted>
         </>
       ) : null}
 
-      <p className="eyebrow">Chosen ({chosen.length})</p>
+      <Eyebrow>Chosen ({chosen.length})</Eyebrow>
       {chosen.length === 0 ? (
-        <p className="muted">Nothing chosen yet.</p>
+        <Muted>Nothing chosen yet.</Muted>
       ) : (
-        <ul className="course-list">
+        <ul className="flex list-none flex-col gap-2">
           {chosen.map((c) => (
-            <li key={c.id} className="course-row">
-              <div className="course-row__id">
-                <span className="mono">{c.course_code}</span>
-                {c.proposed_by === "ai" ? (
-                  <span className="tag tag--neutral">You accepted a suggestion</span>
-                ) : null}
-              </div>
-              <div className="course-row__controls">
-                <button
-                  type="button"
-                  className="btn btn--small"
+            <li
+              key={c.id}
+              className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2.5"
+            >
+              <span className="font-mono text-sm">{c.course_code}</span>
+              {c.proposed_by === "ai" ? (
+                <Badge variant="outline">You accepted a suggestion</Badge>
+              ) : null}
+              <span className="ml-auto">
+                <Button
+                  size="xs"
+                  variant="outline"
                   disabled={busy}
                   onClick={() => act(() => api.missionRemoveCandidate(mission.id, c.id))}
                 >
                   Remove
-                </button>
-              </div>
+                </Button>
+              </span>
             </li>
           ))}
         </ul>
       )}
 
       {declined.length > 0 ? (
-        <p className="muted">
+        <Muted>
           Declined: {declined.map((c) => c.course_code).join(", ")}. The assistant cannot
           re-add these.
-        </p>
+        </Muted>
       ) : null}
     </Panel>
-  );
+  )
 }
 
 function OpenItemsCard({ mission, state, busy, act }) {
-  const [notes, setNotes] = useState({});
+  const [notes, setNotes] = useState({})
 
   return (
     <Panel state={state} eyebrow="Step 4" title="Open items on your chosen courses">
       {mission.open_blockers.length === 0 && mission.accepted_risks.length === 0 ? (
-        <p className="muted">
+        <Muted>
           Nothing in the way of the courses you chose — as far as the published rules and
           what you entered can tell.
-        </p>
+        </Muted>
       ) : null}
 
       {mission.open_blockers.length > 0 ? (
@@ -429,14 +532,15 @@ function OpenItemsCard({ mission, state, busy, act }) {
               </label>
               <input
                 id={`note-${f.key}`}
+                className={INPUT_CLASS}
                 value={notes[f.key] ?? ""}
                 onChange={(e) => setNotes((n) => ({ ...n, [f.key]: e.target.value }))}
                 placeholder="Why you are going ahead anyway (goes in the advisor summary)"
                 disabled={busy}
               />
-              <button
-                type="button"
-                className="btn btn--small"
+              <Button
+                size="xs"
+                variant="outline"
                 disabled={busy}
                 onClick={() =>
                   act(() =>
@@ -449,7 +553,7 @@ function OpenItemsCard({ mission, state, busy, act }) {
                 }
               >
                 Accept as a known risk
-              </button>
+              </Button>
             </Finding>
           ))}
         </ul>
@@ -457,7 +561,7 @@ function OpenItemsCard({ mission, state, busy, act }) {
 
       {mission.accepted_risks.length > 0 ? (
         <>
-          <p className="eyebrow">Accepted knowingly</p>
+          <Eyebrow>Accepted knowingly</Eyebrow>
           <ul className="findings">
             {mission.accepted_risks.map((r) => (
               /* Label overridden because the section heading above already says "Accepted
@@ -471,58 +575,58 @@ function OpenItemsCard({ mission, state, busy, act }) {
                 detail={r.note ? `Your note: ${r.note}` : null}
               >
                 {r.reads_differently_now ? (
-                  <p className="note note--warn">
+                  <p className="rounded-md border border-warning/45 px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
                     This now reads differently than when you accepted it. Worth a second
                     look — your acceptance still stands, but it was for the earlier version.
                   </p>
                 ) : null}
-                <button
-                  type="button"
-                  className="btn btn--small"
+                <Button
+                  size="xs"
+                  variant="outline"
                   disabled={busy}
                   onClick={() => act(() => api.missionWithdrawRisk(mission.id, r.finding_key))}
                 >
                   Undo
-                </button>
+                </Button>
               </Finding>
             ))}
           </ul>
         </>
       ) : null}
     </Panel>
-  );
+  )
 }
 
 function HandoffCard({ mission, state, busy, onMission }) {
-  const [question, setQuestion] = useState("");
-  const [text, setText] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [working, setWorking] = useState(false);
-  const [error, setError] = useState(null);
+  const [question, setQuestion] = useState("")
+  const [text, setText] = useState("")
+  const [copied, setCopied] = useState(false)
+  const [working, setWorking] = useState(false)
+  const [error, setError] = useState(null)
 
   async function generate() {
-    setWorking(true);
-    setError(null);
+    setWorking(true)
+    setError(null)
     try {
-      const result = await api.missionHandoff(mission.id, question);
-      setText(result.text);
+      const result = await api.missionHandoff(mission.id, question)
+      setText(result.text)
       // Generating the handoff is what completes the last step, so the response carries
       // the recomputed mission. Dropping it left the page showing step 5 as outstanding
       // after it had been satisfied — the same "your click worked and the screen says it
       // did not" failure the service layer had.
-      if (result.mission) onMission(result.mission);
+      if (result.mission) onMission(result.mission)
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setWorking(false);
+      setWorking(false)
     }
   }
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
     } catch {
       /* the textarea stays selectable by hand */
     }
@@ -530,37 +634,33 @@ function HandoffCard({ mission, state, busy, onMission }) {
 
   return (
     <Panel state={state} eyebrow="Step 5" title="Summary for your advisor">
-      <p className="muted">
+      <Muted>
         Everything you reported, what the rules say about it, what could not be confirmed,
         and the risks you decided to carry. Copy it into an email — UAX does not send
         anything for you.
-      </p>
+      </Muted>
       <input
+        className={INPUT_CLASS}
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
         placeholder="Your main question, in one sentence (optional)"
         aria-label="Your question for the advisor"
         disabled={busy || working}
       />
-      <div className="decoder__actions">
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={generate}
-          disabled={busy || working}
-        >
+      <div className="flex flex-wrap items-center gap-2">
+        <Button onClick={generate} disabled={busy || working}>
           {working ? "Building…" : text ? "Rebuild" : "Generate the summary"}
-        </button>
+        </Button>
         {text ? (
-          <button type="button" className="btn" onClick={copy}>
+          <Button variant="outline" onClick={copy}>
             {copied ? "Copied ✓" : "Copy to clipboard"}
-          </button>
+          </Button>
         ) : null}
       </div>
-      {error ? <p className="msg--error">{error}</p> : null}
+      {error ? <ErrorNote>{error}</ErrorNote> : null}
       {text ? (
         <textarea
-          className="handoff__text"
+          className="nx-scroll w-full rounded-md border border-border bg-card p-3 font-mono text-[12.5px] leading-relaxed outline-none"
           readOnly
           value={text}
           rows={16}
@@ -568,5 +668,5 @@ function HandoffCard({ mission, state, busy, onMission }) {
         />
       ) : null}
     </Panel>
-  );
+  )
 }

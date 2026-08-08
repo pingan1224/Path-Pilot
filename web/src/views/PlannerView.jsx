@@ -1,7 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-import { api } from "../api";
-import { Empty, ErrorState, Loading } from "../components";
-import { Finding } from "@/components/Finding";
+import { useEffect, useMemo, useState } from "react"
+import { api } from "@/api"
+import { Finding } from "@/components/Finding"
+import { ErrorNote, Eyebrow, INPUT_CLASS, Muted, Tone } from "@/components/nocturne"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 
 /**
  * The degree planner: self-reported record in, verdicts with citations out.
@@ -18,64 +26,79 @@ const STATE_LABEL = {
   completed: "Completed",
   in_progress: "Taking now",
   planned: "Planned",
-};
+}
 
 export default function PlannerView() {
-  const [courses, setCourses] = useState(null);
-  const [plan, setPlan] = useState(null);
-  const [includePlanned, setIncludePlanned] = useState(false);
-  const [error, setError] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [courses, setCourses] = useState(null)
+  const [plan, setPlan] = useState(null)
+  const [includePlanned, setIncludePlanned] = useState(false)
+  const [error, setError] = useState(null)
+  const [busy, setBusy] = useState(false)
 
   async function refresh() {
     try {
       const [profile, planned] = await Promise.all([
         api.profileCourses(),
         api.plan(includePlanned),
-      ]);
-      setCourses(profile);
-      setPlan(planned);
-      setError(null);
+      ])
+      setCourses(profile)
+      setPlan(planned)
+      setError(null)
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     }
   }
 
   useEffect(() => {
-    refresh();
+    refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [includePlanned]);
+  }, [includePlanned])
 
   async function saveCourse(payload) {
-    setBusy(true);
+    setBusy(true)
     try {
-      await api.profilePut(payload);
-      await refresh();
+      await api.profilePut(payload)
+      await refresh()
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
   }
 
   async function removeCourse(code) {
-    setBusy(true);
+    setBusy(true)
     try {
-      await api.profileDelete(code);
-      await refresh();
+      await api.profileDelete(code)
+      await refresh()
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
   }
 
-  if (error && !plan) return <ErrorState message={error} onRetry={refresh} />;
-  if (!courses || !plan) return <Loading what="your plan" />;
+  if (error && !plan) {
+    return (
+      <div className="flex flex-col items-start gap-3">
+        <ErrorNote>Could not read your plan: {error}</ErrorNote>
+        <Button variant="outline" size="sm" onClick={refresh}>
+          Try again
+        </Button>
+      </div>
+    )
+  }
+  if (!courses || !plan) {
+    return (
+      <p role="status" className="text-[13px] text-muted-foreground">
+        Reading your plan…
+      </p>
+    )
+  }
 
   return (
-    <div className="stack">
-      {error ? <ErrorState message={error} onRetry={refresh} /> : null}
+    <div className="flex flex-col gap-4">
+      {error ? <ErrorNote>{error}</ErrorNote> : null}
 
       <CourseEditor courses={courses} onSave={saveCourse} onRemove={removeCourse} busy={busy} />
 
@@ -89,87 +112,90 @@ export default function PlannerView() {
 
       <HandoffCard courses={courses} plan={plan} />
     </div>
-  );
+  )
 }
 
 /* ---------------------------------------------------------------------------------- */
 
 function CourseEditor({ courses, onSave, onRemove, busy }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState([]);
-  const [manualCode, setManualCode] = useState("");
+  const [query, setQuery] = useState("")
+  const [results, setResults] = useState([])
+  const [manualCode, setManualCode] = useState("")
 
   useEffect(() => {
     if (query.trim().length < 2) {
-      setResults([]);
-      return;
+      setResults([])
+      return
     }
-    let cancelled = false;
+    let cancelled = false
     const timer = setTimeout(async () => {
       try {
-        const found = await api.catalogSearch(query);
-        if (!cancelled) setResults(found.slice(0, 8));
+        const found = await api.catalogSearch(query)
+        if (!cancelled) setResults(found.slice(0, 8))
       } catch {
         /* search failures are non-fatal; the manual field still works */
       }
-    }, 250);
+    }, 250)
     return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [query]);
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [query])
 
-  const held = new Set(courses.map((c) => c.course_code));
+  const held = new Set(courses.map((c) => c.course_code))
 
   return (
-    <section className="card" aria-labelledby="record-heading">
-      <div className="planner__head">
-        <div>
-          <p className="eyebrow">Your record — self-reported</p>
-          <h2 id="record-heading">My courses</h2>
-        </div>
-        <p className="muted planner__note">
+    <Card aria-labelledby="record-heading">
+      <CardHeader>
+        <Eyebrow>Your record — self-reported</Eyebrow>
+        <CardTitle id="record-heading">My courses</CardTitle>
+        <CardDescription>
           UAX cannot see Albert. Everything below is what you tell it, and the plan is only
           as accurate as this list.
-        </p>
-      </div>
-
-      <div className="course-add">
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
         <input
           type="search"
+          className={`${INPUT_CLASS} w-full`}
           placeholder="Search the MASY catalog — code or title…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search the course catalog"
         />
         {results.length > 0 ? (
-          <ul className="course-add__results">
+          <ul className="flex list-none flex-col gap-2">
             {results.map((r) => (
-              <li key={r.code}>
-                <div className="course-add__info">
-                  <span className="mono">{r.code}</span> {r.title}
-                  <span className="muted"> · {r.credits}cr</span>
+              <li
+                key={r.code}
+                className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 p-2.5"
+              >
+                <div className="min-w-0 flex-1 text-[13px] leading-relaxed">
+                  <span className="font-mono">{r.code}</span> {r.title}
+                  <span className="text-muted-foreground"> · {r.credits}cr</span>
                   {r.prerequisites_text ? (
-                    <span className="course-add__prereq">Prereq: {r.prerequisites_text}</span>
+                    <span className="block text-[12px] text-muted-foreground">
+                      Prereq: {r.prerequisites_text}
+                    </span>
                   ) : null}
                 </div>
                 {held.has(r.code) ? (
-                  <span className="muted">added</span>
+                  <span className="text-[12px] text-muted-foreground">added</span>
                 ) : (
-                  <span className="course-add__actions">
+                  <span className="flex flex-wrap gap-1.5">
                     {["completed", "in_progress", "planned"].map((state) => (
-                      <button
+                      <Button
                         key={state}
-                        type="button"
-                        className="btn btn--small"
+                        size="xs"
+                        variant="outline"
                         disabled={busy}
                         onClick={() => {
-                          onSave({ course_code: r.code, state });
-                          setQuery("");
+                          onSave({ course_code: r.code, state })
+                          setQuery("")
                         }}
                       >
                         {STATE_LABEL[state]}
-                      </button>
+                      </Button>
                     ))}
                   </span>
                 )}
@@ -178,96 +204,103 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
           </ul>
         ) : null}
 
-        <details className="course-add__manual">
-          <summary>Course not in this catalog? Add it by code</summary>
-          <p className="muted">
-            Cross-school and outside-program courses are allowed by your elective rules, but
-            this tool cannot verify them — they will show as “ask a human”.
-          </p>
-          <form
-            className="course-add__manual-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const code = manualCode.trim();
-              if (code) {
-                onSave({ course_code: code, state: "planned" });
-                setManualCode("");
-              }
-            }}
-          >
-            <input
-              value={manualCode}
-              onChange={(e) => setManualCode(e.target.value)}
-              placeholder="e.g. MKTG-GB 2350"
-              aria-label="Course code"
-            />
-            <button type="submit" className="btn" disabled={busy}>
-              Add as planned
-            </button>
-          </form>
+        <details className="rounded-md border border-border bg-muted/40 p-2.5 text-[13px]">
+          <summary className="cursor-pointer text-muted-foreground">
+            Course not in this catalog? Add it by code
+          </summary>
+          <div className="mt-2 flex flex-col gap-2">
+            <Muted>
+              Cross-school and outside-program courses are allowed by your elective rules, but
+              this tool cannot verify them — they will show as “ask a human”.
+            </Muted>
+            <form
+              className="flex flex-wrap items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault()
+                const code = manualCode.trim()
+                if (code) {
+                  onSave({ course_code: code, state: "planned" })
+                  setManualCode("")
+                }
+              }}
+            >
+              <input
+                className={INPUT_CLASS}
+                value={manualCode}
+                onChange={(e) => setManualCode(e.target.value)}
+                placeholder="e.g. MKTG-GB 2350"
+                aria-label="Course code"
+              />
+              <Button type="submit" variant="outline" disabled={busy}>
+                Add as planned
+              </Button>
+            </form>
+          </div>
         </details>
-      </div>
 
-      {courses.length === 0 ? (
-        <Empty>No courses yet — search above to start building your record.</Empty>
-      ) : (
-        <ul className="course-list">
-          {courses.map((c) => (
-            <li key={c.course_code} className="course-row">
-              <div className="course-row__id">
-                <span className="mono">{c.course_code}</span>
-                <span className="course-row__title">
-                  {c.title ?? "Not in this catalog"}
-                  {!c.in_catalog ? <span className="tag tag--warn">unverified</span> : null}
+        {courses.length === 0 ? (
+          <Muted>No courses yet — search above to start building your record.</Muted>
+        ) : (
+          <ul className="flex list-none flex-col gap-2">
+            {courses.map((c) => (
+              <li
+                key={c.course_code}
+                className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2.5"
+              >
+                <span className="font-mono text-sm">{c.course_code}</span>
+                <span className="min-w-0 flex-1 text-[13px] leading-snug">
+                  {c.title ?? "Not in this catalog"}{" "}
+                  {!c.in_catalog ? <Tone tone="warn">unverified</Tone> : null}
                 </span>
-              </div>
-              <div className="course-row__controls">
-                <select
-                  value={c.state}
-                  disabled={busy}
-                  aria-label={`Status of ${c.course_code}`}
-                  onChange={(e) =>
-                    onSave({ course_code: c.course_code, state: e.target.value, grade: c.grade })
-                  }
-                >
-                  {Object.entries(STATE_LABEL).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                {c.state === "completed" ? (
-                  <input
-                    className="course-row__grade"
-                    value={c.grade ?? ""}
-                    placeholder="grade"
-                    maxLength={2}
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <select
+                    className="rounded-md border border-border bg-card px-2 py-1 text-[13px]"
+                    value={c.state}
                     disabled={busy}
-                    aria-label={`Grade for ${c.course_code}`}
+                    aria-label={`Status of ${c.course_code}`}
                     onChange={(e) =>
-                      onSave({
-                        course_code: c.course_code,
-                        state: c.state,
-                        grade: e.target.value || null,
-                      })
+                      onSave({ course_code: c.course_code, state: e.target.value, grade: c.grade })
                     }
-                  />
-                ) : null}
-                <button
-                  type="button"
-                  className="btn btn--small"
-                  disabled={busy}
-                  onClick={() => onRemove(c.course_code)}
-                >
-                  Remove
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
+                  >
+                    {Object.entries(STATE_LABEL).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  {c.state === "completed" ? (
+                    <input
+                      className="w-16 rounded-md border border-border bg-card px-2 py-1 text-[13px] uppercase"
+                      value={c.grade ?? ""}
+                      placeholder="grade"
+                      maxLength={2}
+                      disabled={busy}
+                      aria-label={`Grade for ${c.course_code}`}
+                      onChange={(e) =>
+                        onSave({
+                          course_code: c.course_code,
+                          state: c.state,
+                          grade: e.target.value || null,
+                        })
+                      }
+                    />
+                  ) : null}
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => onRemove(c.course_code)}
+                  >
+                    Remove
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
 
 /* ---------------------------------------------------------------------------------- */
@@ -275,89 +308,89 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
 function PlanCard({ plan, includePlanned, onTogglePlanned }) {
   const settled = plan.findings.filter(
     (f) => f.verdict === "satisfied" || f.verdict === "not_satisfied",
-  );
+  )
   const forHumans = plan.findings.filter(
     (f) => f.verdict === "conditional" || f.verdict === "unverifiable",
-  );
+  )
 
   return (
-    <section className="card" aria-labelledby="plan-heading">
-      <div className="planner__head">
-        <div>
-          <p className="eyebrow">
-            Computed from published rules · checked {plan.rules_verified_on}
-          </p>
-          <h2 id="plan-heading">{plan.program_name} — degree check</h2>
-        </div>
-        <label className="planner__toggle">
+    <Card aria-labelledby="plan-heading">
+      <CardHeader>
+        <Eyebrow>Computed from published rules · checked {plan.rules_verified_on}</Eyebrow>
+        <CardTitle id="plan-heading">{plan.program_name} — degree check</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <label className="flex items-center gap-2 text-[13px] text-muted-foreground">
           <input type="checkbox" checked={includePlanned} onChange={onTogglePlanned} />
-          Count planned & in-progress courses
+          Count planned &amp; in-progress courses
         </label>
-      </div>
 
-      <div className="plan-credits">
-        <span>
-          <strong>{plan.credits_completed}</strong> completed
-        </span>
-        <span>
-          <strong>{plan.credits_in_progress}</strong> in progress
-        </span>
-        <span>
-          <strong>{plan.credits_planned}</strong> planned
-        </span>
-        <span className="muted">of {plan.credits_required} required</span>
-      </div>
+        <p className="flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+          <span>
+            <strong className="font-medium">{plan.credits_completed}</strong> completed
+          </span>
+          <span>
+            <strong className="font-medium">{plan.credits_in_progress}</strong> in progress
+          </span>
+          <span>
+            <strong className="font-medium">{plan.credits_planned}</strong> planned
+          </span>
+          <span className="text-muted-foreground">of {plan.credits_required} required</span>
+        </p>
 
-      <ul className="findings">
-        {settled.map((f, i) => (
-          <Finding key={i} finding={f} />
-        ))}
-      </ul>
+        <ul className="findings">
+          {settled.map((f, i) => (
+            <Finding key={i} finding={f} />
+          ))}
+        </ul>
 
-      {forHumans.length > 0 ? (
-        <>
-          <h3 className="planner__subhead">Needs a human</h3>
-          <p className="muted">
-            These are the parts this tool cannot settle — which is exactly what to bring to
-            your advisor.
-          </p>
-          <ul className="findings">
-            {forHumans.map((f, i) => (
-              <Finding key={i} finding={f} />
-            ))}
-          </ul>
-        </>
-      ) : null}
+        {forHumans.length > 0 ? (
+          <>
+            <div className="flex flex-col gap-1">
+              <Eyebrow>Needs a human</Eyebrow>
+              <Muted>
+                These are the parts this tool cannot settle — which is exactly what to bring
+                to your advisor.
+              </Muted>
+            </div>
+            <ul className="findings">
+              {forHumans.map((f, i) => (
+                <Finding key={i} finding={f} />
+              ))}
+            </ul>
+          </>
+        ) : null}
 
-      <p className="planner__disclaimer">{plan.disclaimer}</p>
-    </section>
-  );
+        <p className="text-[11.5px] leading-relaxed text-subtle">{plan.disclaimer}</p>
+      </CardContent>
+    </Card>
+  )
 }
 
 /* ---------------------------------------------------------------------------------- */
 
 function WhatIfCard() {
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState("")
   // The course the displayed result is about, which is not the same as whatever is
   // currently in the box once the student starts typing the next question.
-  const [asked, setAsked] = useState("");
-  const [result, setResult] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
+  const [asked, setAsked] = useState("")
+  const [result, setResult] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
 
   async function run(e) {
-    e.preventDefault();
-    const trimmed = code.trim();
-    if (!trimmed) return;
-    setBusy(true);
-    setError(null);
+    e.preventDefault()
+    const trimmed = code.trim()
+    if (!trimmed) return
+    setBusy(true)
+    setError(null)
     try {
-      setResult(await api.whatIf([{ course_code: trimmed, state: "planned" }]));
-      setAsked(trimmed.toUpperCase());
+      setResult(await api.whatIf([{ course_code: trimmed, state: "planned" }]))
+      setAsked(trimmed.toUpperCase())
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
   }
 
@@ -365,51 +398,56 @@ function WhatIfCard() {
   // swept in every unmet requirement, which answered "what if I took 2100" with a note
   // about the capstone — true, unasked, and enough noise to bury the real answer.
   const relevant = useMemo(() => {
-    if (!result) return [];
-    const needle = (asked || "").toUpperCase();
-    if (!needle) return [];
+    if (!result) return []
+    const needle = (asked || "").toUpperCase()
+    if (!needle) return []
     return result.findings.filter(
       (f) =>
         f.summary.toUpperCase().includes(needle) ||
         f.detail.toUpperCase().includes(needle),
-    );
-  }, [result, asked]);
+    )
+  }, [result, asked])
 
   return (
-    <section className="card" aria-labelledby="whatif-heading">
-      <p className="eyebrow">Hypothetical — nothing is saved</p>
-      <h2 id="whatif-heading">What if I took…</h2>
-      <form className="whatif__form" onSubmit={run}>
-        <input
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="Course code, e.g. MASY1-GC 2100"
-          aria-label="Course code to test"
-        />
-        <button type="submit" className="btn btn--primary" disabled={busy || !code.trim()}>
-          {busy ? "Checking…" : "Check"}
-        </button>
-      </form>
-      {error ? <p className="login__error">{error}</p> : null}
-      {result ? (
-        relevant.length > 0 ? (
-          <>
-            <p className="muted">Adding {asked} to your plan:</p>
-            <ul className="findings">
-              {relevant.map((f, i) => (
-                <Finding key={i} finding={f} />
-              ))}
-            </ul>
-          </>
-        ) : (
-          <Empty>
-            Nothing in the encoded rules blocks {asked}. Seat availability and any
-            departmental approval still have to be checked in Albert.
-          </Empty>
-        )
-      ) : null}
-    </section>
-  );
+    <Card aria-labelledby="whatif-heading">
+      <CardHeader>
+        <Eyebrow>Hypothetical — nothing is saved</Eyebrow>
+        <CardTitle id="whatif-heading">What if I took…</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <form className="flex flex-wrap items-center gap-2" onSubmit={run}>
+          <input
+            className={INPUT_CLASS}
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Course code, e.g. MASY1-GC 2100"
+            aria-label="Course code to test"
+          />
+          <Button type="submit" disabled={busy || !code.trim()}>
+            {busy ? "Checking…" : "Check"}
+          </Button>
+        </form>
+        {error ? <ErrorNote>{error}</ErrorNote> : null}
+        {result ? (
+          relevant.length > 0 ? (
+            <>
+              <Muted>Adding {asked} to your plan:</Muted>
+              <ul className="findings">
+                {relevant.map((f, i) => (
+                  <Finding key={i} finding={f} />
+                ))}
+              </ul>
+            </>
+          ) : (
+            <Muted>
+              Nothing in the encoded rules blocks {asked}. Seat availability and any
+              departmental approval still have to be checked in Albert.
+            </Muted>
+          )
+        ) : null}
+      </CardContent>
+    </Card>
+  )
 }
 
 /* ---------------------------------------------------------------------------------- */
@@ -419,23 +457,23 @@ function buildHandoff(courses, plan, question) {
     courses
       .filter((c) => c.state === state)
       .map((c) => `  - ${c.course_code}${c.title ? ` (${c.title})` : ""}${c.grade ? ` — ${c.grade}` : ""}`)
-      .join("\n") || "  (none)";
+      .join("\n") || "  (none)"
 
   const confirmed = plan.findings
     .filter((f) => f.verdict === "satisfied" || f.verdict === "not_satisfied")
     .map((f) => `  - ${f.verdict === "satisfied" ? "[met]" : "[not met]"} ${f.summary}`)
-    .join("\n");
+    .join("\n")
 
   const open = plan.findings
     .filter((f) => f.verdict === "conditional" || f.verdict === "unverifiable")
     .map((f) => `  - ${f.summary}: ${f.detail}`)
-    .join("\n");
+    .join("\n")
 
   const questions = plan.findings
     .filter((f) => f.next_step && f.verdict !== "satisfied")
     .map((f) => `  ${f.next_step}`)
     .filter((v, i, a) => a.indexOf(v) === i)
-    .join("\n");
+    .join("\n")
 
   return `Subject: Advising question — degree plan check
 
@@ -466,52 +504,57 @@ ${questions || "  Does this plan look right to you?"}
 Generated with UAX, an independent planning tool (not an NYU system). Everything above
 should be verified against Albert.
 
-Thanks!`;
+Thanks!`
 }
 
 function HandoffCard({ courses, plan }) {
-  const [question, setQuestion] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [question, setQuestion] = useState("")
+  const [copied, setCopied] = useState(false)
 
   const text = useMemo(
     () => buildHandoff(courses, plan, question),
     [courses, plan, question],
-  );
+  )
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
     } catch {
       /* the textarea below remains selectable by hand */
     }
   }
 
   return (
-    <section className="card" aria-labelledby="handoff-heading">
-      <p className="eyebrow">For your advisor</p>
-      <h2 id="handoff-heading">Advisor handoff</h2>
-      <p className="muted">
-        A ready-to-send summary of your record, what the rules say, and what only your
-        advisor can answer. Copy it into an email — UAX does not send anything for you.
-      </p>
-      <input
-        value={question}
-        onChange={(e) => setQuestion(e.target.value)}
-        placeholder="Your main question, in one sentence (optional)"
-        aria-label="Your question for the advisor"
-      />
-      <textarea
-        className="handoff__text"
-        readOnly
-        value={text}
-        rows={14}
-        aria-label="Generated advisor email"
-      />
-      <button type="button" className="btn btn--primary" onClick={copy}>
-        {copied ? "Copied ✓" : "Copy to clipboard"}
-      </button>
-    </section>
-  );
+    <Card aria-labelledby="handoff-heading">
+      <CardHeader>
+        <Eyebrow>For your advisor</Eyebrow>
+        <CardTitle id="handoff-heading">Advisor handoff</CardTitle>
+        <CardDescription>
+          A ready-to-send summary of your record, what the rules say, and what only your
+          advisor can answer. Copy it into an email — UAX does not send anything for you.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <input
+          className={INPUT_CLASS}
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="Your main question, in one sentence (optional)"
+          aria-label="Your question for the advisor"
+        />
+        <textarea
+          className="nx-scroll w-full rounded-md border border-border bg-card p-3 font-mono text-[12.5px] leading-relaxed outline-none"
+          readOnly
+          value={text}
+          rows={14}
+          aria-label="Generated advisor email"
+        />
+        <div>
+          <Button onClick={copy}>{copied ? "Copied ✓" : "Copy to clipboard"}</Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
 }

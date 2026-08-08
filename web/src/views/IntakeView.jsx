@@ -229,11 +229,14 @@ export default function IntakeView({ onOpenView }) {
                 once at the top rather than relying on the student noticing that every row
                 happens to be flagged. */}
             {reading.read_by_ocr ? (
-              <p className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-sm">
-                <strong>Read from an image.</strong> These course codes and grades were
-                recognised from a picture, not extracted from text, so each one is a best
-                guess — check it against your transcript before adding it. Nothing here can
-                be added in bulk. A text PDF exported from Albert avoids all of this.
+              /* Warning tokens, not a stock Tailwind amber: there is exactly one palette,
+                 and a hardcoded hue is invisible to the theme toggle. */
+              <p className="rounded-md border border-warning/45 px-3 py-2 text-sm leading-relaxed text-muted-foreground">
+                <strong className="text-warning">Read from an image.</strong> These course
+                codes and grades were recognised from a picture, not extracted from text, so
+                each one is a best guess — check it against your transcript before adding it.
+                Nothing here can be added in bulk. A text PDF exported from Albert avoids all
+                of this.
               </p>
             ) : null}
 

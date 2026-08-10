@@ -4,10 +4,14 @@ import { api } from "../api";
 /**
  * The demo door.
  *
- * One click signs in as a seeded role. The password is printed because every account here
- * is fictional and the whole point is that a visitor can enter each role and check the
- * permission boundaries from both sides — sign in as a student, fail to reach the
- * registrar dashboard, sign in as the registrar, succeed.
+ * One click signs in as a seeded student. The password is printed because every account
+ * here is fictional and the whole point is that a visitor can walk in and see the product
+ * on a record that already has something wrong with it — an aid hold, or credits that do
+ * not count — rather than an empty account.
+ *
+ * Two students rather than one because the interesting behaviour is the difference: the
+ * same screens have to say two different true things, and neither can see the other's
+ * record.
  *
  * These buttons are not an auth bypass: they submit the same credentials to the same
  * endpoint, and the server still hashes, verifies, and issues a session.
@@ -15,36 +19,21 @@ import { api } from "../api";
 
 const DEMO_PASSWORD = "uax-demo-2026";
 
+// The chip used to name the role, back when there were four. With only students left it
+// would read "Student" twice, so it names the situation instead — the thing that actually
+// differs between these two doors.
 const ACCOUNTS = [
   {
-    role: "Student",
+    situation: "Blocked",
     name: "Alex Chen",
     email: "alex.chen@uax.example.edu",
     hint: "An aid hold is blocking registration, and its deadline lands before the window opens.",
   },
   {
-    role: "Student",
+    situation: "Off track",
     name: "Diego Morales",
     email: "diego.morales@uax.example.edu",
     hint: "27 credits earned, but only 21 count toward the degree.",
-  },
-  {
-    role: "Advisor",
-    name: "Maya Patel",
-    email: "maya.patel@uax.example.edu",
-    hint: "25 advisees sorted into triage groups, with case actions.",
-  },
-  {
-    role: "Registrar",
-    name: "Jordan Lee",
-    email: "jordan.lee@uax.example.edu",
-    hint: "Capacity pressure and why registrations are failing.",
-  },
-  {
-    role: "Finance",
-    name: "Sam Okafor",
-    email: "sam.okafor@uax.example.edu",
-    hint: "Financial cases only — the other categories are not visible to this role.",
   },
 ];
 
@@ -77,8 +66,8 @@ export default function DemoLogin() {
 
         <p className="login__pitch">
           Every student, hold, and case below is invented. Policy text is quoted from
-          public NYU bulletins with source links. Pick a role — each one lands on a
-          different question, and each is blocked from the others&rsquo; data.
+          public NYU bulletins with source links. Pick a student — each one walks in with
+          a different problem, and neither can reach the other&rsquo;s record.
         </p>
 
         {error ? (
@@ -96,7 +85,7 @@ export default function DemoLogin() {
                 disabled={busy !== null}
                 onClick={() => enter(account.email)}
               >
-                <span className="demo__role">{account.role}</span>
+                <span className="demo__role">{account.situation}</span>
                 <span className="demo__name">
                   {busy === account.email ? "Signing in…" : account.name}
                 </span>

@@ -15,7 +15,6 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.config import settings
 from app.db.session import DatabaseNotConfiguredError
 from app.routers import (
-    advisors,
     assistant,
     auth,
     cases,
@@ -25,7 +24,6 @@ from app.routers import (
     intake,
     missions,
     profile,
-    registrar,
     sequence,
     students,
 )
@@ -102,8 +100,6 @@ async def database_not_configured_handler(
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(students.router, prefix="/api/v1")
-app.include_router(advisors.router, prefix="/api/v1")
-app.include_router(registrar.router, prefix="/api/v1")
 app.include_router(cases.router, prefix="/api/v1")
 app.include_router(assistant.router, prefix="/api/v1")
 app.include_router(profile.router, prefix="/api/v1")

@@ -1,52 +1,39 @@
-"""Support cases, scoped by the caller's role.
+"""Support cases — the student's own, and nobody else's.
 
-Read scope:  student -> own cases · advisor -> own caseload · registrar -> all ·
-             finance -> financial categories only (FERPA minimum-necessary).
-Write scope: students open cases about themselves; only staff move a case's status, and
-             only within their read scope. The actor on every event is the session holder.
+A case is the escape hatch: the record that a question stopped being answerable by this
+product and went to a human. The student opens it and reads it; the human who works it
+does so in the institution's own systems, which this product has never had access to.
+
+That is why there is no PATCH here any more. There used to be one, scoped so that only
+staff could move a status, back when UAX rendered an advisor queue and a registrar board.
+With those gone, the only caller that endpoint could have had is a student changing the
+status of their own escalation, which is precisely what it was written to prevent.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.models import Case, CaseCategory, CaseStatus, Student, UserRole
-from app.schemas import CaseCreate, CaseOut, CaseUpdate
+from app.models import Case, CaseStatus, UserRole
+from app.schemas import CaseCreate, CaseOut
 from app.services.auth import Identity, current_user
-from app.services.cases import (
-    CaseNotFoundError,
-    create_case,
-    get_case,
-    list_cases,
-    update_case,
-)
+from app.services.cases import CaseNotFoundError, create_case, get_case, list_cases
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
-FINANCE_CATEGORIES = {CaseCategory.financial_hold, CaseCategory.aid_dispute}
 
+def _own_student_id(identity: Identity) -> int:
+    """The caller's own student id, or 403.
 
-def _require_case_access(identity: Identity, case: Case, session: Session) -> None:
-    if identity.role == UserRole.registrar:
-        return
-    if identity.role == UserRole.student:
-        if case.student_id != identity.subject_student_id:
-            raise HTTPException(status_code=403, detail="You may only view your own cases.")
-        return
-    if identity.role == UserRole.advisor:
-        student = session.get(Student, case.student_id)
-        if student is None or student.advisor_id != identity.user.id:
-            raise HTTPException(
-                status_code=403, detail="That case is not in your advising caseload."
-            )
-        return
-    if identity.role == UserRole.finance:
-        if case.category not in FINANCE_CATEGORIES:
-            raise HTTPException(
-                status_code=403, detail="Finance staff see financial cases only."
-            )
-        return
-    raise HTTPException(status_code=403, detail="No case access for this role.")
+    Every route in this module is about one record, and it is always the session holder's.
+    Reading the id from the session rather than the path is the whole access control story
+    — there is no parameter here for a caller to change.
+    """
+    if identity.role != UserRole.student or identity.subject_student_id is None:
+        raise HTTPException(
+            status_code=403, detail="Cases belong to a student record. Sign in as a student."
+        )
+    return identity.subject_student_id
 
 
 @router.get("", response_model=list[CaseOut])
@@ -55,14 +42,7 @@ def index(
     identity: Identity = Depends(current_user),
     session: Session = Depends(get_session),
 ) -> list[CaseOut]:
-    if identity.role == UserRole.student:
-        return list_cases(session, student_id=identity.subject_student_id, status=status)
-    if identity.role == UserRole.advisor:
-        return list_cases(session, advisor_id=identity.user.id, status=status)
-    cases = list_cases(session, status=status)
-    if identity.role == UserRole.finance:
-        cases = [c for c in cases if c.category in FINANCE_CATEGORIES]
-    return cases
+    return list_cases(session, student_id=_own_student_id(identity), status=status)
 
 
 @router.post("", response_model=CaseOut, status_code=201)
@@ -71,12 +51,8 @@ def create(
     identity: Identity = Depends(current_user),
     session: Session = Depends(get_session),
 ) -> CaseOut:
-    if identity.role != UserRole.student or identity.subject_student_id is None:
-        raise HTTPException(
-            status_code=403, detail="Cases are opened by students about their own record."
-        )
     try:
-        return create_case(session, payload, student_id=identity.subject_student_id)
+        return create_case(session, payload, student_id=_own_student_id(identity))
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -87,33 +63,13 @@ def detail(
     identity: Identity = Depends(current_user),
     session: Session = Depends(get_session),
 ) -> CaseOut:
+    student_id = _own_student_id(identity)
     case = session.get(Case, case_id)
-    if case is None:
+    # 404 before the ownership check would answer "does case 812 exist?" for any caller.
+    # A case that is not yours is indistinguishable from one that does not exist.
+    if case is None or case.student_id != student_id:
         raise HTTPException(status_code=404, detail=f"No case with id {case_id}")
-    _require_case_access(identity, case, session)
     try:
         return get_case(session, case_id)
-    except CaseNotFoundError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-
-@router.patch("/{case_id}", response_model=CaseOut)
-def patch(
-    case_id: int,
-    payload: CaseUpdate,
-    identity: Identity = Depends(current_user),
-    session: Session = Depends(get_session),
-) -> CaseOut:
-    if identity.role == UserRole.student:
-        raise HTTPException(
-            status_code=403,
-            detail="Case status is changed by staff; reply to your advisor instead.",
-        )
-    case = session.get(Case, case_id)
-    if case is None:
-        raise HTTPException(status_code=404, detail=f"No case with id {case_id}")
-    _require_case_access(identity, case, session)
-    try:
-        return update_case(session, case_id, payload, actor_user_id=identity.user.id)
     except CaseNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

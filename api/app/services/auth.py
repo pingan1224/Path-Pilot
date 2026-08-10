@@ -70,9 +70,10 @@ def verify_password(password: str, stored: str | None) -> bool:
 class Identity:
     """Who the caller is, resolved server-side.
 
-    `subject_student_id` is the student whose record this caller may act on: their own if
-    they are a student, and never populated from a request parameter. Staff roles get
-    None here and reach student data through explicitly scoped endpoints instead.
+    `subject_student_id` is the student whose record this caller may act on: their own,
+    and never populated from a request parameter. An account with no student record — an
+    advisor, who exists so a handoff has a name on it — gets None here and can therefore
+    reach no student data at all.
     """
 
     def __init__(self, user: User, student: Student | None) -> None:
@@ -122,26 +123,15 @@ def require_roles(*roles: UserRole):
     return dependency
 
 
-def require_student_access(identity: Identity, student_id: int, session: Session) -> None:
-    """Assert this caller may read that student's record.
+def require_student_access(identity: Identity, student_id: int) -> None:
+    """Assert this caller may read that student's record — which means it is their own.
 
-    Students may read only their own. Advisors may read their advisees. Registrar and
-    finance staff have institution-wide read access within their own scoped views. The
-    check lives here so every endpoint touching a student record uses the same rule
-    rather than re-deriving it.
+    This used to be a three-branch rule: a student read their own record, an advisor read
+    their advisees, and registrar and finance read institution-wide within scoped views.
+    Removing the staff product removed the two branches that could ever say yes to someone
+    other than the subject, and the rule collapsed to an identity comparison. The function
+    stays rather than being inlined because every endpoint touching a student record has to
+    go through the same sentence, and a rule with one caller is a rule someone forgets.
     """
-    if identity.role == UserRole.student:
-        if identity.subject_student_id != student_id:
-            raise HTTPException(status_code=403, detail="You may only view your own record.")
-        return
-
-    if identity.role == UserRole.advisor:
-        student = session.get(Student, student_id)
-        if student is None or student.advisor_id != identity.user.id:
-            raise HTTPException(
-                status_code=403, detail="That student is not on your advising caseload."
-            )
-        return
-
-    # registrar and finance: institution-wide, but their views are scoped by design.
-    return
+    if identity.subject_student_id != student_id:
+        raise HTTPException(status_code=403, detail="You may only view your own record.")

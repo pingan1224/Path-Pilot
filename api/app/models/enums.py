@@ -8,12 +8,18 @@ import enum
 
 
 class UserRole(str, enum.Enum):
-    """The four personas. Data scope differs per role — see rule 3 in CLAUDE.md."""
+    """Who an account belongs to.
+
+    There were four: student, advisor, registrar, finance, each with its own dashboard.
+    UAX is a student product now, and the registrar and finance personas went with their
+    views. `advisor` stays because the advisor did not exist only as a login — a student's
+    record names theirs, the handoff email is addressed to them, and retrieval still scopes
+    documents by audience (rule 3), which needs an audience other than `student` to be a
+    scope rather than a constant.
+    """
 
     student = "student"
     advisor = "advisor"
-    registrar = "registrar"
-    finance = "finance"
 
 
 class ReadinessStatus(str, enum.Enum):
@@ -66,10 +72,11 @@ class RegistrationOutcome(str, enum.Enum):
 class FailureReason(str, enum.Enum):
     """Why an enrollment attempt failed.
 
-    This is the taxonomy behind the registrar dashboard's "failed attempts by reason"
-    panel, and behind the student-facing plain-language explanation. The original RFP
-    identified unclear failure reasons as the rank-1 pain point, so this enum is the
-    single most load-bearing piece of the schema.
+    This is the taxonomy behind the error decoder's plain-language explanation. The
+    original RFP identified unclear failure reasons as the rank-1 pain point, so this enum
+    is the single most load-bearing piece of the schema. It also used to drive the
+    registrar dashboard's "failed attempts by reason" panel; that the panel is gone and
+    this is unchanged is the point — the taxonomy was always for the student.
     """
 
     prerequisite_not_met = "prerequisite_not_met"

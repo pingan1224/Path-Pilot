@@ -1,4 +1,4 @@
-"""Run the queries the dashboards depend on and print the results.
+"""Run the queries the product depends on and print the results.
 
     .venv/Scripts/python -m scripts.data_report
 
@@ -27,7 +27,7 @@ UNION ALL SELECT 'document_chunks', count(*) FROM document_chunks
 ORDER BY 1
 """
 
-# Registrar dashboard: why are students failing to register?
+# Error decoder: why are students failing to register?
 FAILURE_BREAKDOWN = """
 SELECT failure_reason::text AS reason,
        count(*) AS attempts,
@@ -38,7 +38,7 @@ GROUP BY failure_reason
 ORDER BY attempts DESC
 """
 
-# Registrar dashboard: which sections are under pressure right now?
+# Sequencing and "is it full?": which sections are under pressure right now?
 CAPACITY_PRESSURE = """
 SELECT c.code,
        s.enrolled_count || '/' || s.capacity AS seats,
@@ -103,44 +103,25 @@ ORDER BY stale_rows DESC, p.label
 
 # Rule 3: the retrieval candidate set differs by role, enforced in the index.
 #
-# Totals alone prove nothing here — every role happens to see 13 of 15 chunks, which would
-# look identical whether the filter worked or was ignored entirely. What proves it is
-# *which* restricted documents each role can reach, and which are absent.
+# Totals alone prove nothing here — both roles see nearly every chunk, which would look
+# identical whether the filter worked or was ignored entirely. What proves it is *which*
+# restricted documents each role can reach, and which are absent. Two roles is the minimum
+# at which this is a test at all, which is why `advisor` outlived the advisor dashboard.
 ROLE_VISIBILITY = """
 SELECT r.role,
        count(dc.id) AS visible,
        (SELECT count(*) FROM document_chunks) AS total,
        COALESCE(
            string_agg(DISTINCT d.title, '; ')
-               FILTER (WHERE array_length(dc.visible_to_roles, 1) < 4),
+               FILTER (WHERE array_length(dc.visible_to_roles, 1) < 2),
            '(none)'
        ) AS restricted_docs_reachable
-FROM unnest(ARRAY['student','advisor','registrar','finance']) AS r(role)
+FROM unnest(ARRAY['student','advisor']) AS r(role)
 LEFT JOIN document_chunks dc ON dc.visible_to_roles @> ARRAY[r.role]::varchar(16)[]
 LEFT JOIN documents d ON d.id = dc.document_id
 GROUP BY r.role
 ORDER BY r.role
 """
-
-ADVISOR_QUEUE = """
-SELECT u.full_name AS student,
-       count(DISTINCT h.id) FILTER (WHERE h.cleared_at IS NULL) AS active_holds,
-       count(DISTINCT ca.id) FILTER (WHERE ca.status <> 'resolved') AS open_cases,
-       count(DISTINCT ra.id) FILTER (WHERE ra.outcome = 'failed') AS failed_attempts
-FROM students st
-JOIN users u ON u.id = st.user_id
-JOIN users adv ON adv.id = st.advisor_id
-LEFT JOIN holds h ON h.student_id = st.id
-LEFT JOIN cases ca ON ca.student_id = st.id
-LEFT JOIN registration_attempts ra ON ra.student_id = st.id
-WHERE adv.full_name = 'Maya Patel'
-GROUP BY u.full_name
-HAVING count(DISTINCT h.id) FILTER (WHERE h.cleared_at IS NULL) > 0
-    OR count(DISTINCT ca.id) FILTER (WHERE ca.status <> 'resolved') > 0
-ORDER BY open_cases DESC, active_holds DESC
-LIMIT 8
-"""
-
 
 def show(conn, title: str, sql: str, **params) -> None:
     print(f"\n{'=' * 78}\n{title}\n{'=' * 78}")
@@ -164,8 +145,8 @@ def show(conn, title: str, sql: str, **params) -> None:
 def main() -> None:
     with get_engine().connect() as conn:
         show(conn, "Row counts", COUNTS)
-        show(conn, "Registrar — failed registration attempts by reason", FAILURE_BREAKDOWN)
-        show(conn, "Registrar — Fall 2026 capacity pressure (top 8)", CAPACITY_PRESSURE)
+        show(conn, "Decoder — failed registration attempts by reason", FAILURE_BREAKDOWN)
+        show(conn, "Sections — Fall 2026 capacity pressure (top 8)", CAPACITY_PRESSURE)
         show(
             conn,
             "Student — Diego Morales requirement progress (27 credits earned)",
@@ -180,7 +161,6 @@ def main() -> None:
         )
         show(conn, "Governance — hold freshness against source policy", FRESHNESS_AUDIT)
         show(conn, "Retrieval — chunks visible per role (pre-filter)", ROLE_VISIBILITY)
-        show(conn, "Advisor — Maya Patel triage queue", ADVISOR_QUEUE)
         print()
 
 

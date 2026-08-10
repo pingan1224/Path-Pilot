@@ -3,8 +3,8 @@
     .venv/Scripts/python -m scripts.profile_probe
 
 Builds a real profile through the HTTP API as a signed-in student, plans against it, runs
-a what-if, and checks that staff cannot reach any of it. Leaves the profile behind so the
-UI has something to render; delete via the API or reseed to clear.
+a what-if, and checks that nobody else can reach any of it. Leaves the profile behind so
+the UI has something to render; delete via the API or reseed to clear.
 """
 
 import json
@@ -138,20 +138,31 @@ def main() -> None:
         "; ".join(f["summary"] for f in prereq) or "no prerequisite findings",
     )
 
-    # --- boundaries
-    advisor = login("maya.patel@uax.example.edu")
-    for method, path in (("get", "/api/v1/profile/courses"), ("get", "/api/v1/profile/plan")):
-        r = getattr(advisor, method)(path)
-        check(f"advisor blocked from {path}", r.status_code == 403, f"got {r.status_code}")
-
-    r = advisor.put(
-        "/api/v1/profile/courses", json={"course_code": "MASY1-GC 1015", "state": "completed"}
+    # --- boundaries. There is no path parameter to attack here: the profile a request
+    #     reaches is the session's, so the boundary is the session itself. A second student
+    #     signing in gets their own empty profile rather than a refusal, which is the
+    #     stronger property — there is no way to *name* someone else's profile at all.
+    other = login("diego.morales@uax.example.edu")
+    r = other.get("/api/v1/profile/courses")
+    mine = {c["course_code"] for c in r.json()} if r.status_code == 200 else set()
+    check(
+        "another student's session reaches another student's profile",
+        r.status_code == 200 and "MASY1-GC 1015" not in mine,
+        f"{len(mine)} course(s), none of them this probe's",
     )
-    check("advisor cannot write a profile", r.status_code == 403, f"got {r.status_code}")
 
     anon = TestClient(app)
-    r = anon.get("/api/v1/profile/plan")
-    check("anonymous blocked from plan", r.status_code == 401, f"got {r.status_code}")
+    for method, path in (
+        ("get", "/api/v1/profile/courses"),
+        ("get", "/api/v1/profile/plan"),
+    ):
+        r = getattr(anon, method)(path)
+        check(f"anonymous blocked from {path}", r.status_code == 401, f"got {r.status_code}")
+
+    r = anon.put(
+        "/api/v1/profile/courses", json={"course_code": "MASY1-GC 1015", "state": "completed"}
+    )
+    check("anonymous cannot write a profile", r.status_code == 401, f"got {r.status_code}")
 
     # --- report
     width = max(len(n) for _, n, _ in results)

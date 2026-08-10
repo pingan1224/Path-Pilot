@@ -2,7 +2,7 @@
 
     .venv/Scripts/python -m scripts.smoke
 
-In-process TestClient, one session per role, demo credentials from settings. This is the
+In-process TestClient, one signed-in student, demo credentials from settings. This is the
 happy-path sweep; the adversarial counterpart is scripts/authz_probe.py, and the pair is
 the point — this file proves the allowed paths work, the probe proves the forbidden ones
 fail.
@@ -44,8 +44,6 @@ def show(title: str, response, keys: list[str] | None = None, expect: int = 200)
 
 def main() -> None:
     student = login("alex.chen@uax.example.edu")
-    advisor = login("maya.patel@uax.example.edu")
-    registrar = login("jordan.lee@uax.example.edu")
 
     me = student.get("/api/v1/auth/me")
     show("auth/me (student)", me, ["full_name", "role", "student_id"])
@@ -65,23 +63,19 @@ def main() -> None:
     )
     show("create case (self)", created, ["case_number", "status_label"], expect=201)
 
-    show(
-        "advisor queue",
-        advisor.get("/api/v1/advisors/queue"),
-        ["advisor_name", "caseload", "at_risk_count", "open_escalations"],
-    )
-    show("advisor roster (caseload-scoped)", advisor.get("/api/v1/students"))
     if created.status_code == 201:
         show(
-            "advisor patches the new case",
-            advisor.patch(f"/api/v1/cases/{created.json()['id']}", json={"status": "in_review"}),
-            ["case_number", "status_label"],
+            "read the new case back",
+            student.get(f"/api/v1/cases/{created.json()['id']}"),
+            ["case_number", "status_label", "owner_name"],
         )
 
+    show("own profile courses", student.get("/api/v1/profile/courses"))
+    show("own missions", student.get("/api/v1/missions"))
     show(
-        "registrar pressure",
-        registrar.get("/api/v1/registrar/pressure"),
-        ["term_name", "total_attempts", "failure_rate_percent", "sections_at_capacity"],
+        "own sequence",
+        student.get("/api/v1/sequence"),
+        ["credit_cap_was_assumed", "assumptions"],
     )
 
     show("health/ready", TestClient(app).get("/api/v1/health/ready"), ["status", "checks"])

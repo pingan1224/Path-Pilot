@@ -7,8 +7,9 @@ Two layers of data, deliberately:
 * Three hand-authored students carrying the scenarios the product exists to solve —
   a financial hold blocking registration, a prerequisite ordering conflict, and enough
   credits in the wrong distribution. These are what the demo walks through.
-* Around forty generated students producing enough volume for the registrar aggregates
-  to mean something. A failure-reason breakdown over three students is not a dashboard.
+* Around forty generated students producing enough volume for the section fill counts,
+  the failure-reason mix, and the retrieval eval to mean something. "Is this section
+  full?" is not a real question against a database with three students in it.
 
 All people are fictional and all identifiers are invented.
 """
@@ -60,10 +61,10 @@ from app.models import (
 
 RNG = random.Random(20260803)
 
-# Every seeded account shares one password so a reader can sign in as any role and see
-# the permission boundaries from both sides. Hashed once here rather than per user:
-# scrypt is deliberately slow, and 53 accounts times ~100ms would add a minute to seeding
-# for no security benefit on fixture data.
+# The signable demo students share one password so a reader can enter either door and see
+# that neither can reach the other's record. Hashed once here rather than per user: scrypt
+# is deliberately slow, and doing it per account would add real time to seeding for no
+# security benefit on fixture data.
 DEMO_PASSWORD_HASH = hash_password(settings.demo_password)
 
 # Anchored to the real clock, not a fixed date. Every timestamp below is expressed as an
@@ -74,7 +75,7 @@ NOW = datetime.now(UTC)
 
 REGISTRATION_OPENS_IN_DAYS = 7  # Alex's window, the reference point for the demo narrative.
 
-ALL_ROLES = ["student", "advisor", "registrar", "finance"]
+ALL_ROLES = ["student", "advisor"]
 
 
 # --------------------------------------------------------------------------------------
@@ -374,28 +375,30 @@ def seed_sections(
 
 
 # --------------------------------------------------------------------------------------
-# Staff and hero students
+# Advisors and hero students
 # --------------------------------------------------------------------------------------
 
 
-def seed_staff(session: Session) -> dict[str, User]:
+def seed_advisors(session: Session) -> dict[str, User]:
+    """The two advisors every student record points at.
+
+    There were five staff accounts here — two advisors, a registrar, and two finance
+    officers — back when each had a dashboard to sign into. What is left is not a login:
+    an advisor is the name on a student's record and the person the handoff email is
+    addressed to. `password_hash` is therefore null, which is what makes that structural
+    rather than a claim: the account cannot authenticate at all.
+    """
     people = [
-        ("maya.patel@uax.example.edu", "Maya Patel", UserRole.advisor, "Advising"),
-        ("tom.becker@uax.example.edu", "Tom Becker", UserRole.advisor, "Advising"),
-        ("jordan.lee@uax.example.edu", "Jordan Lee", UserRole.registrar, "Registrar"),
-        ("sam.okafor@uax.example.edu", "Sam Okafor", UserRole.finance, "Bursar"),
-        ("rina.gupta@uax.example.edu", "Rina Gupta", UserRole.finance, "Financial Aid"),
+        ("maya.patel@uax.example.edu", "Maya Patel", "Advising"),
+        ("tom.becker@uax.example.edu", "Tom Becker", "Advising"),
     ]
-    staff: dict[str, User] = {}
-    for email, name, role, office in people:
-        user = User(
-            email=email, full_name=name, role=role, office=office,
-            password_hash=DEMO_PASSWORD_HASH,
-        )
+    advisors: dict[str, User] = {}
+    for email, name, office in people:
+        user = User(email=email, full_name=name, role=UserRole.advisor, office=office)
         session.add(user)
-        staff[email.split("@")[0]] = user
+        advisors[email.split("@")[0]] = user
     session.flush()
-    return staff
+    return advisors
 
 
 def make_student(
@@ -469,7 +472,7 @@ GRADES_B = ("B+", 3.3)
 def seed_hero_students(
     session: Session,
     program: Program,
-    staff: dict[str, User],
+    advisors: dict[str, User],
     terms: dict[str, Term],
     sections: dict[str, Section],
 ) -> dict[str, Student]:
@@ -482,7 +485,7 @@ def seed_hero_students(
         name="Alex Chen",
         number="N10234567",
         program=program,
-        advisor=staff["maya.patel"],
+        advisor=advisors["maya.patel"],
         terms=terms,
         grad_term="2027SP",
         registration_opens=(NOW + timedelta(days=REGISTRATION_OPENS_IN_DAYS)).date(),
@@ -513,7 +516,7 @@ def seed_hero_students(
         name="Priya Raman",
         number="N10891234",
         program=program,
-        advisor=staff["maya.patel"],
+        advisor=advisors["maya.patel"],
         terms=terms,
         # One term of slack, unlike Alex. Priya's problem is ordering, not pace — she is
         # genuinely on track and still hit a wall, which is the case a credit-count-only
@@ -544,7 +547,7 @@ def seed_hero_students(
         name="Diego Morales",
         number="N10456789",
         program=program,
-        advisor=staff["tom.becker"],
+        advisor=advisors["tom.becker"],
         terms=terms,
         grad_term="2026FA",
         registration_opens=(NOW + timedelta(days=9)).date(),
@@ -684,8 +687,9 @@ LAST_NAMES = [
 
 
 # How far along a background student is, and which graduation terms that makes plausible.
-# The spread is chosen so the advisor queue contains all three readiness statuses; a
-# population that is uniformly at risk would make the triage view meaningless.
+# The spread is deliberate rather than uniform: a population that is all at one level would
+# fill every section in the same term and leave the others empty, and seat pressure is the
+# thing these records exist to make real.
 PROGRESS_LEVELS = {
     1: (3, ["2027SP", "2027FA"]),  # 9 credits
     2: (6, ["2027SP", "2027FA"]),  # 18 credits
@@ -696,11 +700,11 @@ PROGRESS_LEVELS = {
 def seed_background_students(
     session: Session,
     program: Program,
-    staff: dict[str, User],
+    advisors: dict[str, User],
     terms: dict[str, Term],
     count: int = 45,
 ) -> list[tuple[Student, int]]:
-    advisors = [staff["maya.patel"], staff["tom.becker"]]
+    pair = [advisors["maya.patel"], advisors["tom.becker"]]
     students: list[tuple[Student, int]] = []
 
     for i in range(count):
@@ -708,10 +712,10 @@ def seed_background_students(
         last = LAST_NAMES[(i * 7 + 3) % len(LAST_NAMES)]
         email = f"{first.lower()}.{last.lower()}{i}@uax.example.edu"
 
-        # No password: background students exist to give the registrar aggregates and the
-        # advisor queue realistic volume, and nobody signs in as them. A null hash means
-        # the account cannot authenticate at all, which is the correct default for a
-        # record that represents a person rather than a user.
+        # No password: background students exist to give seat counts and the failure-reason
+        # mix realistic volume, and nobody signs in as them. A null hash means the account
+        # cannot authenticate at all, which is the correct default for a record that
+        # represents a person rather than a user.
         user = User(email=email, full_name=f"{first} {last}", role=UserRole.student)
         session.add(user)
         session.flush()
@@ -722,7 +726,7 @@ def seed_background_students(
         student = Student(
             student_number=f"N{20_000_000 + i * 137:08d}",
             user_id=user.id,
-            advisor_id=advisors[i % 2].id,
+            advisor_id=pair[i % 2].id,
             program_id=program.id,
             admitted_term_id=terms["2025FA"].id,
             expected_graduation_term_id=terms[RNG.choice(grad_options)].id,
@@ -856,7 +860,7 @@ def seed_registration_attempts(
         )
     )
 
-    # --- Background volume for the registrar aggregates.
+    # --- Background volume, so the failure-reason mix is a distribution and not an anecdote.
     reasons = [r for r, _ in FAILURE_WEIGHTS]
     weights = [w for _, w in FAILURE_WEIGHTS]
     fall_section_keys = [k for k in sections if k.startswith("2026FA:")]
@@ -954,11 +958,13 @@ def seed_background_holds(session: Session, background: list[tuple[Student, int]
 # --------------------------------------------------------------------------------------
 
 
-def seed_cases(session: Session, heroes: dict[str, Student], staff: dict[str, User]) -> None:
+def seed_cases(
+    session: Session, heroes: dict[str, Student], advisors: dict[str, User]
+) -> None:
     alex_case = Case(
         case_number="UAX-1001",
         student_id=heroes["alex"].id,
-        owner_user_id=staff["rina.gupta"].id,
+        owner_user_id=advisors["maya.patel"].id,
         category=CaseCategory.financial_hold,
         status=CaseStatus.in_review,
         priority=CasePriority.urgent,
@@ -993,9 +999,9 @@ def seed_cases(session: Session, heroes: dict[str, Student], staff: dict[str, Us
         CaseEvent(
             case_id=alex_case.id,
             actor_kind=ActorKind.staff,
-            actor_user_id=staff["rina.gupta"].id,
+            actor_user_id=advisors["maya.patel"].id,
             action="Picked up for review",
-            note="Checking the document queue for an upload under this student number.",
+            note="Chasing Financial Aid for an upload logged under this student number.",
             from_status=CaseStatus.new,
             to_status=CaseStatus.in_review,
             occurred_at=NOW - timedelta(hours=20),
@@ -1005,7 +1011,7 @@ def seed_cases(session: Session, heroes: dict[str, Student], staff: dict[str, Us
     priya_case = Case(
         case_number="UAX-1002",
         student_id=heroes["priya"].id,
-        owner_user_id=staff["maya.patel"].id,
+        owner_user_id=advisors["maya.patel"].id,
         category=CaseCategory.prerequisite_conflict,
         status=CaseStatus.resolved,
         priority=CasePriority.routine,
@@ -1035,7 +1041,7 @@ def seed_cases(session: Session, heroes: dict[str, Student], staff: dict[str, Us
         CaseEvent(
             case_id=priya_case.id,
             actor_kind=ActorKind.staff,
-            actor_user_id=staff["maya.patel"].id,
+            actor_user_id=advisors["maya.patel"].id,
             action="Resolved case",
             note="Take MASY-GC 1800 this fall and 2200 in spring. Graduation term unaffected.",
             from_status=CaseStatus.new,
@@ -1047,7 +1053,7 @@ def seed_cases(session: Session, heroes: dict[str, Student], staff: dict[str, Us
     diego_case = Case(
         case_number="UAX-1003",
         student_id=heroes["diego"].id,
-        owner_user_id=staff["tom.becker"].id,
+        owner_user_id=advisors["tom.becker"].id,
         category=CaseCategory.degree_planning,
         status=CaseStatus.new,
         priority=CasePriority.elevated,
@@ -1154,16 +1160,19 @@ def seed_interactions(session: Session, heroes: dict[str, Student]) -> None:
 # university document would be appropriate to scrape, and the role pre-filter needs
 # something restricted to be tested against. They are flagged is_synthetic in the database.
 DOCUMENTS = [
-    # --- Staff-only. This document is the concrete demonstration of rule 3: a student
+    # --- Advisor-only. This document is the concrete demonstration of rule 3: a student
     #     asking about overrides must never retrieve it, and the pre-filter is what
-    #     guarantees that rather than a prompt instruction not to mention it.
+    #     guarantees that rather than a prompt instruction not to mention it. It is also
+    #     why `advisor` survived the removal of the advisor dashboard — an audience filter
+    #     with one audience in it is not a filter, and this leak probe would stop meaning
+    #     anything the moment `student` were the only role in the system.
     (
         "policy_doc",
         "Advisor Override and Substitution Procedure",
         "https://example.edu/internal/advising/overrides",
         "advising",
         date(2026, 2, 11),
-        ["advisor", "registrar"],
+        ["advisor"],
         [
             (
                 "Internal > Overrides > Authority",
@@ -1179,15 +1188,16 @@ DOCUMENTS = [
             ),
         ],
     ),
-    # --- Student and finance only; advisors and registrar have no need for payment plan
-    #     mechanics, so they do not receive it.
+    # --- Student-only, and the other half of the same proof: the pre-filter has to let a
+    #     restricted document through to the audience it belongs to, or "no leaks" would be
+    #     satisfied by an index that returns nothing.
     (
         "policy_doc",
         "Payment Plan Terms and Enrollment",
         "https://example.edu/bursar/payment-plans",
         "bursar",
         date(2026, 6, 18),
-        ["student", "finance"],
+        ["student"],
         [
             (
                 "Bursar > Payment plans > Eligibility",
@@ -1308,14 +1318,14 @@ def main() -> None:
         terms = seed_terms(session)
         program, courses = seed_catalog(session)
         sections = seed_sections(session, courses, terms)
-        staff = seed_staff(session)
-        heroes = seed_hero_students(session, program, staff, terms, sections)
+        advisors = seed_advisors(session)
+        heroes = seed_hero_students(session, program, advisors, terms, sections)
         holds = seed_holds(session, heroes)
-        background = seed_background_students(session, program, staff, terms)
+        background = seed_background_students(session, program, advisors, terms)
         seed_background_enrollments(session, background, sections)
         seed_background_holds(session, background)
         seed_registration_attempts(session, heroes, holds, background, sections, terms)
-        seed_cases(session, heroes, staff)
+        seed_cases(session, heroes, advisors)
         seed_interactions(session, heroes)
         seed_documents(session)
         session.commit()

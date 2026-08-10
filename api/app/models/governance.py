@@ -60,9 +60,10 @@ class AiInteraction(Base):
         DateTime(timezone=True), nullable=False, index=True
     )
 
-    # Who asked, and in what capacity. `subject_student_id` is who the question was *about*
-    # — an advisor asking about an advisee makes these differ, and any mismatch outside an
-    # advising relationship is exactly what an auditor would look for.
+    # Who asked, and in what capacity. `subject_student_id` is who the question was *about*.
+    # These differing at all is now the thing an auditor would look for: with the staff
+    # views gone, every question is asked by the student it is about, and the columns are
+    # kept separate so that claim stays checkable instead of being true by construction.
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     acting_role: Mapped[UserRole] = mapped_column(
         SAEnum(UserRole, name="user_role"), nullable=False, index=True

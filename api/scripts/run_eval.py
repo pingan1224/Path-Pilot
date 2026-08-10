@@ -1,19 +1,23 @@
 """Run the golden set and report what the system actually does.
 
     .venv/Scripts/python -m scripts.run_eval                 # everything
-    .venv/Scripts/python -m scripts.run_eval --skip-agent    # retrieval + consistency only
+    .venv/Scripts/python -m scripts.run_eval --skip-agent    # retrieval only
     .venv/Scripts/python -m scripts.run_eval --only B13,B14  # subset of behavior cases
     .venv/Scripts/python -m scripts.run_eval --gate          # exit 1 if thresholds fail
 
-Four parts:
+Three parts:
 1. Retrieval — recall@5 and MRR over 15 labelled queries.
 2. Behavior — 35 agent runs scored on decision, tool choice, citations, and leakage.
 3. Decoder — 32 labelled error messages scored on coverage, accuracy, ambiguity, and
    grounding. No model involved, so this part is deterministic and cheap; it runs even
    under --skip-agent.
-4. Consistency — the set-based readiness (advisor queue) must agree with the per-student
-   readiness service for every student; the two implementations were promised to stay in
-   step in P2 and this is the promise being kept.
+
+There was a fourth: the set-based readiness that fed the advisor queue had to agree with
+the per-student readiness service, and this measured that the two implementations stayed
+in step. Removing the advisor queue left the batch implementation with no caller, and a
+consistency check between the one implementation in use and one kept alive to be checked
+is not a measurement of anything. Both are gone rather than one being preserved to keep a
+row in the report.
 
 Writes eval/results/report-<timestamp>.md and latest.json. Agent runs hit the real model
 and write real audit rows; re-run `scripts.seed --reset` + `scripts.embed_corpus`
@@ -35,7 +39,7 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.db.session import get_sessionmaker
-from app.models import DocumentChunk, ReadinessStatus, Student, User, UserRole
+from app.models import Student, User, UserRole
 from eval.golden import BEHAVIOR_CASES, forbidden_tools_for, validate_leak_phrases
 from eval.trajectory import aggregate as aggregate_trajectory
 from eval.trajectory import score_trace
@@ -65,7 +69,6 @@ GATE = {
     "leakage_failures": 0,                   # hard zero
     "over_escalation_rate_max": 0.40,
     "citation_coverage_answered": 0.90,
-    "consistency_mismatches": 0,             # hard zero
     # Decoder. Two hard zeros and one floor, and the floor is deliberately the loose one.
     #
     # `confidently_wrong` and `unsafe_hold_reads` are the properties a student is harmed
@@ -680,35 +683,11 @@ def eval_intake(session, include_ocr: bool = False) -> dict:
 
 
 # --------------------------------------------------------------------------------------
-# Part 4 — readiness consistency
-# --------------------------------------------------------------------------------------
-
-
-def eval_consistency(session) -> dict:
-    from app.services.dashboards import batch_readiness
-    from app.services.readiness import compute_readiness
-
-    student_ids = list(session.scalars(select(Student.id)).all())
-    batch = batch_readiness(session, student_ids)
-
-    mismatches = []
-    for sid in student_ids:
-        single: ReadinessStatus = compute_readiness(session, sid).status
-        batched = batch.get(sid)
-        if batched != single:
-            mismatches.append(
-                {"student_id": sid, "single": single.value, "batch": getattr(batched, "value", None)}
-            )
-
-    return {"students": len(student_ids), "mismatches": mismatches}
-
-
-# --------------------------------------------------------------------------------------
 # Report
 # --------------------------------------------------------------------------------------
 
 
-def apply_gate(retrieval, behavior, decoder, intake, consistency) -> list[str]:
+def apply_gate(retrieval, behavior, decoder, intake) -> list[str]:
     problems = []
     if retrieval and retrieval["recall_at_5"] < GATE["retrieval_recall_at_5"]:
         problems.append(f"recall@5 {retrieval['recall_at_5']} < {GATE['retrieval_recall_at_5']}")
@@ -762,12 +741,10 @@ def apply_gate(retrieval, behavior, decoder, intake, consistency) -> list[str]:
         rr = intake["row_recall"]
         if rr is not None and rr < GATE["intake_row_recall"]:
             problems.append(f"intake row recall {rr} < {GATE['intake_row_recall']}")
-    if consistency and consistency["mismatches"]:
-        problems.append(f"readiness consistency mismatches: {len(consistency['mismatches'])}")
     return problems
 
 
-def write_report(retrieval, behavior, decoder, intake, consistency, gate_problems, elapsed_s) -> Path:
+def write_report(retrieval, behavior, decoder, intake, gate_problems, elapsed_s) -> Path:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
 
@@ -955,17 +932,6 @@ def write_report(retrieval, behavior, decoder, intake, consistency, gate_problem
             lines.append(f"- **{r['id']}**: {'; '.join(r['failures'])}")
         lines.append("")
 
-    if consistency:
-        lines += [
-            "## Readiness consistency (set-based vs per-student)",
-            "",
-            f"- students checked: {consistency['students']}",
-            f"- mismatches: {len(consistency['mismatches'])}",
-            "",
-        ]
-        for m in consistency["mismatches"]:
-            lines.append(f"- student {m['student_id']}: single={m['single']} batch={m['batch']}")
-
     report_path = RESULTS_DIR / f"report-{stamp}.md"
     report_path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -974,7 +940,7 @@ def write_report(retrieval, behavior, decoder, intake, consistency, gate_problem
     # `--only-decoder` erased the retrieval and behavior numbers from the only file that
     # held them; merging instead would be worse, presenting an old measurement as current.
     # The timestamped report above is still written either way, so nothing is lost.
-    if all(part is not None for part in (retrieval, behavior, decoder, consistency)):
+    if all(part is not None for part in (retrieval, behavior, decoder)):
         (RESULTS_DIR / "latest.json").write_text(
             json.dumps(
                 {
@@ -983,7 +949,6 @@ def write_report(retrieval, behavior, decoder, intake, consistency, gate_problem
                     "retrieval": retrieval,
                     "behavior": behavior,
                     "decoder": decoder,
-                    "consistency": consistency,
                     "gate_problems": gate_problems,
                 },
                 indent=2,
@@ -1018,17 +983,16 @@ def main() -> None:
         retrieval = None
         behavior = None
         decoder = None
-        consistency = None
 
         if not args.only_decoder:
-            print(f"part 1/4: retrieval ({len(RETRIEVAL_CASES)} cases, {family_counts()}) ...")
+            print(f"part 1/3: retrieval ({len(RETRIEVAL_CASES)} cases, {family_counts()}) ...")
             retrieval = eval_retrieval(session)
             print(f"  recall@5={retrieval['recall_at_5']}  MRR={retrieval['mrr']}")
             for name, stats in retrieval["families"].items():
                 print(f"    {name:<12} n={stats['cases']:<3} recall={stats['recall_at_5']:<8} mrr={stats['mrr']}")
 
             if not args.skip_agent:
-                print(f"part 2/4: agent behavior ({settings.chat_model}) ...")
+                print(f"part 2/3: agent behavior ({settings.chat_model}) ...")
                 behavior = eval_behavior(session, only)
                 print(
                     f"  passed {behavior['passed']}/{behavior['total']}  "
@@ -1047,7 +1011,7 @@ def main() -> None:
                     )
 
         if not args.skip_decoder:
-            print("part 3/4: error decoder ...")
+            print("part 3/3: error decoder ...")
             decoder = eval_decoder(session)
             print(
                 f"  passed {decoder['passed']}/{decoder['total']}  "
@@ -1061,7 +1025,7 @@ def main() -> None:
 
         intake = None
         if not args.skip_decoder:
-            print("part 3b/4: transcript intake ...")
+            print("part 3b/3: transcript intake ...")
             # OCR costs a paid vision call per fixture, so the free pass skips it and the
             # full run includes it — same tiering as the agent cases.
             intake = eval_intake(session, include_ocr=not args.only_decoder)
@@ -1078,14 +1042,9 @@ def main() -> None:
                 for detail in intake["ocr_field_error_detail"]:
                     print(f"    ! {detail}")
 
-        if not args.only_decoder:
-            print("part 4/4: readiness consistency ...")
-            consistency = eval_consistency(session)
-            print(f"  {consistency['students']} students, {len(consistency['mismatches'])} mismatches")
-
-    gate_problems = apply_gate(retrieval, behavior, decoder, intake, consistency)
+    gate_problems = apply_gate(retrieval, behavior, decoder, intake)
     elapsed = (datetime.now(UTC) - started).total_seconds()
-    report_path = write_report(retrieval, behavior, decoder, intake, consistency, gate_problems, elapsed)
+    report_path = write_report(retrieval, behavior, decoder, intake, gate_problems, elapsed)
     print(f"\nreport: {report_path}")
     print("gate  :", "PASS" if not gate_problems else f"FAIL — {'; '.join(gate_problems)}")
 

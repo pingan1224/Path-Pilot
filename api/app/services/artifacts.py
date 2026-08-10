@@ -79,8 +79,10 @@ def specs_from_trace(
     """Reduce a turn's trace to the artifacts it earned. Pure — rules only.
 
     `student_caller` gates the record-bound artifacts: mission and sequence read the
-    caller's own record through student-only services, and for staff the honest result is
-    no card, not an empty one.
+    caller's own record through student-only services, so an account with no student record
+    behind it earns no card rather than an empty one. That is now a narrow case — an
+    advisor account has no workspace to ask from — and the gate stays because "there is no
+    record here" and "the record is empty" must never render the same.
     """
     specs: list[ArtifactSpec] = []
 

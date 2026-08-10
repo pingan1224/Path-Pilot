@@ -6,7 +6,22 @@ Every check is an attack, not a happy path. A permissions test that only confirm
 actions succeed proves nothing — the claim being made is that forbidden actions *fail*,
 and that is what has to be exercised. Runs in-process against the real app, so it
 exercises the same dependency graph the deployed API uses.
+
+This probe used to have four actors and spent most of its length on the boundaries between
+them: a student refused the registrar board, an advisor refused a colleague's advisee, a
+finance officer seeing financial cases and nothing else. Those surfaces are gone, and the
+probe did not shrink to match by deleting the interesting half. Two things replaced them:
+
+  * The boundary that always mattered most is now exercised from both sides. Alex and Diego
+    are both signable, so "a student cannot read another student's record" is checked in
+    each direction rather than inferred from one.
+  * The staff surfaces are checked for absence, at two layers. The routes must be gone
+    (404, not 403 — a 403 would mean the endpoint is still mounted and merely guarded), and
+    an advisor account must not be able to authenticate at all. A login that cannot happen
+    is a stronger statement than a dashboard that answers 403.
 """
+
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -41,22 +56,21 @@ def main() -> None:
             select(Student).join(User, User.id == Student.user_id)
             .where(User.full_name == "Diego Morales")
         ).first()
-        # Diego's advisor is Tom Becker; Maya Patel advises Alex. Cross-caseload access
-        # is therefore a real boundary and not an artefact of the fixture.
-        maya = session.scalars(
-            select(User).where(User.full_name == "Maya Patel")
+        advisor_account = session.scalars(
+            select(User).where(User.role == UserRole.advisor)
         ).first()
         alex_id, diego_id = alex.id, diego.id
-        alex_email = alex.user.email
-        assert diego.advisor_id != maya.id, "fixture no longer exercises cross-caseload"
+        alex_email, diego_email = alex.user.email, diego.user.email
+        advisor_email = advisor_account.email if advisor_account else None
+        assert alex_id != diego_id, "fixture no longer exercises two distinct students"
 
     anon = TestClient(app)
 
     # --- unauthenticated
     for path in (
         f"/api/v1/students/{alex_id}/readiness",
-        "/api/v1/registrar/pressure",
-        "/api/v1/advisors/queue",
+        f"/api/v1/students/{alex_id}/blockers",
+        "/api/v1/cases",
     ):
         r = anon.get(path)
         check(f"anon GET {path}", r.status_code == 401, f"got {r.status_code}")
@@ -64,8 +78,27 @@ def main() -> None:
     r = anon.post("/api/v1/assistant/ask", json={"question": "why am I blocked?"})
     check("anon POST /assistant/ask", r.status_code == 401, f"got {r.status_code}")
 
-    # --- student
+    # --- the removed staff surfaces. 404 rather than 403 is the point: these are not
+    #     endpoints behind a permission check, they are endpoints that no longer exist.
     student = client_for(alex_email)
+    for path in ("/api/v1/registrar/pressure", "/api/v1/advisors/queue", "/api/v1/students"):
+        r = student.get(path)
+        check(f"{path} is gone, not guarded", r.status_code == 404, f"got {r.status_code}")
+
+    if advisor_email:
+        r = TestClient(app).post(
+            "/api/v1/auth/login", json={"email": advisor_email, "password": PASSWORD}
+        )
+        check(
+            "an advisor account cannot authenticate at all",
+            r.status_code == 401,
+            f"got {r.status_code}",
+        )
+    else:
+        check("an advisor account cannot authenticate at all", False, "no advisor seeded")
+
+    # --- one student against another, in both directions
+    other = client_for(diego_email)
 
     r = student.get(f"/api/v1/students/{alex_id}/readiness")
     check("student reads own readiness", r.status_code == 200, f"got {r.status_code}")
@@ -77,21 +110,12 @@ def main() -> None:
         f"got {r.status_code}",
     )
 
-    r = student.get(f"/api/v1/students/{diego_id}/blockers")
+    r = other.get(f"/api/v1/students/{alex_id}/blockers")
     check(
-        "student CANNOT read another student's blockers",
+        "the same refusal holds in the other direction",
         r.status_code == 403,
         f"got {r.status_code}",
     )
-
-    r = student.get("/api/v1/registrar/pressure")
-    check("student CANNOT open registrar dashboard", r.status_code == 403, f"got {r.status_code}")
-
-    r = student.get("/api/v1/advisors/queue")
-    check("student CANNOT open an advising queue", r.status_code == 403, f"got {r.status_code}")
-
-    r = student.get("/api/v1/students")
-    check("student CANNOT list the student roster", r.status_code == 403, f"got {r.status_code}")
 
     # The old API took `role` and `student_id` in the body. Sending them now must not
     # change anything: extra fields are ignored and identity comes from the session.
@@ -108,43 +132,10 @@ def main() -> None:
     if ok:
         body = r.json()
         # The answer must be about Alex, from a student-scoped session.
-        leaked = "Tom Becker" in body["answer"] or "Diego" in body["answer"]
+        leaked = "Diego" in body["answer"] or "Morales" in body["answer"]
         ok = not leaked
         detail = "answered without leaking the other student" if ok else "LEAKED other student"
     check("role/student_id in body are ignored (privilege escalation)", ok, detail)
-
-    # --- advisor
-    advisor = client_for("maya.patel@uax.example.edu")
-
-    r = advisor.get("/api/v1/advisors/queue")
-    ok = r.status_code == 200
-    caseload = r.json()["caseload"] if ok else 0
-    check("advisor reads own queue", ok, f"caseload {caseload}")
-
-    r = advisor.get(f"/api/v1/students/{alex_id}/readiness")
-    check("advisor reads an advisee", r.status_code == 200, f"got {r.status_code}")
-
-    r = advisor.get(f"/api/v1/students/{diego_id}/readiness")
-    check(
-        "advisor CANNOT read a colleague's advisee",
-        r.status_code == 403,
-        f"got {r.status_code}",
-    )
-
-    r = advisor.get("/api/v1/students")
-    ok = r.status_code == 200
-    n = len(r.json()) if ok else -1
-    check("advisor roster is scoped to caseload", ok and n == caseload, f"{n} rows vs caseload {caseload}")
-
-    r = advisor.get("/api/v1/registrar/pressure")
-    check("advisor CANNOT open registrar dashboard", r.status_code == 403, f"got {r.status_code}")
-
-    # --- registrar
-    registrar = client_for("jordan.lee@uax.example.edu")
-    r = registrar.get("/api/v1/registrar/pressure")
-    check("registrar reads own dashboard", r.status_code == 200, f"got {r.status_code}")
-    r = registrar.get("/api/v1/advisors/queue")
-    check("registrar CANNOT open an advising queue", r.status_code == 403, f"got {r.status_code}")
 
     # --- cases
     r = student.post(
@@ -156,71 +147,45 @@ def main() -> None:
     check("student opens a case about self", ok, f"got {r.status_code}")
 
     if probe_case_id:
+        r = student.get(f"/api/v1/cases/{probe_case_id}")
+        check("student reads own case", r.status_code == 200, f"got {r.status_code}")
+
+        # 404, not 403. Whether case 812 exists is itself information about another
+        # student's record, so a case that is not yours reads exactly like one that is not
+        # there — the same answer an id plucked out of the air gets.
+        r = other.get(f"/api/v1/cases/{probe_case_id}")
+        check(
+            "another student's case is indistinguishable from a missing one",
+            r.status_code == 404,
+            f"got {r.status_code}",
+        )
+
+        leaked = any(c["id"] == probe_case_id for c in other.get("/api/v1/cases").json())
+        check("case list is scoped to the caller", not leaked, "scoped" if not leaked else "LEAKED")
+
+        # Status transitions were staff-only; with no staff there is no writer at all, so
+        # the route is gone rather than forbidden.
         r = student.patch(f"/api/v1/cases/{probe_case_id}", json={"status": "resolved"})
-        check("student CANNOT change case status", r.status_code == 403, f"got {r.status_code}")
+        check("nobody can move a case status", r.status_code == 405, f"got {r.status_code}")
 
-        r = advisor.patch(f"/api/v1/cases/{probe_case_id}", json={"status": "in_review"})
-        check("advisor moves an own-caseload case", r.status_code == 200, f"got {r.status_code}")
-
-    # Diego's advisor is Tom Becker; his seeded case must be invisible and untouchable
-    # to Maya. Find it as registrar (institution-wide read).
-    r = registrar.get("/api/v1/cases")
-    diego_case = next(
-        (c for c in r.json() if c["student_id"] == diego_id), None
-    ) if r.status_code == 200 else None
-    if diego_case:
-        r = advisor.patch(f"/api/v1/cases/{diego_case['id']}", json={"status": "in_review"})
-        check(
-            "advisor CANNOT touch a colleague's advisee's case",
-            r.status_code == 403,
-            f"got {r.status_code}",
-        )
-        r = advisor.get("/api/v1/cases")
-        leaked = any(c["student_id"] == diego_id for c in r.json()) if r.status_code == 200 else True
-        check("advisor case list excludes other caseloads", not leaked, "scoped" if not leaked else "LEAKED")
-
-    finance = client_for("sam.okafor@uax.example.edu")
-    r = finance.get("/api/v1/cases")
-    ok = r.status_code == 200
-    if ok:
-        categories = {c["category"] for c in r.json()}
-        ok = categories <= {"financial_hold", "aid_dispute"}
-        detail = f"categories seen: {sorted(categories)}"
-    else:
-        detail = f"got {r.status_code}"
-    check("finance sees financial categories only", ok, detail)
-
-    # --- error decoder. Open to every signed-in role by design, so the boundary that
-    # matters is not who may call it but whose record it reads: `identity.user.id`'s own
-    # self-reported courses and nobody else's. An advisor decoding a message a student
-    # forwarded must get the policy reading with an empty record check.
-    r = advisor.post(
-        "/api/v1/decoder/decode",
-        json={"text": "ERR_PREREQ: Requisites not met for this class (MASY1-GC 2100)"},
-    )
-    if r.status_code == 200:
-        body = r.json()
-        findings = (body.get("record_check") or {}).get("findings") or []
-        check(
-            "decoder answers an advisor without reading a student's record",
-            body["reason"] == "prerequisite_not_met" and not findings,
-            f"reason={body['reason']} findings={len(findings)}",
-        )
-    else:
-        check(
-            "decoder answers an advisor without reading a student's record",
-            False,
-            f"got {r.status_code}",
-        )
-
+    # --- error decoder. It reads the pasted message and the caller's own self-reported
+    # courses, so the boundary that matters is whose record it reaches — never a path
+    # parameter's, always the session's.
     r = anon.post("/api/v1/decoder/decode", json={"text": "ERR_PREREQ: Requisites not met"})
     check("decoder rejects an unauthenticated caller", r.status_code == 401, f"got {r.status_code}")
 
-    # --- sequence planner. Student-only and scoped to the caller's own record, like the
-    # planner it derives from. Staff have no business sequencing anyone's degree.
-    r = advisor.get("/api/v1/sequence")
-    check("staff cannot reach the sequence planner", r.status_code == 403, f"got {r.status_code}")
+    r = student.post(
+        "/api/v1/decoder/decode",
+        json={"text": "ERR_PREREQ: Requisites not met for this class (MASY1-GC 2100)"},
+    )
+    check(
+        "decoder answers the signed-in student",
+        r.status_code == 200 and r.json()["reason"] == "prerequisite_not_met",
+        f"got {r.status_code}",
+    )
 
+    # --- sequence planner. Scoped to the caller's own record, like the planner it derives
+    # from, and it must say out loud what it assumed.
     r = anon.get("/api/v1/sequence")
     check("unauthenticated sequence rejected", r.status_code == 401, f"got {r.status_code}")
 
@@ -237,17 +202,12 @@ def main() -> None:
     else:
         check("a sequence always states what it assumes", False, f"got {r.status_code}")
 
-    # --- transcript intake. The most sensitive upload in the product, so the boundary is
-    # student-only and the reading writes nothing until a separate confirm.
-    from pathlib import Path
-
+    # --- transcript intake. The most sensitive upload in the product, so the reading writes
+    # nothing until a separate confirm, and it lands on the uploader's own record only.
     fixture = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "transcript_table.pdf"
     if fixture.exists():
         pdf = fixture.read_bytes()
         files = {"file": ("t.pdf", pdf, "application/pdf")}
-
-        r = advisor.post("/api/v1/intake/transcript", files=files)
-        check("staff cannot upload a transcript", r.status_code == 403, f"got {r.status_code}")
 
         r = anon.post("/api/v1/intake/transcript", files=files)
         check("unauthenticated upload rejected", r.status_code == 401, f"got {r.status_code}")
@@ -263,12 +223,22 @@ def main() -> None:
         )
 
         before = len(student.get("/api/v1/profile/courses").json())
+        other_before = len(other.get("/api/v1/profile/courses").json())
+
         r = student.post("/api/v1/intake/transcript", files=files)
+
         after = len(student.get("/api/v1/profile/courses").json())
         check(
             "READING A TRANSCRIPT WRITES NOTHING",
             r.status_code == 200 and before == after,
             f"{before} -> {after} course(s) after upload",
+        )
+
+        other_after = len(other.get("/api/v1/profile/courses").json())
+        check(
+            "and nothing lands on the other student either",
+            other_before == other_after,
+            f"{other_before} -> {other_after} course(s) on the other student",
         )
     else:
         check(

@@ -156,17 +156,22 @@ UAX 将分散的查找和计算任务收敛为一个可审阅工作流：
 - 准备 registration mission；
 - 把未解决问题整理给 advisor。
 
-### 5.2 次要用户：Advisor
+### 5.2 唯一用户：学生（2026-08-08 起）
 
-核心问题：
+原来还有三类次要用户，各有自己的视图：Advisor 的 triage queue、Registrar 的 capacity
+pressure、Finance 的 case list。这三个界面已于 2026-08-08 删除，理由写在这里以免日后被
+当成疏漏：它们本来就属于 demo/portfolio scope，从来没有真实的 staff workflow 在后面
+接住；而每次改动学生端，都要多付三份维护成本。一个把一件事做透的作品集项目，胜过四件事
+各做一半。
 
-> 哪些学生需要我处理，以及他们已经确认了什么、仍不确定什么？
+被删掉的是产品界面，不是权限模型：
 
-Advisor 视图目前主要属于 demo/portfolio scope。真实 beta 在没有学校合作和 staff workflow 前，不得暗示 advisor 会在 UAX 内回复。
-
-### 5.3 次要用户：Registrar / Finance
-
-用于展示角色最小权限、队列和压力视图。除非未来获得真实机构接入，否则不属于独立学生产品的核心价值闭环。
+- `advisor` 作为 `User` 上的角色保留，但**不能登录**（seed 中 `password_hash` 为空）。
+  它的两个用途都不是界面：学生记录上写着自己的 advisor 是谁，而 handoff 邮件正是写给
+  这个人的；检索的 audience 过滤需要至少两个受众，否则 leak probe 就不再是测试。
+- 最小权限原则现在只剩一句话：**调用者只能读到自己的记录**。这句话由两个可登录的学生
+  账号双向验证，比原来单向的 advisor 越权检查更强。
+- Registrar / Finance 角色已从 `UserRole` 枚举中删除。
 
 ---
 
@@ -190,6 +195,7 @@ Advisor 视图目前主要属于 demo/portfolio scope。真实 beta 在没有学
 | 持久 conversation/thread | 未实现 | 当前历史主要在客户端本轮会话内 |
 | 多项目高置信规划 | 未实现 | 当前高置信范围为一个已编码项目 |
 | Invite-only beta hardening | 未完成 | 需要限流、成本、隐私和部署验收 |
+| Advisor / Registrar / Finance 视图 | 已删除（2026-08-08） | 产品收敛为纯学生端，权限模型与 leak probe 保留 |
 
 ---
 
@@ -253,7 +259,7 @@ Advisor 视图目前主要属于 demo/portfolio scope。真实 beta 在没有学
 - 登录身份、角色和数据主体只能来自服务器 session；
 - 学生登录后默认进入 Chat；
 - Mission、Sequence、Decoder、Planner 和 Intake 作为次级工具入口保留；
-- Advisor、Registrar、Finance 根据角色进入各自视图，不显示学生专属写操作。
+- 非学生账号（仅剩 advisor 记录）无法登录；即使持有旧 session，也只会看到一句说明和登出按钮。
 
 验收：客户端无法通过提交任意 role 或 student ID 扩大权限。
 
@@ -717,7 +723,7 @@ run.failed
 
 ### 15.3 当前技术基线
 
-截至 2026-08-07 的已记录结果：
+截至 2026-08-08 的已记录结果：
 
 - Retrieval：Recall@5 0.91，MRR 0.815；
 - Agent behavior：35/35 cases；
@@ -727,7 +733,8 @@ run.failed
 - Forbidden tool calls：0；
 - Decoder：accuracy when named 1.0，confidently wrong 0；
 - Transcript：row recall 1.0，silently wrong 0；
-- OCR：3 个图片 fixture 行召回 1.0，已知 1 个字段错误，全部强制 review。
+- OCR：3 个图片 fixture 行召回 1.0，已知 1 个字段错误，全部强制 review；
+- 权限边界：authz_probe 28/28，其中 23 条断言“被禁止的动作确实失败”。
 
 ### 15.4 持续门槛
 
@@ -739,7 +746,6 @@ run.failed
 - `decoder_ambiguity_held = 1.0`；
 - retrieval recall@5 不低于当前 regression floor；
 - citation coverage 不低于 0.90；
-- readiness consistency mismatch = 0；
 - 每条新写工具必须有 forbidden-call 测试；
 - 每个新语料族必须有 retrieval cases。
 

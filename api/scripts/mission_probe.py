@@ -458,10 +458,6 @@ def main() -> None:
     r = anon.get(f"/api/v1/missions/{mission_id}")
     check("unauthenticated read rejected", r.status_code == 401, f"got {r.status_code}")
 
-    advisor = login("maya.patel@uax.example.edu")
-    r = advisor.get("/api/v1/missions")
-    check("staff have no mission surface", r.status_code == 403, f"got {r.status_code}")
-
     assert other_id is not None  # used only to prove the fixture has a second student
     report()
     if [n for p, n, _ in results if not p]:

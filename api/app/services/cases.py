@@ -5,28 +5,14 @@ from datetime import UTC, datetime
 from sqlalchemy import Integer, func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import (
-    ActorKind,
-    Case,
-    CaseEvent,
-    CaseStatus,
-    Student,
-    User,
-)
-from app.schemas import CaseCreate, CaseEventOut, CaseOut, CaseUpdate
+from app.models import ActorKind, Case, CaseEvent, CaseStatus, Student
+from app.schemas import CaseCreate, CaseEventOut, CaseOut
 
 STATUS_LABELS = {
     CaseStatus.new: "New",
     CaseStatus.in_review: "In review",
     CaseStatus.waiting_on_student: "Waiting on student",
     CaseStatus.resolved: "Resolved",
-}
-
-ACTION_FOR_STATUS = {
-    CaseStatus.new: "Reopened case",
-    CaseStatus.in_review: "Moved case to in review",
-    CaseStatus.waiting_on_student: "Requested student follow-up",
-    CaseStatus.resolved: "Resolved case",
 }
 
 
@@ -92,16 +78,11 @@ def list_cases(
     session: Session,
     *,
     student_id: int | None = None,
-    advisor_id: int | None = None,
     status: CaseStatus | None = None,
 ) -> list[CaseOut]:
     query = _base_query()
     if student_id is not None:
         query = query.where(Case.student_id == student_id)
-    if advisor_id is not None:
-        query = query.join(Student, Student.id == Case.student_id).where(
-            Student.advisor_id == advisor_id
-        )
     if status is not None:
         query = query.where(Case.status == status)
 
@@ -150,40 +131,3 @@ def create_case(session: Session, payload: CaseCreate, student_id: int) -> CaseO
     )
     session.commit()
     return get_case(session, case.id)
-
-
-def update_case(
-    session: Session, case_id: int, payload: CaseUpdate, actor_user_id: int
-) -> CaseOut:
-    case = session.get(Case, case_id)
-    if case is None:
-        raise CaseNotFoundError(f"No case with id {case_id}")
-
-    now = datetime.now(UTC)
-    previous = case.status
-
-    case.status = payload.status
-    if payload.owner_user_id is not None:
-        case.owner_user_id = payload.owner_user_id
-    if payload.status == CaseStatus.resolved and case.resolved_at is None:
-        case.resolved_at = now
-    if payload.status != CaseStatus.resolved:
-        case.resolved_at = None
-
-    session.add(
-        CaseEvent(
-            case_id=case.id,
-            # Rule 8: only a human closes a case. Anything arriving through this endpoint is
-            # a staff action, recorded as such, so the audit trail never shows the assistant
-            # resolving its own escalation. The actor is the session holder, not a field.
-            actor_kind=ActorKind.staff,
-            actor_user_id=actor_user_id,
-            action=ACTION_FOR_STATUS[payload.status],
-            note=payload.note,
-            from_status=previous,
-            to_status=payload.status,
-            occurred_at=now,
-        )
-    )
-    session.commit()
-    return get_case(session, case_id)

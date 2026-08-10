@@ -206,7 +206,7 @@ class CoursePrerequisite(Base):
 
 
 class Section(Base, TimestampMixin, SourcedMixin):
-    """A course offering in a term. Capacity numbers drive the registrar dashboard."""
+    """A course offering in a term. Capacity numbers are what "is it full?" resolves to."""
 
     __tablename__ = "sections"
     __table_args__ = (

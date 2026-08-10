@@ -33,7 +33,7 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CHUNKS_DIR = DATA_DIR / "chunks"
 MANIFEST = DATA_DIR / "raw" / "manifest.json"
 
-ALL_ROLES = ["student", "advisor", "registrar", "finance"]
+ALL_ROLES = ["student", "advisor"]
 
 
 def load_manifest() -> dict[str, dict]:

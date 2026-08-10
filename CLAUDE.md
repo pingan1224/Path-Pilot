@@ -47,10 +47,12 @@ Three things about the setup that are not obvious and will bite if forgotten:
 
 Every student view is now shadcn over Tailwind; the migration deleted eighteen orphaned
 `App.css` families along the way (`.msg`, `.mstep`, `.decoder__*`, `.seq__*`, the
-`.course-*` family, …). What is left in `App.css` is the token block, the `.nx-*` Nocturne
-signatures, shared semantic families every surface uses (`.finding`, `.passage`, `.ev`,
-`.tag`, `.visually-hidden`), and the staff-view shell — Advisor, Registrar, Finance and the
-student dashboard are demo/portfolio scope and were deliberately left on the old shell.
+`.course-*` family, …), and removing the staff views took another twenty with them (the
+`.topbar`/`.subbar`/`.whoami` shell, `.case*`, `.queue*`, `.stat*`, `.table*`). What is
+left in `App.css` is the token block, the `.nx-*` Nocturne signatures, shared semantic
+families every surface uses (`.finding`, `.passage`, `.ev`, `.tag`, `.visually-hidden`),
+and the login and student-dashboard styles, which are demo/portfolio scope and were
+deliberately left on the old shell.
 
 **There is one palette and it is global.** `--accent` and friends live on `:root`; nothing
 is scoped to a container any more, and the theme flips through
@@ -103,24 +105,40 @@ These come from the source RFP. Violating one breaks the project's whole premise
    summaries. It cannot clear holds, waive prerequisites, approve exceptions, or change
    enrollment.
 
-## Personas
+## Persona
 
-Four roles, each with a different question and a different data scope:
+One: the student. "Am I ready to register, and will I graduate on time?"
 
-- `student` — "Am I ready to register, and will I graduate on time?"
-- `advisor` — "Which of my advisees needs me this week?"
-- `registrar` — "Where is enrollment pressure building?"
-- `finance` — "Which financial holds are blocking registration?" (Bursar / Financial Aid)
+There were four. `advisor`, `registrar`, and `finance` each had a dashboard landing on its
+own question, and each was scoped so that finance saw no advising context and the registrar
+saw no individual financial detail. Those three product surfaces were removed on
+2026-08-08. Read this as a scope decision, not as a claim that the scoping was wrong: the
+staff views cost three more places to maintain for every change to the thing this product
+is actually for, and a portfolio project that does four jobs adequately is worth less than
+one that does a single job properly.
 
-`finance` must not receive advising context; `registrar` must not receive individual
-financial detail. This scoping is the FERPA minimum-necessary principle made visible, and
-it is a demo feature, not just a backend detail.
+`advisor` survives as a role on `User`, deliberately, in two places that are not a UI:
+
+- A student's record names their advisor, and the handoff — the product's actual output —
+  is an email addressed to that person.
+- Retrieval scopes documents by audience (rule 3), and the leak probes prove a student
+  cannot reach the advisor-only override procedure. An audience filter with exactly one
+  audience in it proves nothing; `advisor` is what keeps that a real test.
+
+An advisor account cannot sign in — `password_hash` is null in the seed — so there is no
+staff surface behind any door. `scripts/authz_probe.py` checks both halves: the routes are
+404 rather than 403, and the login itself is refused.
+
+FERPA minimum-necessary now means one sentence: a caller reaches their own record and no
+other. That is checked from both sides, with two signable students.
 
 ## UI principles
 
 From the RFP's UI/UX section. Applies to every screen.
 
-- **Role-first, not feature-first.** Each role lands on its own question, not a menu.
+- **One question, not a menu.** The product opens on where registration stands, not on a
+  list of things it can do. (This was "role-first, not feature-first" when there were four
+  roles; the principle survived the roles.)
 - **Status hierarchy before detail.** Critical blockers render above general information.
 - **Plain language with provenance.** Every status shows what it means, where it came from,
   when it was last verified, and the next action.

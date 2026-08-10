@@ -112,7 +112,7 @@ class DocumentChunk(Base):
     token_count: Mapped[int] = mapped_column(Integer, nullable=False)
 
     visible_to_roles: Mapped[list[str]] = mapped_column(
-        ARRAY(String(16)), nullable=False, server_default="{student,advisor,registrar,finance}"
+        ARRAY(String(16)), nullable=False, server_default="{student,advisor}"
     )
 
     embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIM))

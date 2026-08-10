@@ -2,33 +2,27 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import { api, UnauthenticatedError } from "./api";
 import { ErrorState, Loading } from "./components";
-import AdvisorView from "./views/AdvisorView";
 import DemoLogin from "./views/DemoLogin";
 import Login from "./views/Login";
-import RegistrarView from "./views/RegistrarView";
 import StudentShell from "./views/StudentShell";
-import StudentView from "./views/StudentView";
 
 /**
- * The view is decided by who is signed in, not by a switcher. A student gets the
- * full-viewport assistant workspace (StudentShell owns that frame entirely); each staff
- * role lands on its own question inside the classic page shell, and an advisor can
- * additionally drill into an advisee's dashboard (the API enforces that it really is
- * their advisee).
+ * UAX is a student product. It used to be four: a student workspace plus an advisor
+ * queue, a registrar pressure board, and a finance case list, each landing on its own
+ * question. Those three are gone — not hidden behind a flag, deleted — because carrying
+ * three staff surfaces meant every change to the student experience had to be paid for
+ * three more times, and none of them was the thing this product is for.
+ *
+ * What survives from that decision is the scoping, not the roles: the API still resolves
+ * identity from the session cookie and still refuses to serve one student another
+ * student's record. The `advisor` on a student's record is now what it always was in
+ * practice — the human the handoff email is addressed to, not a login.
  */
-
-const ROLE_QUESTIONS = {
-  advisor: "Who needs me this week?",
-  registrar: "Where is the pressure?",
-  finance: "Which financial cases need review?",
-};
 
 export default function App() {
   const [me, setMe] = useState(null);
   const [checking, setChecking] = useState(true);
   const [error, setError] = useState(null);
-  // Advisor drill-down into one advisee; null means "own home view".
-  const [viewStudentId, setViewStudentId] = useState(null);
 
   useEffect(() => {
     api
@@ -45,7 +39,6 @@ export default function App() {
       await api.logout();
     } finally {
       setMe(null);
-      setViewStudentId(null);
     }
   }
 
@@ -65,7 +58,7 @@ export default function App() {
     );
   }
 
-  // Signed out: two doors. `/demo` is the portfolio entrance with seeded roles; anything
+  // Signed out: two doors. `/demo` is the portfolio entrance with seeded students; anything
   // else is the real sign-in. A router would be three routes' worth of dependency for a
   // decision that is one string comparison — the links between the two pages are plain
   // navigations, which is correct behaviour for a login screen anyway.
@@ -73,126 +66,24 @@ export default function App() {
     return window.location.pathname.startsWith("/demo") ? <DemoLogin /> : <Login />;
   }
 
-  if (me.role === "student") {
-    return <StudentShell me={me} onSignOut={signOut} />;
+  // A non-student account can still hold a valid session from a database seeded before the
+  // staff views were removed. Saying so beats rendering a workspace with no record behind
+  // it — rule 6: name what is missing rather than failing quietly.
+  if (me.role !== "student") {
+    return (
+      <main id="main" className="main">
+        <div className="state state--error" role="alert">
+          <p>
+            UAX is a student workspace, and {me.full_name} is signed in as {me.role}. Sign
+            out and use a student account.
+          </p>
+          <button type="button" className="btn" onClick={signOut}>
+            Sign out
+          </button>
+        </div>
+      </main>
+    );
   }
 
-  return (
-    <>
-      <a className="skip" href="#main">
-        Skip to content
-      </a>
-
-      <header className="topbar">
-        <div className="topbar__inner">
-          <div className="brand">
-            <span className="brand__mark" aria-hidden="true" />
-            <div className="brand__text">
-              <span className="brand__name">UAX</span>
-              <span className="brand__sub">Unified Academic Experience</span>
-            </div>
-          </div>
-
-          <div className="whoami">
-            <div className="whoami__text">
-              <span className="whoami__name">{me.full_name}</span>
-              <span className="whoami__role">
-                {me.role}
-                {me.office ? ` · ${me.office}` : ""}
-                {me.student_number ? ` · ${me.student_number}` : ""}
-              </span>
-            </div>
-            <button type="button" className="btn" onClick={signOut}>
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="subbar">
-        <div className="subbar__inner">
-          <p className="subbar__question">{ROLE_QUESTIONS[me.role] ?? ""}</p>
-          {viewStudentId ? (
-            <button type="button" className="btn" onClick={() => setViewStudentId(null)}>
-              ← Back to my queue
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      <main id="main" className="main">
-        {me.role === "advisor" ? (
-          viewStudentId ? (
-            <StudentView studentId={viewStudentId} />
-          ) : (
-            <AdvisorView onOpenStudent={setViewStudentId} />
-          )
-        ) : null}
-
-        {me.role === "registrar" ? <RegistrarView /> : null}
-
-        {me.role === "finance" ? <FinanceView /> : null}
-      </main>
-
-      {/* The floating Ask UAX panel is gone: the assistant is the front door now, not an
-          accessory docked in a corner. AskAlbert.jsx was kept unmounted while M7-B settled
-          what the chat would carry over from it, and deleted once it had. */}
-
-      <footer className="footer">
-        <p>
-          Personal portfolio project. All students, records, and policies are fictional or
-          quoted from public NYU bulletins with source links. Not an official NYU system —
-          Albert is always authoritative.
-        </p>
-      </footer>
-    </>
-  );
-}
-
-/** Minimal finance view: the financial case queue the API scopes for this role. */
-function FinanceView() {
-  const [cases, setCases] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    api.cases().then(setCases).catch((err) => setError(err.message));
-  }, []);
-
-  if (error) return <ErrorState message={error} />;
-  if (!cases) return <Loading what="financial cases" />;
-
-  return (
-    <div className="stack">
-      <section className="card">
-        <p className="eyebrow">Financial cases</p>
-        <h2>Holds & aid disputes</h2>
-        {cases.length === 0 ? (
-          <p className="muted">No open financial cases.</p>
-        ) : (
-          <ul className="cases">
-            {cases.map((item) => (
-              <li key={item.id} className="case">
-                <div className="case__head">
-                  <span className="case__number">{item.case_number}</span>
-                  <span className={`tag tag--${item.status === "resolved" ? "good" : "warn"}`}>
-                    {item.status_label}
-                  </span>
-                </div>
-                <p className="case__title">{item.title}</p>
-                <p className="muted">
-                  {item.student_name} · {item.category.replace(/_/g, " ")}
-                </p>
-                {item.ai_summary ? (
-                  <div className="case__summary">
-                    <span className="case__summary-label">Assistant summary</span>
-                    <p>{item.ai_summary}</p>
-                  </div>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
-  );
+  return <StudentShell me={me} onSignOut={signOut} />;
 }

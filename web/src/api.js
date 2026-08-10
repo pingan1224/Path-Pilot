@@ -41,20 +41,9 @@ export const api = {
     request("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => request("/auth/logout", { method: "POST" }),
   me: () => request("/auth/me"),
-  // data — all scoped server-side by the session
-  students: () => request("/students"),
+  // data — always the signed-in student's own record, scoped server-side by the session
   readiness: (id) => request(`/students/${id}/readiness`),
   blockers: (id) => request(`/students/${id}/blockers`),
-  advisorQueue: () => request("/advisors/queue"),
-  registrarPressure: () => request("/registrar/pressure"),
-  cases: (params = {}) => {
-    const query = new URLSearchParams(params).toString();
-    return request(`/cases${query ? `?${query}` : ""}`);
-  },
-  createCase: (payload) =>
-    request("/cases", { method: "POST", body: JSON.stringify(payload) }),
-  updateCase: (id, payload) =>
-    request(`/cases/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   // `history` is prior conversation text only — never tool results. Replaying a stale seat
   // count or hold status would put it in context looking as authoritative as this turn's
   // lookup; the server re-establishes every fact through tools scoped by the session.

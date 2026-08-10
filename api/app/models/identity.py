@@ -12,10 +12,10 @@ from app.models.enums import UserRole
 
 
 class User(Base, TimestampMixin):
-    """An authenticated identity in one of the four roles.
+    """An authenticated identity: a student, or the advisor a student's record points at.
 
     Role lives here rather than on a join table because a person holds exactly one role in
-    this system. That is a simplification of reality — a real registrar might also be a
+    this system. That is a simplification of reality — a real advisor might also be a
     part-time student — but modelling it as one-to-many would make every permission
     pre-filter ambiguous, which is exactly the thing rule 3 forbids.
     """

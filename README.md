@@ -22,14 +22,16 @@ catching real defects, several of them in code that had already shipped.
 
 ## What it does
 
-Signing in decides what you see; there is no role switcher.
+One question, for one person: **am I ready to register, and will I graduate on time?**
 
-| Role | The question it answers |
-|---|---|
-| Student | Am I ready to register, and will I graduate on time? |
-| Advisor | Which of my advisees needs me this week? |
-| Registrar | Where is enrollment pressure building? |
-| Finance | Which financial holds are blocking registration? |
+It shipped with four. An advisor triage queue, a registrar pressure board, and a finance
+case list each landed on their own question, scoped so that finance saw no advising context
+and the registrar saw no individual financial detail. They were removed in August 2026, and
+the reason is worth stating plainly: three secondary surfaces meant every change to the
+student experience had to be paid for three more times, and none of them was the thing this
+product exists for. What the staff views were proving — that data scope is enforced in the
+query and not in the prompt — is still proved, now between two students instead of four
+roles, and checked from both sides rather than one. See `scripts/authz_probe.py`.
 
 Students land in a chat. It greets from computed state ("your Spring 2027 mission is 4 of
 5 steps done — next: the advisor handoff"), answers with citations, and renders what the
@@ -92,8 +94,8 @@ Each placement says what it rests on. Two-thirds of the catalog publishes when a
 for the rest the term is a guess and is labelled one, per course, because a single caveat
 under the grid does not tell you which two courses to go and check.
 
-**Try it:** `/demo` signs you in as any role with one click. Everything there is fictional,
-and each role is blocked from the others' data — which you are invited to test.
+**Try it:** `/demo` signs you in as one of two students with one click. Everything there is
+fictional, and neither student can reach the other's record — which you are invited to test.
 
 ## Design rules that shape the architecture
 
@@ -127,15 +129,14 @@ Latest full run — see `api/eval/results/` for the reports.
 | Decoder accuracy when it names a cause | 1.00 | = 0 wrong |
 | Decoder coverage (labelled causes named) | 0.83 | ≥ 0.80 |
 | Decoder ambiguity held (hold office never invented) | 1.00 | = 1.00 |
-| Authorization boundary checks | 36/36 | all |
-| Mission end-to-end probe | 37/37 | all |
+| Authorization boundary checks | 28/28 | all |
+| Mission end-to-end probe | 36/36 | all |
 | Transcript intake (9 fixtures: 6 documents + 3 photos, 38 rows) | recall 1.00, 0 wrong | 0 silently wrong |
 | OCR field errors (reported, **not** gated) | 1 — a grade read `A-` where the page says `A` | reported |
-| Unit tests (rule engine, decoder, missions, sequence, intake, search budget, faults, OCR boundary) | 271/271 | all |
+| Unit tests (rule engine, decoder, missions, sequence, intake, search budget, faults, OCR boundary) | 297/297 | all |
 | Fault-injection scenarios | 6/6 | all |
 | Degradation coverage (agent's declared modes ever executed) | **4/4** *(was 0/4 before M9)* | all |
 | Degraded retrieval, recall@5 / MRR | 0.74 / 0.536 *(vs 0.91 / 0.815 healthy)* | reported |
-| Readiness consistency (two implementations) | 48/48 | 0 mismatches |
 | Assistant latency p50 / p95 | 6.1s / 15.2s | reported |
 | Forbidden (write) tool calls | 0 | = 0 |
 | Repeated identical tool calls | 0.00 | ≤ 0.20 |
@@ -420,8 +421,8 @@ cd api
 ```bash
 cd api
 .venv/Scripts/python -m pytest tests/ -q      # rule engine + decoder classifier, no I/O
-.venv/Scripts/python -m scripts.authz_probe   # 29 adversarial permission checks
-.venv/Scripts/python -m scripts.mission_probe # 33 checks: a mission end to end, plus cheating at it
+.venv/Scripts/python -m scripts.authz_probe   # 28 adversarial permission checks
+.venv/Scripts/python -m scripts.mission_probe # 36 checks: a mission end to end, plus cheating at it
 .venv/Scripts/python -m scripts.smoke         # authenticated happy path
 .venv/Scripts/python -m scripts.run_eval --only-decoder   # decoder alone, seconds, no LLM
 .venv/Scripts/python -m scripts.trajectory_report --by-tool  # trajectory over the audit log, free
@@ -429,9 +430,11 @@ cd api
 FAULT_INJECTION=true .venv/Scripts/python -m scripts.fault_probe --gate  # break each dependency on purpose
 ```
 
-`authz_probe` is the one to read: 16 of its 29 checks assert that a **forbidden** action
+`authz_probe` is the one to read: 23 of its 28 checks assert that a **forbidden** action
 fails. A permissions test that only confirms allowed actions succeed proves nothing about
-the claim being made.
+the claim being made. Three of those 23 are new with the staff removal and check for
+*absence*: the advisor and registrar routes answer 404 rather than 403, because an endpoint
+that is merely guarded is still an endpoint.
 
 Ablations: `scripts.ablate_chunking`, `scripts.ablate_scope`, `scripts.ablate_hybrid`.
 Measurements that decided a design: `scripts.measure_giveup` (why the search budget is a
@@ -460,6 +463,7 @@ actually costs).
 | M10 | Transcript photos: OCR that is never allowed to be trusted | ✅ |
 | M11 | Multi-turn context budgeting: freshness-aware reuse of tool results | ◻ Next |
 | M12 | Invite-only beta, rate limits, deployment | ◻ |
+| — | Staff views (advisor queue, registrar pressure, finance cases) removed; student-only | ✅ |
 
 ## Honest limitations
 
@@ -500,6 +504,12 @@ actually costs).
 - **The corpus is a dated snapshot.** Every citation carries its fetch date, and the
   staleness machinery says so, but the bulletin can change underneath it.
 - **Model comparison is indicative, n=1 per scenario.** Not a benchmark.
+- **There is no staff side, and the escalation path leads out of the product.** Opening a
+  case records that a question needed a human and gives the student a number to quote; no
+  queue in this system will pick it up, because the humans who would work it use the
+  institution's own tools. That was true before the staff views were removed — they read
+  the same fixture data, not a live queue — and removing them made it visible instead of
+  implied.
 
 ## License
 

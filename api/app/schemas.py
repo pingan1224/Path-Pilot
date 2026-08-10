@@ -8,7 +8,6 @@ from app.models.enums import (
     CaseCategory,
     CasePriority,
     CaseStatus,
-    FailureReason,
     HoldType,
     Office,
     ReadinessStatus,
@@ -117,76 +116,6 @@ class ReadinessResponse(BaseModel):
 
 
 # --------------------------------------------------------------------------------------
-# Advisor
-# --------------------------------------------------------------------------------------
-
-
-class QueueEntry(BaseModel):
-    student_id: int
-    student_number: str
-    full_name: str
-    readiness_status: ReadinessStatus
-    readiness_label: str
-    active_holds: int
-    open_cases: int
-    failed_attempts: int
-    latest_failure_reason: FailureReason | None
-    days_until_registration: int | None
-    # Which triage bucket this student falls into, in the order an advisor works them.
-    group: str
-    group_rank: int
-
-
-class AdvisorQueueResponse(BaseModel):
-    advisor_id: int
-    advisor_name: str
-    caseload: int
-    at_risk_count: int
-    open_escalations: int
-    resolved_this_week: int
-    entries: list[QueueEntry]
-
-
-# --------------------------------------------------------------------------------------
-# Registrar
-# --------------------------------------------------------------------------------------
-
-
-class SectionPressure(BaseModel):
-    section_id: int
-    course_code: str
-    course_title: str
-    section_code: str
-    capacity: int
-    enrolled: int
-    fill_percent: int
-    seats_remaining: int
-    waitlisted: int
-    restriction: str | None
-    pressure: str
-    provenance: Provenance
-
-
-class FailureBucket(BaseModel):
-    reason: FailureReason
-    label: str
-    attempts: int
-    percent: float
-
-
-class RegistrarPressureResponse(BaseModel):
-    term_code: str
-    term_name: str
-    total_attempts: int
-    failed_attempts: int
-    failure_rate_percent: float
-    sections_at_capacity: int
-    students_with_blocking_holds: int
-    failure_breakdown: list[FailureBucket]
-    sections: list[SectionPressure]
-
-
-# --------------------------------------------------------------------------------------
 # Cases
 # --------------------------------------------------------------------------------------
 
@@ -223,19 +152,11 @@ class CaseOut(BaseModel):
 
 class CaseCreate(BaseModel):
     # No student_id: a student opens cases about themselves, and the subject comes from
-    # the session. Staff-opened cases go through their own scoped flows.
+    # the session, never from the body.
     category: CaseCategory
     title: str = Field(min_length=4, max_length=200)
     message: str = Field(min_length=1)
     priority: CasePriority = CasePriority.routine
-
-
-class CaseUpdate(BaseModel):
-    status: CaseStatus
-    note: str | None = None
-    owner_user_id: int | None = None
-    # actor_user_id is gone: the actor is whoever holds the session. A writable actor
-    # field was one more place the caller could claim an identity for the audit trail.
 
 
 # --------------------------------------------------------------------------------------

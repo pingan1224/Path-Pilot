@@ -62,8 +62,7 @@ class RegistrationAttempt(Base, TimestampMixin):
 
     The rank-1 pain point in the source RFP was students receiving non-actionable
     registration errors. Recording every attempt with a typed `failure_reason` is what lets
-    the student view say *why* in plain language, and the registrar view show where errors
-    cluster — the same rows serving both, which is the point.
+    the student view say *why* in plain language instead of echoing the error code back.
     """
 
     __tablename__ = "registration_attempts"

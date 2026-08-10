@@ -59,16 +59,6 @@ export function Meter({ value, max, tone = "accent", label }) {
   );
 }
 
-export function Stat({ label, value, hint, tone }) {
-  return (
-    <div className={`stat ${tone ? `stat--${tone}` : ""}`}>
-      <span className="stat__label">{label}</span>
-      <span className="stat__value">{value}</span>
-      {hint ? <span className="stat__hint">{hint}</span> : null}
-    </div>
-  );
-}
-
 export function Loading({ what }) {
   return <p className="state state--loading">Loading {what}…</p>;
 }

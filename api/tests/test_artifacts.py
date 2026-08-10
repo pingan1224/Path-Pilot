@@ -6,8 +6,8 @@ exercised by constructing artifacts the way the builder does.
 
 The properties defended here are the contract's actual promises, not implementation
 details: the type vocabulary is closed, sequence artifacts cap at a comparison of two,
-staff callers earn no record-bound cards, and a decode with no pasted text earns no
-decoder card.
+a caller with no student record earns no record-bound cards, and a decode with no pasted
+text earns no decoder card.
 """
 
 import pytest
@@ -50,14 +50,14 @@ def test_mission_tools_earn_one_mission_artifact():
     assert specs[0].source_ids == ["course:MASY1-GC-2400", "mission:42"]
 
 
-def test_staff_caller_earns_no_record_bound_artifacts():
+def test_caller_without_a_student_record_earns_no_record_bound_artifacts():
     trace = [
         call("get_mission_state"),
         call("get_course_sequence"),
         call("decode_registration_error", args={"error_text": "ERR_PREREQ for MASY1-GC 3100"}),
     ]
     specs = specs_from_trace(trace, student_caller=False)
-    # The decoder is open to any role; mission and sequence read a student record.
+    # The decoder needs nothing but the pasted text; mission and sequence read a record.
     assert [s.type for s in specs] == ["decoder_result"]
 
 

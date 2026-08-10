@@ -256,7 +256,7 @@ def main() -> None:
     r = bad.post("/api/v1/auth/login", json={"email": alex_email, "password": "wrong"})
     check("wrong password rejected", r.status_code == 401, f"got {r.status_code}")
     r2 = bad.post(
-        "/api/v1/auth/login", json={"email": "nobody@uax.example.edu", "password": "wrong"}
+        "/api/v1/auth/login", json={"email": "nobody@pathpilot.example.edu", "password": "wrong"}
     )
     check(
         "unknown account and wrong password are indistinguishable",

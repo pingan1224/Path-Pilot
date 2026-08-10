@@ -11,7 +11,7 @@ class UserRole(str, enum.Enum):
     """Who an account belongs to.
 
     There were four: student, advisor, registrar, finance, each with its own dashboard.
-    UAX is a student product now, and the registrar and finance personas went with their
+    Path Pilot is a student product now, and the registrar and finance personas went with their
     views. `advisor` stays because the advisor did not exist only as a login — a student's
     record names theirs, the handoff email is addressed to them, and retrieval still scopes
     documents by audience (rule 3), which needs an audience other than `student` to be a

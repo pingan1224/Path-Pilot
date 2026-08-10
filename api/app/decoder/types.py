@@ -181,7 +181,7 @@ class DecodeResult:
     source_ids: list[str] = field(default_factory=list)
     degraded: list[str] = field(default_factory=list)
     disclaimer: str = (
-        "This reads the message you pasted and the published rules. UAX has no access to "
+        "This reads the message you pasted and the published rules. Path Pilot has no access to "
         "Albert and cannot see your record, your holds, or the seat counts. Confirm "
         "anything that affects registration in Albert."
     )

@@ -115,8 +115,8 @@ class MissionOut(BaseModel):
     degree_findings: list[FindingOut]
     accepted_risks: list[AcceptedRiskOut]
     disclaimer: str = (
-        "This mission tracks what you have told UAX and what the published rules say about "
-        "it. UAX cannot see Albert, cannot register you, and cannot confirm a course is "
+        "This mission tracks what you have told Path Pilot and what the published rules say about "
+        "it. Path Pilot cannot see Albert, cannot register you, and cannot confirm a course is "
         "available. Nothing here is done until you have done it in Albert."
     )
 

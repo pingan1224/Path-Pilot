@@ -389,8 +389,8 @@ def seed_advisors(session: Session) -> dict[str, User]:
     rather than a claim: the account cannot authenticate at all.
     """
     people = [
-        ("maya.patel@uax.example.edu", "Maya Patel", "Advising"),
-        ("tom.becker@uax.example.edu", "Tom Becker", "Advising"),
+        ("maya.patel@pathpilot.example.edu", "Maya Patel", "Advising"),
+        ("tom.becker@pathpilot.example.edu", "Tom Becker", "Advising"),
     ]
     advisors: dict[str, User] = {}
     for email, name, office in people:
@@ -481,7 +481,7 @@ def seed_hero_students(
     # --- Alex Chen: on pace academically, but a financial aid hold blocks registration.
     alex = make_student(
         session,
-        email="alex.chen@uax.example.edu",
+        email="alex.chen@pathpilot.example.edu",
         name="Alex Chen",
         number="N10234567",
         program=program,
@@ -512,7 +512,7 @@ def seed_hero_students(
     # --- Priya Raman: on track, but wants a course whose prerequisite she has not taken.
     priya = make_student(
         session,
-        email="priya.raman@uax.example.edu",
+        email="priya.raman@pathpilot.example.edu",
         name="Priya Raman",
         number="N10891234",
         program=program,
@@ -543,7 +543,7 @@ def seed_hero_students(
     #     credits, wrong credits" case, which a raw credit count would show as 75% done.
     diego = make_student(
         session,
-        email="diego.morales@uax.example.edu",
+        email="diego.morales@pathpilot.example.edu",
         name="Diego Morales",
         number="N10456789",
         program=program,
@@ -710,7 +710,7 @@ def seed_background_students(
     for i in range(count):
         first = FIRST_NAMES[i % len(FIRST_NAMES)]
         last = LAST_NAMES[(i * 7 + 3) % len(LAST_NAMES)]
-        email = f"{first.lower()}.{last.lower()}{i}@uax.example.edu"
+        email = f"{first.lower()}.{last.lower()}{i}@pathpilot.example.edu"
 
         # No password: background students exist to give seat counts and the failure-reason
         # mix realistic volume, and nobody signs in as them. A null hash means the account
@@ -962,7 +962,7 @@ def seed_cases(
     session: Session, heroes: dict[str, Student], advisors: dict[str, User]
 ) -> None:
     alex_case = Case(
-        case_number="UAX-1001",
+        case_number="PP-1001",
         student_id=heroes["alex"].id,
         owner_user_id=advisors["maya.patel"].id,
         category=CaseCategory.financial_hold,
@@ -1009,7 +1009,7 @@ def seed_cases(
     ])
 
     priya_case = Case(
-        case_number="UAX-1002",
+        case_number="PP-1002",
         student_id=heroes["priya"].id,
         owner_user_id=advisors["maya.patel"].id,
         category=CaseCategory.prerequisite_conflict,
@@ -1051,7 +1051,7 @@ def seed_cases(
     ])
 
     diego_case = Case(
-        case_number="UAX-1003",
+        case_number="PP-1003",
         student_id=heroes["diego"].id,
         owner_user_id=advisors["tom.becker"].id,
         category=CaseCategory.degree_planning,
@@ -1131,7 +1131,7 @@ def seed_interactions(session: Session, heroes: dict[str, Student]) -> None:
             response_text=(
                 "I can confirm the hold is still active as of 19 hours ago, but I cannot verify "
                 "whether your upload was received — document receipt is not available to me from "
-                "an authorized source. I have opened case UAX-1001 with Financial Aid."
+                "an authorized source. I have opened case PP-1001 with Financial Aid."
             ),
             citations=[],
             decision=InteractionDecision.escalated,

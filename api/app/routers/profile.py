@@ -92,7 +92,7 @@ class PlanOut(BaseModel):
     findings: list[FindingOut]
     # Restated on every response, because this is the surface a student acts on.
     disclaimer: str = (
-        "Based only on what you have entered. UAX has no access to Albert and cannot see "
+        "Based only on what you have entered. Path Pilot has no access to Albert and cannot see "
         "your official record. Confirm anything that affects registration in Albert."
     )
 

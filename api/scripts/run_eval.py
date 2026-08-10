@@ -749,7 +749,7 @@ def write_report(retrieval, behavior, decoder, intake, gate_problems, elapsed_s)
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
 
     lines = [
-        "# UAX evaluation report",
+        "# Path Pilot evaluation report",
         "",
         f"- run: {stamp} UTC · elapsed {elapsed_s:.0f}s",
         f"- chat model: `{settings.chat_model}` · embeddings: `{settings.embedding_model}`",

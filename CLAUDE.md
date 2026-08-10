@@ -1,4 +1,4 @@
-# UAX — Unified Academic Experience
+# Path Pilot
 
 An AI-enhanced redesign of NYU's Albert student information system, implemented from a
 graduate coursework RFP response. This is a personal portfolio project — not a real NYU
@@ -37,7 +37,7 @@ Three things about the setup that are not obvious and will bite if forgotten:
 - **`src/tailwind.css` aliases, it does not define.** `@theme inline` maps shadcn's expected
   tokens onto the palette already in `App.css`. There is exactly one palette. Never add a
   hex value to `tailwind.css` — put it in `App.css` and alias it.
-- **`src/index.css` must stay inside `@layer uax-reset`.** Unlayered CSS beats layered CSS
+- **`src/index.css` must stay inside `@layer path-pilot-reset`.** Unlayered CSS beats layered CSS
   regardless of specificity, so an unwrapped reset silently overrides every Tailwind utility.
   This cost real debugging time; the file says so at the top.
 - **`npx shadcn add` is not self-sufficient here.** In plain-JS mode it generates components
@@ -167,12 +167,23 @@ From the RFP's UI/UX section. Applies to every screen.
 Current phase: **M7 complete (A: agent-first shell, B: one-shot execution, C: transcript
 intake); M8 closed the B26 retrieval give-up finding with a measured search budget; M9 built
 fault injection and took degradation coverage 0/4 → 4/4, finding three real bugs including
-a keyword fallback that had never once executed successfully. Open agent gaps: multi-turn
-context budgeting, OCR only if evidence warrants it.**
+a keyword fallback that had never once executed successfully; M10 added OCR, where the work
+went into what it is *not* allowed to do — no row read from an image can ever reach
+`matched`. The server then took over deciding what the chat renders, retiring the card
+inference the frontend used to do from `tool_trace`; the trace is back to being an audit
+record, which is all it was ever meant to be. The product is student-only.**
+
+**Nothing is deployed.** Every number in this repo was measured on a laptop against a dev
+database, which means the production shape — Vercel rewriting `/api/*`, the session cookie
+surviving that, whether the proxy buffers SSE — is assumption rather than evidence. Open
+gaps, in the order they block a real user: deployment and the M12 beta hardening around it
+(rate limits, a per-user cost ceiling, real secrets in place of the dev defaults), the
+tool-event stream (PRD FR-13 — the frontend still shows a timed waiting message rather than
+what the agent is actually doing), and M11's multi-turn context budgeting.
 
 ## Agent-first shell (`web/src/views/ChatHome.jsx`, M7-A)
 
-The chat is the student's default tab; the floating Ask UAX panel is gone. Three rules:
+The chat is the student's default tab; the floating Ask Path Pilot panel is gone. Three rules:
 
 - **Cards render authoritative state, not snapshots.** After each answer the tool trace
   says what was consulted; ChatHome re-fetches the mission / re-runs the deterministic
@@ -286,7 +297,7 @@ point: a row read wrong and accepted is invisible damage, a row missed is visibl
 
 ## Product direction (as of 2026-08)
 
-UAX is becoming a real, read-only planning tool for NYU SPS graduate students, not only a
+Path Pilot is becoming a real, read-only planning tool for NYU SPS graduate students, not only a
 portfolio demo. Consequences that shape every decision from here:
 
 - **There is no Albert integration and there will not be one.** A real user's completed

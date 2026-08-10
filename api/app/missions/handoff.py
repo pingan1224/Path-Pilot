@@ -117,7 +117,7 @@ RISKS I AM KNOWINGLY CARRYING:
 MY QUESTIONS:
 {questions}
 
-Generated with UAX, an independent planning tool — not an NYU system, and with no access to
+Generated with Path Pilot, an independent planning tool — not an NYU system, and with no access to
 Albert. Everything above is my own report of my record and should be verified.
 
 Thanks!"""

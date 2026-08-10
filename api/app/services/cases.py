@@ -30,7 +30,7 @@ def _next_case_number(session: Session) -> str:
     highest = session.scalar(
         select(func.max(func.split_part(Case.case_number, "-", 2).cast(Integer)))
     )
-    return f"UAX-{(highest or 1000) + 1}"
+    return f"PP-{(highest or 1000) + 1}"
 
 
 def _to_out(case: Case, include_events: bool = True) -> CaseOut:

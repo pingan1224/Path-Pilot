@@ -19,7 +19,7 @@ router = APIRouter(tags=["health"])
 
 @router.get("/health")
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "uax-api", "version": "0.2.0"}
+    return {"status": "ok", "service": "path-pilot-api", "version": "0.2.0"}
 
 
 @router.get("/health/ready")

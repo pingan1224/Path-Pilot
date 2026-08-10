@@ -194,7 +194,7 @@ _REMEDY = {
     ),
     Constraint.offering: (
         "Something has to run in a term the bulletin does not list it in. Ask the "
-        "department whether the schedule has changed; UAX only knows the published text."
+        "department whether the schedule has changed; Path Pilot only knows the published text."
     ),
     Constraint.prerequisites: (
         "A prerequisite would have to be waived or taken alongside. Only the program can "

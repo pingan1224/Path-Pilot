@@ -24,8 +24,8 @@ from app.main import app
 from app.models import Mission, User
 
 TERM = "Fall 2026"
-STUDENT = "priya.raman@uax.example.edu"
-OTHER_STUDENT = "diego.morales@uax.example.edu"
+STUDENT = "priya.raman@pathpilot.example.edu"
+OTHER_STUDENT = "diego.morales@pathpilot.example.edu"
 
 # Requires MASY1-GC 2000, which the profile below does not report — so confirming it is
 # guaranteed to produce a blocker, and the accept-a-risk path is actually exercised rather

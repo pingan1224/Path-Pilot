@@ -314,7 +314,7 @@ function Assumptions({ plan, onOpenPlanner }) {
         <Eyebrow>What this rests on</Eyebrow>
         <CardTitle>Assumptions</CardTitle>
         <CardDescription>
-          The sequence above is only as good as these. None of them is a rule UAX could
+          The sequence above is only as good as these. None of them is a rule Path Pilot could
           verify.
         </CardDescription>
       </CardHeader>
@@ -335,7 +335,7 @@ function Assumptions({ plan, onOpenPlanner }) {
         </ul>
         {plan.unplaceable.length > 0 ? (
           <WarnNote>
-            Left out of the sequence entirely, because they are not in the catalog UAX has
+            Left out of the sequence entirely, because they are not in the catalog Path Pilot has
             loaded: {plan.unplaceable.join(", ")}.
           </WarnNote>
         ) : null}

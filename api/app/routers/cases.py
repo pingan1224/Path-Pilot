@@ -5,7 +5,7 @@ product and went to a human. The student opens it and reads it; the human who wo
 does so in the institution's own systems, which this product has never had access to.
 
 That is why there is no PATCH here any more. There used to be one, scoped so that only
-staff could move a status, back when UAX rendered an advisor queue and a registrar board.
+staff could move a status, back when Path Pilot rendered an advisor queue and a registrar board.
 With those gone, the only caller that endpoint could have had is a student changing the
 status of their own escalation, which is precisely what it was written to prevent.
 """

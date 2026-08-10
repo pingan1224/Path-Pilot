@@ -1,4 +1,4 @@
-"""UAX API entrypoint.
+"""Path Pilot API entrypoint.
 
 Run locally:
     .venv\\Scripts\\uvicorn app.main:app --reload
@@ -29,8 +29,8 @@ from app.routers import (
 )
 
 app = FastAPI(
-    title="UAX API",
-    description="Unified Academic Experience — AI-enhanced student information system.",
+    title="Path Pilot API",
+    description="Registration readiness and academic planning for NYU SPS graduate students.",
     version="0.2.0",
 )
 
@@ -48,7 +48,7 @@ app.add_middleware(
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.session_secret,
-    session_cookie="uax_session",
+    session_cookie="path_pilot_session",
     same_site="lax",
     https_only=settings.session_https_only,
     max_age=60 * 60 * 8,

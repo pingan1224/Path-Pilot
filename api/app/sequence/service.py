@@ -31,7 +31,7 @@ _TERM_START_MONTH = {Season.spring: 1, Season.summer: 6, Season.fall: 9}
 def next_registerable_term(today: datetime | None = None) -> Term:
     """The next term a student could plausibly be planning for.
 
-    A default, not a claim. UAX cannot see enrollment appointment dates, so it has no way to
+    A default, not a claim. Path Pilot cannot see enrollment appointment dates, so it has no way to
     know which term is actually open to them — the UI lets them change it, and the answer
     says which term it was computed for.
     """

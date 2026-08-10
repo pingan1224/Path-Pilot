@@ -3,7 +3,7 @@ import { verdictMeta } from "@/lib/verdicts";
 /**
  * The finding card — this product's signature surface.
  *
- * Everything UAX does ends in one of these: a verdict, why, what to do next, and the source
+ * Everything Path Pilot does ends in one of these: a verdict, why, what to do next, and the source
  * it rests on. It was hand-rolled eight times across four views, and the copies disagreed
  * about the one thing that matters — DecoderView, MissionView and SequenceView shipped the
  * verdict as colour and a glyph with no text label at all.
@@ -85,7 +85,7 @@ function Sources({ citations }) {
  * A retrieved bulletin passage. Not a finding, though it was rendered with the finding
  * classes: a finding is this system's judgement about the student, a passage is somebody
  * else's published text quoted verbatim. Giving them one look invited the reader to trust
- * both the same amount, and only one of them is a claim UAX is making.
+ * both the same amount, and only one of them is a claim Path Pilot is making.
  */
 export function Passage({ title, text, source, office, fetchedOn, url }) {
   return (

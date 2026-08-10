@@ -7,7 +7,7 @@ import Login from "./views/Login";
 import StudentShell from "./views/StudentShell";
 
 /**
- * UAX is a student product. It used to be four: a student workspace plus an advisor
+ * Path Pilot is a student product. It used to be four: a student workspace plus an advisor
  * queue, a registrar pressure board, and a finance case list, each landing on its own
  * question. Those three are gone — not hidden behind a flag, deleted — because carrying
  * three staff surfaces meant every change to the student experience had to be paid for
@@ -49,7 +49,7 @@ export default function App() {
   if (checking) {
     return (
       <main id="main" className="main">
-        <Loading what="UAX" />
+        <Loading what="Path Pilot" />
       </main>
     );
   }
@@ -78,7 +78,7 @@ export default function App() {
       <main id="main" className="main">
         <div className="state state--error" role="alert">
           <p>
-            UAX is a student workspace, and {me.full_name} is signed in as {me.role}. Sign
+            Path Pilot is a student workspace, and {me.full_name} is signed in as {me.role}. Sign
             out and use a student account.
           </p>
           <button type="button" className="btn" onClick={signOut}>

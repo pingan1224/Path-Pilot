@@ -150,7 +150,7 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
         <Eyebrow>Your record — self-reported</Eyebrow>
         <CardTitle id="record-heading">My courses</CardTitle>
         <CardDescription>
-          UAX cannot see Albert. Everything below is what you tell it, and the plan is only
+          Path Pilot cannot see Albert. Everything below is what you tell it, and the plan is only
           as accurate as this list.
         </CardDescription>
       </CardHeader>
@@ -501,7 +501,7 @@ ${open || "  (nothing outstanding)"}
 MY QUESTIONS:
 ${questions || "  Does this plan look right to you?"}
 
-Generated with UAX, an independent planning tool (not an NYU system). Everything above
+Generated with Path Pilot, an independent planning tool (not an NYU system). Everything above
 should be verified against Albert.
 
 Thanks!`
@@ -533,7 +533,7 @@ function HandoffCard({ courses, plan }) {
         <CardTitle id="handoff-heading">Advisor handoff</CardTitle>
         <CardDescription>
           A ready-to-send summary of your record, what the rules say, and what only your
-          advisor can answer. Copy it into an email — UAX does not send anything for you.
+          advisor can answer. Copy it into an email — Path Pilot does not send anything for you.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">

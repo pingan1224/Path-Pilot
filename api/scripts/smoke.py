@@ -43,7 +43,7 @@ def show(title: str, response, keys: list[str] | None = None, expect: int = 200)
 
 
 def main() -> None:
-    student = login("alex.chen@uax.example.edu")
+    student = login("alex.chen@pathpilot.example.edu")
 
     me = student.get("/api/v1/auth/me")
     show("auth/me (student)", me, ["full_name", "role", "student_id"])

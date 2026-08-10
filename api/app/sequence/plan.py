@@ -190,7 +190,7 @@ def build_sequence(
                 subject="Credits per term",
                 statement=(
                     f"{max_credits_per_term} credits per term was assumed, not read from a "
-                    "rule. The bulletin pages UAX has ingested state per-term credit limits "
+                    "rule. The bulletin pages Path Pilot has ingested state per-term credit limits "
                     "for Stern's MBA programs only, and those do not apply to this program."
                 ),
                 check=(
@@ -220,7 +220,7 @@ def build_sequence(
                 Assumption(
                     subject="Courses outside the loaded catalog",
                     statement=(
-                        "Required but absent from the catalog UAX has loaded, so they were "
+                        "Required but absent from the catalog Path Pilot has loaded, so they were "
                         "left out of the sequence entirely: "
                         + ", ".join(sorted(set(unplaceable)))
                         + "."

@@ -12,7 +12,7 @@ The record cross-check is where this stops being a glossary. "Prerequisites not 
 a sentence a student can read for themselves; "you have not entered MASY1-GC 2000, which
 this course requires" is the thing they came for. It runs the same prerequisite engine
 the planner uses, over the courses they typed in themselves, and it says that is what it
-did — because the alternative reading, that UAX looked at their transcript, is false and
+did — because the alternative reading, that Path Pilot looked at their transcript, is false and
 would be believed.
 """
 
@@ -119,8 +119,8 @@ def _finding_dict(finding) -> dict:
 
 
 SELF_REPORT_BASIS = (
-    "Checked against the courses you entered in UAX yourself, and the prerequisites "
-    "published in the bulletin. Not your transcript — UAX cannot see it."
+    "Checked against the courses you entered in Path Pilot yourself, and the prerequisites "
+    "published in the bulletin. Not your transcript — Path Pilot cannot see it."
 )
 
 
@@ -145,7 +145,7 @@ def _check_prerequisite_claim(
             performed=False,
             basis=SELF_REPORT_BASIS,
             note=(
-                f"{course_code} is not in the catalog UAX has loaded, so its "
+                f"{course_code} is not in the catalog Path Pilot has loaded, so its "
                 "prerequisites cannot be checked here. The course page in the bulletin is "
                 "the authority."
             ),
@@ -280,7 +280,7 @@ def _check_credit_load(
         "credit(s) among the ones this catalog knows"
     )
     if unknown:
-        note += f", plus {unknown} whose credit value UAX does not have"
+        note += f", plus {unknown} whose credit value Path Pilot does not have"
     note += (
         ". Albert also counts waitlisted classes toward the limit in most cases, so its "
         "total can be higher than this one."
@@ -439,7 +439,7 @@ def decode(
         degraded=degraded,
         no_policy_note=(
             (
-                "The bulletin pages UAX has ingested contain nothing about "
+                "The bulletin pages Path Pilot has ingested contain nothing about "
                 + " or ".join(label.lower() for label in uncovered)
                 + ". The reading above comes from the message itself and the steps are "
                 "general; there is no policy source behind them, and this tool will not "

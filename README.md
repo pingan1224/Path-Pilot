@@ -1,4 +1,4 @@
-# UAX — Unified Academic Experience
+# Path Pilot
 
 A registration-readiness and academic-planning tool for NYU SPS graduate students, built
 from a graduate coursework RFP response into a running, measured system.
@@ -522,7 +522,7 @@ actually costs).
 - **A mission proves preparation, not availability.** Finishing one means every published
   rule the tool can check is satisfied or knowingly accepted. It says nothing about whether
   a seat exists, whether your appointment has opened, or whether a hold is waiting — none
-  of which UAX can see.
+  of which Path Pilot can see.
 - **The decoder recognises the phrasings in its table and no others.** It matches patterns,
   so a message worded in a way nobody has written down comes back undecoded — 4 of 32
   labelled cases do, and the eval lists them as the backlog rather than rounding coverage

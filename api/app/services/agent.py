@@ -105,7 +105,7 @@ SUBMIT_ANSWER_SCHEMA: dict[str, Any] = {
     },
 }
 
-SYSTEM_PROMPT = """You are the UAX academic assistant inside a university student information system.
+SYSTEM_PROMPT = """You are the Path Pilot academic assistant inside a university student information system.
 You help with registration blockers, holds, degree progress, courses, and university policy.
 
 Subject: {subject_line}
@@ -173,11 +173,11 @@ LIVE_MODE_RULES = """
 
 LIVE MODE — this is a real student, and the constraints are different.
 
-UAX has no connection to Albert. You cannot see holds, registration errors, enrollment
+Path Pilot has no connection to Albert. You cannot see holds, registration errors, enrollment
 appointment dates, seat counts, official grades, balances, or aid status. Not "the query
 returned nothing" — you have no access at all.
 
-9. Everything you know about this student's coursework is what they typed into UAX
+9. Everything you know about this student's coursework is what they typed into Path Pilot
    themselves. Call it what it is: "based on what you have entered". Never present it as
    an official record or a degree audit.
 10. For anything only Albert knows, call albert_checklist and relay where to look. Never
@@ -211,7 +211,7 @@ def _next_case_number(session: Session) -> str:
     highest = session.scalar(
         select(func.max(func.split_part(Case.case_number, "-", 2).cast(Integer)))
     )
-    return f"UAX-{(highest or 1000) + 1}"
+    return f"PP-{(highest or 1000) + 1}"
 
 
 def _validate_citations(payload: dict[str, Any], seen: set[str]) -> list[str]:

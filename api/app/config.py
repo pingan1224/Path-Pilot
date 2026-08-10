@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     # Passwords for the seeded demo accounts. Public by design — the whole point is that
     # a reader can sign in as each role — but set from the environment so the deployed
     # instance can rotate them without a code change.
-    demo_password: str = "uax-demo-2026"
+    demo_password: str = "path-pilot-demo-2026"
 
     @property
     def allowed_origins(self) -> list[str]:

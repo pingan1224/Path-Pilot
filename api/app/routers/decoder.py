@@ -1,6 +1,6 @@
 """Decode a registration error the student pastes in.
 
-This is the one feature in UAX that is useful on first contact. Everything else on the
+This is the one feature in Path Pilot that is useful on first contact. Everything else on the
 planner asks for a dozen courses first, and a student who is stuck at the registration
 screen right now will not enter a dozen courses to find out what `ERR_PREREQ` means.
 

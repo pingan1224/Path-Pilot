@@ -105,14 +105,14 @@ export default function StudentShell({ me, onSignOut }) {
   useEffect(() => {
     const label = nav.find(([id]) => id === view)?.[1]
     document.title =
-      view === "chat" || !label ? "UAX — Unified Academic Experience" : `${label} · UAX`
+      view === "chat" || !label ? "Path Pilot" : `${label} · Path Pilot`
   }, [nav, view])
 
   // Unmounting means signed out: the sign-in page must not sit under a tool's title any
   // more than under its path.
   useEffect(
     () => () => {
-      document.title = "UAX — Unified Academic Experience"
+      document.title = "Path Pilot"
     },
     [],
   )
@@ -125,10 +125,8 @@ export default function StudentShell({ me, onSignOut }) {
 
       <header className="flex flex-none flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-2.5 sm:px-5">
         <div className="flex items-baseline gap-2">
-          <span className="nx-statement text-title">UAX</span>
-          <span className="hidden nx-label sm:inline">
-            Unified Academic Experience
-          </span>
+          <span className="nx-statement text-title">Path Pilot</span>
+          <span className="hidden nx-label sm:inline">Registration readiness</span>
         </div>
 
         <div className="mx-auto">
@@ -373,7 +371,7 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
       )}
 
       <p className="mt-4 text-meta leading-relaxed text-subtle">
-        Recomputed on every read. Your completed courses are self-reported — UAX cannot see
+        Recomputed on every read. Your completed courses are self-reported — Path Pilot cannot see
         Albert.
       </p>
       </div>

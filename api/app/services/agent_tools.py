@@ -72,7 +72,7 @@ class ToolContext:
     #
     # `demo` — a seeded fixture student. Holds, registration attempts, and enrollments are
     #   invented but internally consistent, so the record tools answer meaningfully.
-    # `live` — a real signed-in user. UAX has no Albert access, so there is no hold data,
+    # `live` — a real signed-in user. Path Pilot has no Albert access, so there is no hold data,
     #   no registration history, and no official transcript. The record tools do not
     #   degrade gracefully here; they answer *emptily*, which is worse. "You have no
     #   holds" is a claim about the registrar's system that this product is in no position
@@ -537,7 +537,7 @@ ALBERT_ONLY_TOPICS = {
     "official_transcript": (
         "Your official grades and credits",
         "Albert, under Academic Records",
-        "UAX only knows the courses you typed in yourself.",
+        "Path Pilot only knows the courses you typed in yourself.",
     ),
     "financial": (
         "Balances, aid status, and payment holds",
@@ -568,11 +568,11 @@ def tool_albert_checklist(ctx: ToolContext, topic: str) -> dict[str, Any]:
     return {
         "source_id": source_id,
         "topic": title,
-        "uax_can_see_this": False,
+        "path_pilot_can_see_this": False,
         "where_to_look": where,
         "what_to_know": why,
         "instruction": (
-            "State that UAX cannot see this and point the student to where it lives. Do "
+            "State that Path Pilot cannot see this and point the student to where it lives. Do "
             "not guess, and do not say the record is clear — an empty result here means "
             "no access, not no problem."
         ),

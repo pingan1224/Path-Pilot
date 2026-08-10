@@ -31,7 +31,7 @@ BASE = "https://bulletins.nyu.edu"
 # Politeness. bulletins.nyu.edu publishes no Crawl-delay, so this is our own restraint.
 REQUEST_DELAY_SECONDS = 1.5
 USER_AGENT = (
-    "UAX-portfolio-project/0.1 (personal learning project; +mailto:lsttc1224@gmail.com)"
+    "path-pilot-portfolio-project/0.1 (personal learning project; +mailto:lsttc1224@gmail.com)"
 )
 
 

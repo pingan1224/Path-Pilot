@@ -78,7 +78,7 @@ class SequenceOut(BaseModel):
     unplaceable: list[str]
     disclaimer: str = (
         "An order that satisfies the published rules, computed from what you have entered. "
-        "It is not a guarantee that a section will run or that a seat will exist — UAX "
+        "It is not a guarantee that a section will run or that a seat will exist — Path Pilot "
         "cannot see either. Confirm every term in Albert before you rely on it."
     )
 

@@ -9,9 +9,9 @@
 
    Naming this layer puts it back into normal specificity-based competition with Tailwind's
    utilities. Do not unwrap it while Tailwind is in the build. */
-@layer base, uax-reset;
+@layer base, path-pilot-reset;
 
-@layer uax-reset {
+@layer path-pilot-reset {
   *,
   *::before,
   *::after {

@@ -37,7 +37,7 @@ from app.models import FailureReason, Office
 # invented decode goes to the wrong office. The code is echoed back as a string to carry
 # to Albert, which does know what it means.
 HOLD_CODE_NOTE = (
-    "The message includes a hold code. UAX does not have the university's hold-code "
+    "The message includes a hold code. Path Pilot does not have the university's hold-code "
     "table and will not guess what it stands for — Albert shows the hold's name and the "
     "office that placed it next to that code."
 )
@@ -79,7 +79,7 @@ class ReasonSpec:
     # link and a fetch date under an assertion the source does not support. This is the
     # cheap verification step that catches it, and the absence gets reported.
     must_mention: tuple[str, ...] = ()
-    # Key into agent_tools.ALBERT_ONLY_TOPICS for the part UAX cannot see.
+    # Key into agent_tools.ALBERT_ONLY_TOPICS for the part Path Pilot cannot see.
     albert_topic: str | None = None
     # Identifiers that make the answer specific instead of generic.
     needs: tuple[str, ...] = ()

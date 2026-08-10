@@ -17,7 +17,7 @@ import { api } from "../api";
  * endpoint, and the server still hashes, verifies, and issues a session.
  */
 
-const DEMO_PASSWORD = "uax-demo-2026";
+const DEMO_PASSWORD = "path-pilot-demo-2026";
 
 // The chip used to name the role, back when there were four. With only students left it
 // would read "Student" twice, so it names the situation instead — the thing that actually
@@ -26,13 +26,13 @@ const ACCOUNTS = [
   {
     situation: "Blocked",
     name: "Alex Chen",
-    email: "alex.chen@uax.example.edu",
+    email: "alex.chen@pathpilot.example.edu",
     hint: "An aid hold is blocking registration, and its deadline lands before the window opens.",
   },
   {
     situation: "Off track",
     name: "Diego Morales",
-    email: "diego.morales@uax.example.edu",
+    email: "diego.morales@pathpilot.example.edu",
     hint: "27 credits earned, but only 21 count toward the degree.",
   },
 ];
@@ -59,7 +59,7 @@ export default function DemoLogin() {
         <div className="brand brand--large">
           <span className="brand__mark" aria-hidden="true" />
           <div className="brand__text">
-            <span className="brand__name">UAX</span>
+            <span className="brand__name">Path Pilot</span>
             <span className="brand__sub">Demo mode</span>
           </div>
         </div>

@@ -635,7 +635,7 @@ function HandoffCard({ mission, state, busy, onMission }) {
     <Panel state={state} eyebrow="Step 5" title="Summary for your advisor">
       <Muted>
         Everything you reported, what the rules say about it, what could not be confirmed,
-        and the risks you decided to carry. Copy it into an email — UAX does not send
+        and the risks you decided to carry. Copy it into an email — Path Pilot does not send
         anything for you.
       </Muted>
       <input

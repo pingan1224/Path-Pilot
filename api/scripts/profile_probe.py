@@ -44,7 +44,7 @@ PROFILE = [
 
 
 def main() -> None:
-    student = login("alex.chen@uax.example.edu")
+    student = login("alex.chen@pathpilot.example.edu")
 
     # --- build the profile
     for code, state, grade in PROFILE:
@@ -142,7 +142,7 @@ def main() -> None:
     #     reaches is the session's, so the boundary is the session itself. A second student
     #     signing in gets their own empty profile rather than a refusal, which is the
     #     stronger property — there is no way to *name* someone else's profile at all.
-    other = login("diego.morales@uax.example.edu")
+    other = login("diego.morales@pathpilot.example.edu")
     r = other.get("/api/v1/profile/courses")
     mine = {c["course_code"] for c in r.json()} if r.status_code == 200 else set()
     check(

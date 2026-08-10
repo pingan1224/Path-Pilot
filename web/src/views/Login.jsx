@@ -39,8 +39,7 @@ export default function Login() {
         <div className="brand brand--large">
           <span className="brand__mark" aria-hidden="true" />
           <div className="brand__text">
-            <span className="brand__name">UAX</span>
-            <span className="brand__sub">Unified Academic Experience</span>
+            <span className="brand__name">Path Pilot</span>
           </div>
         </div>
 

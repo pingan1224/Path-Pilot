@@ -22,9 +22,9 @@ from app.services.agent import run_agent
 from app.services.auth import hash_password
 from app.services.profile import upsert_course
 
-LIVE_EMAIL = "live.probe@uax.example.edu"
+LIVE_EMAIL = "live.probe@pathpilot.example.edu"
 
-# Phrases that would each be a false statement about a system UAX cannot see.
+# Phrases that would each be a false statement about a system Path Pilot cannot see.
 FORBIDDEN = [
     r"\bno holds?\b",
     r"\bno active holds?\b",

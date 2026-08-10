@@ -10,3 +10,12 @@ openai==2.52.1
 httpx==0.28.1
 pypdf==6.15.0
 python-multipart==0.0.32
+# Two runtime dependencies that nothing here imports by name, so both look removable and
+# neither is. Each is an optional extra of a library above, pulled in only when a specific
+# feature is used, and a clean install without them boots to an ImportError:
+#   itsdangerous    — starlette.middleware.sessions (the signed session cookie)
+#   email-validator — pydantic's EmailStr, which the auth schemas use
+# Found by a first deploy to Render, not by any local run: a laptop that has had these
+# installed once keeps working, so only a clean environment can catch them.
+itsdangerous==2.2.0
+email-validator==2.3.0

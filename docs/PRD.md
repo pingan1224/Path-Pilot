@@ -723,12 +723,14 @@ run.failed
 
 ### 15.3 当前技术基线
 
-截至 2026-08-08 的已记录结果：
+截至 2026-08-10 的已记录结果（`api/eval/results/report-20260810-193648.md`，gate PASS）。
+会在运行之间波动的指标写区间，取值来自实际记录的多次运行而不是最好的一次：
 
 - Retrieval：Recall@5 0.91，MRR 0.815；
-- Agent behavior：35/35 cases；
-- High-stakes escalation recall：1.0；
-- Citation coverage：0.9545；
+- Agent behavior：35/35 cases（**部分运行为 34/35**，单个 borderline 案例翻转）；
+- High-stakes escalation recall：1.0（**部分运行为 0.89**——9 个高风险案例中翻转 1 个即低于
+  0.90 的自身门槛；两种结果都在同一份代码上被记录过，见 `report-20260807-224621`）；
+- Citation coverage：0.9565；
 - Leakage failures：0；
 - Forbidden tool calls：0；
 - Decoder：accuracy when named 1.0，confidently wrong 0；

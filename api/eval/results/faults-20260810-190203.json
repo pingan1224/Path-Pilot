@@ -1,0 +1,106 @@
+{
+  "run": "20260810-190203",
+  "scenarios": [
+    {
+      "id": "F1",
+      "fault": "embeddings.unavailable",
+      "question": "What happens if I join a waitlist?",
+      "what_breaks": "The embedding provider is down, so policy search falls back to keyword ranking.",
+      "passed": true,
+      "failures": [],
+      "decision": "answered_with_caveat",
+      "confidence": "medium",
+      "degraded_modes": [
+        "keyword_fallback"
+      ],
+      "case_number": null,
+      "tool_calls": 4,
+      "owned_it_in_words": true,
+      "answer": "I searched the policy corpus for waitlist procedures, but the available material for NYU School of Professional Studies (your school) does not include a dedicated waitlist policy. The search is also degraded right now, so retrieved passages may not be the most relevant.\n\nThe only detailed waitlist passages I found are written for the NYU Silver School of Social Work (MSW program), not SPS. I cannot apply another school's rules to you, but I can summarize them as a general example of how waitlists can work at NYU:\n\n- You can add yourself to a waitlist until the waitlist itself fills, after which the class is labeled Closed.\n- Waitlist movement can occur from the start of registration through the first two weeks of the semester until Add/Drop ends.\n- A seat opening is not guaranteed.\n- Some schools recommend using Albert's SWAP feature so that if a seat opens in your preferred section, you are automatically moved in without risking your current schedule.\n- In the Silver example, students who join a class in the second or third week due to waitlist clearance are not counted absent for missed sessions, but must make up missed work and may be assigned additional work at the instructor's discretion.\n\nFor SPS-specific waitlist rules — including whether SWAP is available, notification timing, expiration windows, and how late waitlist seats can be offered — you should check the SPS registration guide or contact the Office of the Registrar / your academic advisor directly."
+    },
+    {
+      "id": "F2",
+      "fault": "llm.error",
+      "question": "Why is my registration blocked?",
+      "what_breaks": "The chat model call fails on the first iteration.",
+      "passed": true,
+      "failures": [],
+      "decision": "escalated",
+      "confidence": "low",
+      "degraded_modes": [
+        "llm_error"
+      ],
+      "case_number": "UAX-1031",
+      "tool_calls": 0,
+      "owned_it_in_words": true,
+      "answer": "The assistant hit a technical problem and could not finish this request. It has been routed to a human instead."
+    },
+    {
+      "id": "F3",
+      "fault": "tool.error:get_holds",
+      "question": "Do I have any holds on my record right now?",
+      "what_breaks": "The one record lookup this question needs raises.",
+      "passed": true,
+      "failures": [],
+      "decision": "escalated",
+      "confidence": "low",
+      "degraded_modes": [
+        "tool_error:get_holds"
+      ],
+      "case_number": "UAX-1032",
+      "tool_calls": 1,
+      "owned_it_in_words": true,
+      "answer": "I wasn’t able to retrieve your current hold record right now because the system lookup failed with an injected fault. I can’t confirm whether you have any holds or not at this moment.\n\nTo get that answer quickly, you can check your Student Center/registration portal for any active holds and their descriptions, or contact the Office of the Registrar directly.\n\nIf you’d like, I can also try a different approach or escalate this so a staff member can pull your record and tell you exactly what holds, if any, are active."
+    },
+    {
+      "id": "F4",
+      "fault": "retrieval.empty",
+      "question": "What are the rules about cheating and plagiarism?",
+      "what_breaks": "Retrieval is reachable but matches nothing at all.",
+      "passed": true,
+      "failures": [],
+      "decision": "escalated",
+      "confidence": "low",
+      "degraded_modes": [],
+      "case_number": "UAX-1034",
+      "tool_calls": 4,
+      "owned_it_in_words": false,
+      "answer": "The assistant could not complete this request. It has been routed to a human."
+    },
+    {
+      "id": "F6",
+      "fault": "search.budget_spent",
+      "question": "What happens if I miss the deadline to drop a course?",
+      "what_breaks": "The policy-search budget is already gone, so the first search is refused.",
+      "passed": true,
+      "failures": [],
+      "decision": "escalated",
+      "confidence": "low",
+      "degraded_modes": [
+        "retrieval_budget_exhausted"
+      ],
+      "case_number": "UAX-1036",
+      "tool_calls": 1,
+      "owned_it_in_words": true,
+      "answer": "I tried to look up the late-drop policy, but the policy search tool returned a budget-exhausted error and I was not able to retrieve any relevant university document. Because of that, I cannot tell you the official consequences or any remaining options for dropping a course after the deadline.\n\nFor an authoritative answer you should contact your school’s Registrar’s Office (or the Office of the University Registrar) directly, and you may also want to speak with your academic advisor if missing the deadline affects your degree plan or full-time status."
+    },
+    {
+      "id": "F5",
+      "fault": "freshness.all_stale",
+      "question": "What exactly do I need to do to clear my aid hold, and by when?",
+      "what_breaks": "Every record reads as past its freshness policy.",
+      "passed": true,
+      "failures": [],
+      "decision": "answered",
+      "confidence": "high",
+      "degraded_modes": [],
+      "case_number": null,
+      "tool_calls": 2,
+      "owned_it_in_words": true,
+      "answer": "To clear your aid hold, upload the signed 2026–2027 Verification Worksheet to the Financial Aid document portal. Financial Aid has already received your FAFSA but is missing that worksheet, so your aid package is not finalized and the hold is blocking registration. The hold deadline is August 13, 2026. Processing takes up to two business days after you upload, and aid status updates once daily. If you already uploaded the worksheet, it may still be in the review queue; you would need Financial Aid to confirm receipt because document receipt is not visible to me."
+    }
+  ],
+  "passed": 6,
+  "total": 6,
+  "degradation_coverage": 1.0
+}

@@ -38,6 +38,10 @@ export default function App() {
     try {
       await api.logout();
     } finally {
+      // The tool paths belong to the signed-in shell. Left in place, the sign-in page
+      // would render under /mission — and signing back in would "resume" a spot the
+      // student explicitly walked away from.
+      window.history.replaceState(null, "", "/");
       setMe(null);
     }
   }

@@ -23,7 +23,10 @@ export default function Login() {
       await api.login(email, password);
       // Full reload so the app re-bootstraps from /auth/me — one source of truth for
       // identity rather than threading the login response through component state.
-      window.location.assign("/");
+      // Reload in place, not to "/": whoever followed a link to /mission and met this
+      // page instead should land on the mission, or the deep link only works for
+      // people who never needed it.
+      window.location.reload();
     } catch (err) {
       setError(err.message);
       setBusy(false);

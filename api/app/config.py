@@ -1,11 +1,15 @@
 """Application settings, loaded from environment or a local .env file."""
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Anchored to this file, not the working directory, so `uvicorn --app-dir api`
+        # from the repo root finds the same .env as everything run from api/ itself.
+        env_file=Path(__file__).resolve().parent.parent / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { api } from "@/api"
 import { Button } from "@/components/ui/button"
 import ChatHome from "./ChatHome"
@@ -45,9 +45,36 @@ const PANES = [
 // rule 6 forbids. "No access" is not "no results".
 const LOAD_FAILED = Symbol("load failed")
 
+// The view lives in the URL, by hand. Each tool page is a path (`/mission`, `/decoder`);
+// the chat, being the app rather than a drawer of it, is `/`. Anything else — `/demo`
+// left over from the door, a stale bookmark — lands on the chat instead of a blank frame.
+// A router library would buy back exactly this function plus pushState, priced at a
+// dependency; see the same call in App.jsx about the login doors.
+const VIEW_PATHS = ["intake", "decoder", "mission", "sequence", "planner", "dashboard"]
+
+function viewFromLocation() {
+  const segment = window.location.pathname.split("/").filter(Boolean)[0] ?? ""
+  return VIEW_PATHS.includes(segment) ? segment : "chat"
+}
+
 export default function StudentShell({ me, onSignOut }) {
-  const [view, setView] = useState("chat")
+  const [view, setViewState] = useState(viewFromLocation)
   const [pane, setPane] = useState("drawer")
+
+  // Chosen views push history so the browser's Back walks out of a tool page instead of
+  // out of the app; arriving by Back/Forward only syncs state, or every pop would push
+  // the entry it just left.
+  const setView = useCallback((next) => {
+    setViewState(next)
+    const path = next === "chat" ? "/" : `/${next}`
+    if (window.location.pathname !== path) window.history.pushState(null, "", path)
+  }, [])
+
+  useEffect(() => {
+    const onPop = () => setViewState(viewFromLocation())
+    window.addEventListener("popstate", onPop)
+    return () => window.removeEventListener("popstate", onPop)
+  }, [])
   const [missions, setMissions] = useState(null)
   const [courses, setCourses] = useState(null)
 
@@ -68,7 +95,27 @@ export default function StudentShell({ me, onSignOut }) {
   // chat-reading preference, not app chrome.
   const railVisible = !inChat || pane === "drawer"
 
-  const nav = me.student_id ? [...NAV, ["dashboard", "Dashboard (demo)"]] : NAV
+  const nav = useMemo(
+    () => (me.student_id ? [...NAV, ["dashboard", "Dashboard (demo)"]] : NAV),
+    [me.student_id],
+  )
+
+  // A deep-linkable page deserves a nameable tab. The chat keeps the product name — it
+  // is the app, not a section of it.
+  useEffect(() => {
+    const label = nav.find(([id]) => id === view)?.[1]
+    document.title =
+      view === "chat" || !label ? "UAX — Unified Academic Experience" : `${label} · UAX`
+  }, [nav, view])
+
+  // Unmounting means signed out: the sign-in page must not sit under a tool's title any
+  // more than under its path.
+  useEffect(
+    () => () => {
+      document.title = "UAX — Unified Academic Experience"
+    },
+    [],
+  )
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">

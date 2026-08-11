@@ -817,7 +817,95 @@ def eval_intake(session, include_ocr: bool = False) -> dict:
 # --------------------------------------------------------------------------------------
 
 
-def apply_gate(retrieval, behavior, decoder, intake) -> list[str]:
+# --------------------------------------------------------------------------------------
+# Regression against the last complete run
+# --------------------------------------------------------------------------------------
+#
+# `latest.json` has been written since this harness existed and read by nothing except a
+# 21-line viewer. Everything in GATE is an absolute threshold over an average, and the
+# averages are wide: one case flipping from pass to fail moves high-stakes recall by 1/9
+# and over-escalation by 1/15, neither far enough to break a floor. So the suite could go
+# green while a case that worked yesterday stopped working — which is the regression a
+# regression gate is for.
+#
+# Compared per case, on the verdict, because that is the granularity at which "this used to
+# work" is a statement anyone can act on.
+
+
+def _verdicts_from(behavior: dict) -> dict[str, str]:
+    """{case_id: pass|fail|flaky} from either report shape.
+
+    Runs recorded before `--repeat` existed have no `by_case` and one entry per case, where
+    passed/not-passed is the whole story. Reading both shapes is what lets the first run
+    after this change still have something to compare against — the alternative is a
+    baseline that only becomes useful one run later, which in practice means never.
+    """
+    by_case = behavior.get("by_case")
+    if by_case:
+        return {c["id"]: c["verdict"] for c in by_case}
+    return {
+        c["id"]: ("pass" if c.get("passed") else "fail")
+        for c in behavior.get("cases") or []
+    }
+
+
+def compare_to_baseline(behavior: dict, baseline: dict | None) -> dict | None:
+    """Per-case movement since the last complete run. Pure; returns None with no baseline.
+
+    Only `pass -> fail` is treated as a gating regression. Transitions involving `flaky`
+    are reported and not gated, deliberately: flakiness itself is not gated (see
+    eval_behavior), so gating a move into it would gate flakiness through the back door,
+    and a `pass -> flaky` reading is exactly what one extra sample of a borderline case
+    produces on its own.
+    """
+    if not baseline:
+        return None
+
+    before = _verdicts_from(baseline.get("behavior") or {})
+    after = _verdicts_from(behavior)
+    if not before or not after:
+        return None
+
+    moved = [
+        {"id": cid, "from": before[cid], "to": after[cid]}
+        for cid in sorted(before.keys() & after.keys())
+        if before[cid] != after[cid]
+    ]
+
+    return {
+        "baseline_stamp": baseline.get("stamp"),
+        "baseline_repeat": (baseline.get("behavior") or {}).get("repeat", 1),
+        "regressed": [m for m in moved if m["from"] == "pass" and m["to"] == "fail"],
+        "destabilised": [m for m in moved if m["from"] == "pass" and m["to"] == "flaky"],
+        "improved": [
+            m for m in moved if m["to"] == "pass" and m["from"] in ("fail", "flaky")
+        ],
+        "other": [
+            m
+            for m in moved
+            if not (
+                (m["from"] == "pass" and m["to"] in ("fail", "flaky"))
+                or (m["to"] == "pass" and m["from"] in ("fail", "flaky"))
+            )
+        ],
+        "added": sorted(after.keys() - before.keys()),
+        "removed": sorted(before.keys() - after.keys()),
+    }
+
+
+def load_baseline() -> dict | None:
+    path = RESULTS_DIR / "latest.json"
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        # A corrupt baseline must not take the run down with it: the comparison is a
+        # safety net, and a net that can crash the thing it protects is worse than none.
+        return None
+
+
+def apply_gate(retrieval, behavior, decoder, intake, regression=None) -> list[str]:
     problems = []
     if retrieval and retrieval["recall_at_5"] < GATE["retrieval_recall_at_5"]:
         problems.append(f"recall@5 {retrieval['recall_at_5']} < {GATE['retrieval_recall_at_5']}")
@@ -877,11 +965,27 @@ def apply_gate(retrieval, behavior, decoder, intake) -> list[str]:
         rr = intake["row_recall"]
         if rr is not None and rr < GATE["intake_row_recall"]:
             problems.append(f"intake row recall {rr} < {GATE['intake_row_recall']}")
+    if regression and regression["regressed"]:
+        # The check the absolute thresholds cannot make. Every number above is an average
+        # wide enough to absorb one case flipping; this is the one that notices.
+        names = ", ".join(m["id"] for m in regression["regressed"])
+        problems.append(
+            f"regressed since {regression['baseline_stamp']}: {names} "
+            "(passed then, fails every attempt now)"
+        )
     return problems
 
 
 def write_report(
-    retrieval, behavior, decoder, intake, gate_problems, elapsed_s, *, subset: bool = False
+    retrieval,
+    behavior,
+    decoder,
+    intake,
+    gate_problems,
+    elapsed_s,
+    *,
+    subset: bool = False,
+    regression: dict | None = None,
 ) -> Path:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
@@ -928,6 +1032,49 @@ def write_report(
             lines.append(f"- **{r['id']}** ({r['family']}) {r['query']!r}")
             lines.append(f"  - wanted: {r['expected'][0]}")
             lines.append(f"  - got: {r['top_paths']}")
+        lines.append("")
+
+    if regression:
+        moved = (
+            regression["regressed"]
+            + regression["destabilised"]
+            + regression["improved"]
+            + regression["other"]
+        )
+        lines += [
+            f"## Since the last complete run ({regression['baseline_stamp']})",
+            "",
+        ]
+        if regression["baseline_repeat"] == 1:
+            lines += [
+                "> The baseline ran one attempt per case, so a `pass` in it may have been "
+                "a borderline case landing well. Read single-case movement against it as "
+                "a prompt to look, not as proof.",
+                "",
+            ]
+        if not moved and not regression["added"] and not regression["removed"]:
+            lines.append("No case changed verdict.")
+        else:
+            if moved:
+                lines += ["| case | was | now | |", "|---|---|---|---|"]
+                labels = {
+                    "regressed": "**regression**",
+                    "destabilised": "destabilised",
+                    "improved": "improved",
+                    "other": "changed",
+                }
+                for kind, label in labels.items():
+                    for m in regression[kind]:
+                        lines.append(
+                            f"| {m['id']} | {m['from']} | {m['to']} | {label} |"
+                        )
+                lines.append("")
+            if regression["added"]:
+                lines.append(f"- new cases: {', '.join(regression['added'])}")
+            if regression["removed"]:
+                lines.append(
+                    f"- cases not in this run: {', '.join(regression['removed'])}"
+                )
         lines.append("")
 
     if behavior:
@@ -1134,12 +1281,26 @@ def write_report(
     report_path = RESULTS_DIR / f"report-{stamp}.md"
     report_path.write_text("\n".join(lines), encoding="utf-8")
 
-    # latest.json is the record of the last COMPLETE run, and a partial run must not
-    # become it. Writing one part and nulling the rest looked harmless until
+    # latest.json is the record of the last COMPLETE **and PASSING** run, and neither
+    # half of that is decoration.
+    #
+    # Complete: writing one part and nulling the rest looked harmless until
     # `--only-decoder` erased the retrieval and behavior numbers from the only file that
     # held them; merging instead would be worse, presenting an old measurement as current.
-    # The timestamped report above is still written either way, so nothing is lost.
-    if all(part is not None for part in (retrieval, behavior, decoder)):
+    #
+    # Passing: now that this file is the regression baseline, a failing run that became it
+    # would let the failure define the new normal — the next run compares against a
+    # baseline that already contains the regression, sees no movement, and reports green.
+    # A gate that launders its own failures into the baseline is worse than no baseline.
+    # Observed immediately: the run that first wrote a `--repeat 3` baseline had one turn
+    # where the model was never reached, declared its own measurement void, and recorded
+    # itself as the thing every later run would be judged against.
+    #
+    # The timestamped report is written either way, so a failing run is still on disk to
+    # read — it just does not get to say what "before" looked like.
+    if gate_problems:
+        print(f"  (gate failed — latest.json left at the last passing run)")
+    elif all(part is not None for part in (retrieval, behavior, decoder)):
         (RESULTS_DIR / "latest.json").write_text(
             json.dumps(
                 {
@@ -1280,11 +1441,44 @@ def main() -> None:
     # Refusing to exit 1 was not enough; a FAIL printed next to a subset is read as a
     # result. Say what it is instead.
     subset = only is not None
-    gate_problems = [] if subset else apply_gate(retrieval, behavior, decoder, intake)
+    # Comparing a subset against a full baseline would report every case it did not run as
+    # "removed", so the comparison is only meaningful over the whole set.
+    regression = (
+        None if subset or not behavior else compare_to_baseline(behavior, load_baseline())
+    )
+    gate_problems = (
+        [] if subset else apply_gate(retrieval, behavior, decoder, intake, regression)
+    )
     elapsed = (datetime.now(UTC) - started).total_seconds()
     report_path = write_report(
-        retrieval, behavior, decoder, intake, gate_problems, elapsed, subset=subset
+        retrieval,
+        behavior,
+        decoder,
+        intake,
+        gate_problems,
+        elapsed,
+        subset=subset,
+        regression=regression,
     )
+    if regression:
+        moved = len(
+            regression["regressed"] + regression["destabilised"] + regression["improved"]
+        )
+        summary = (
+            "no case changed verdict"
+            if not moved
+            else ", ".join(
+                part
+                for part in (
+                    f"{len(regression['regressed'])} regressed" if regression["regressed"] else "",
+                    f"{len(regression['destabilised'])} destabilised" if regression["destabilised"] else "",
+                    f"{len(regression['improved'])} improved" if regression["improved"] else "",
+                )
+                if part
+            )
+        )
+        print(f"\nvs {regression['baseline_stamp']}: {summary}")
+
     print(f"\nreport: {report_path}")
     if subset:
         print("gate  : n/a — subset run, thresholds are rates over the whole set")

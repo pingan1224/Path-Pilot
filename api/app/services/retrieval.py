@@ -99,6 +99,9 @@ HYBRID_SQL = text(
                     THEN CAST(:school_boost AS float) ELSE 0 END
              + CASE WHEN d.level IS NULL OR d.level = CAST(:level AS varchar)
                     THEN CAST(:level_boost AS float) ELSE 0 END
+             + CASE WHEN d.program_slug IS NULL
+                      OR d.program_slug = CAST(:program AS varchar)
+                    THEN CAST(:program_boost AS float) ELSE 0 END
              AS score
     FROM fused f
     JOIN document_chunks dc ON dc.id = f.id
@@ -150,6 +153,9 @@ VECTOR_SQL = text(
                     THEN CAST(:school_boost AS float) ELSE 0 END
              + CASE WHEN level IS NULL OR level = CAST(:level AS varchar)
                     THEN CAST(:level_boost AS float) ELSE 0 END
+             + CASE WHEN program_slug IS NULL
+                      OR program_slug = CAST(:program AS varchar)
+                    THEN CAST(:program_boost AS float) ELSE 0 END
              AS score
     FROM candidates
     ORDER BY score DESC
@@ -192,6 +198,9 @@ KEYWORD_SQL = text(
                     THEN CAST(:school_boost AS float) ELSE 0 END
              + CASE WHEN level IS NULL OR level = CAST(:level AS varchar)
                     THEN CAST(:level_boost AS float) ELSE 0 END
+             + CASE WHEN program_slug IS NULL
+                      OR program_slug = CAST(:program AS varchar)
+                    THEN CAST(:program_boost AS float) ELSE 0 END
              AS score
     FROM matched
     -- Matching no term at all is not a weak result, it is not a result. Filtering here
@@ -211,42 +220,122 @@ KEYWORD_SQL = text(
 # still be promoted, narrow enough to stay cheap.
 CANDIDATE_MULTIPLIER = 6
 
-# Tuned by sweep in scripts/ablate_scope.py, not guessed.
+# Tuned by sweep in scripts/ablate_scope.py, not guessed. **Re-swept 2026-08-11** after the
+# corpus grew from 35 pages / 1,252 chunks to 57 / 1,461 — 22 of the new pages sharing this
+# school and level. A constant fitted to one corpus is not evidence about a different one.
 #
-#   boost  recall@5     MRR   home_scope
-#    0.00    0.7367   0.504       0.5833   (no scoping — the recorded baseline)
-#    0.08    0.9000   0.8267      0.9583
-#    0.12    0.9100   0.8383      0.9583   <- shipped
-#    0.20    0.9167   0.8250      0.9583
+#   boost  recall@5     MRR   home_scope   peer chunks in top-5
+#    0.00    0.6967  0.4863       0.5833          121 / 250
+#    0.08    0.9000  0.7933       0.9583           63 / 250
+#    0.12    0.9100  0.8050       0.9583           42 / 250   (previously shipped)
+#    0.14    0.9100  0.8050       0.9583           35 / 250
+#    0.15    0.9100  0.8150       0.9583           33 / 250   <- shipped
+#    0.20    0.9100  0.8150       0.9583           20 / 250
+#    0.30    0.9100  0.8150       0.9583
 #
-# 0.12 is where MRR peaks. Recall keeps creeping up to 0.20 but MRR turns over, which is
-# the signal that the boost has started promoting home-school chunks past better peer-school
-# matches — buying recall by degrading ranking. No family regressed at 0.12.
-DEFAULT_SCHOOL_BOOST = 0.12
-DEFAULT_LEVEL_BOOST = 0.04
+# **The old argument for 0.12 no longer holds.** It was "MRR peaks here and turns over by
+# 0.20"; on this corpus MRR is flat to 0.14 and then *higher* from 0.15 up. 0.15 is the
+# smallest setting reaching the best MRR, which is the same rule the keyword pair below
+# follows — take the start of the plateau, not a point further along it that buys nothing.
+#
+# **The plateau is not a partition, which was worth checking rather than assuming.** Flat
+# MRR could mean the boost had become a hard filter, and this file's whole design is that
+# it must not be: some questions genuinely have no home-school answer. It has not — peer
+# chunks still reach the top 5 at every setting (33 of 250 at 0.15, still 20 at 0.20). MRR
+# flattens because every labelled answer lives in a home-school document, so once those
+# rank as high as they can, the metric saturates while peer chunks keep filling the
+# positions below.
+#
+# **The label set cannot see the cost of over-boosting**, and that limit belongs next to
+# the number: 53 of the 57 labelled answers are in `professional-studies` documents and 4
+# in the synthetic fixtures — *none* in a peer school. So "no family regressed" is a
+# weaker statement than it looks, and it is the reason not to keep climbing past the
+# smallest value that works.
+DEFAULT_SCHOOL_BOOST = 0.15
+DEFAULT_LEVEL_BOOST = 0.05
+
+# The third facet, added once the corpus carried a page per degree (WP2). School and level
+# cannot separate 23 SPS graduate programmes — they share both — and each of those pages
+# has its own "Policies" section competing with the school-wide one.
+#
+# Shape matches the school boost exactly: NULL means school-wide, which is the right answer
+# for everybody, so it is boosted alongside the asker's own programme. Only a *sibling*
+# programme's page goes unboosted. Getting this backwards would demote the school-wide
+# policy pages — the correct answer to most questions — which is the mistake the school
+# boost already made once and had to be corrected for.
+#
+# Swept by `scripts/ablate_scope.py --program`, on top of the shipped school pair rather
+# than against an unscoped baseline — a facet measured from zero would take credit for the
+# school boost's work.
+#
+#   program  recall@5     MRR
+#      0.00      0.91   0.8150
+#      0.04      0.91   0.8250   <- shipped, the whole plateau starts here
+#      0.20      0.91   0.8250
+#      0.30      0.91   0.8250
+#
+# **The entire gain is one case, and that is the point rather than a disappointment.**
+# Checked per case: R11 ("what is the attendance policy for my classes") moves 2 -> 1, and
+# nothing else moves at all. R11 is the failure that motivated this facet — Publishing
+# (MS)'s programme policies outranking the school-wide attendance policy for a Management
+# & Analytics student, matching on school and level, real chunk and accurate quote.
+#
+# The two cases where the student's *own* programme page outranks the labelled answer
+# (R25, R30 — the Sample Plan of Study beating the course catalogue on keyword overlap)
+# are unchanged at 2 and 3. They are unaffected because the course pages live at
+# `/courses/masy1-gc/`, not `/programs/<slug>/`, so their program_slug is NULL and they are
+# boosted alongside the student's own programme. Worth stating: this boost does not fix
+# them and was not expected to.
+DEFAULT_PROGRAM_BOOST = 0.04
 
 # RRF puts scores on a completely different scale: with k=60 a first-place hit contributes
-# 1/61 ≈ 0.016, so the 0.12 boost tuned for cosine space would swamp the fusion entirely.
+# 1/61 ≈ 0.016, so the 0.15 boost tuned for cosine space would swamp the fusion entirely.
 # Hybrid therefore carries its own pair, swept separately in scripts/ablate_hybrid.py.
+#
+# Re-swept 2026-08-11 on the enlarged corpus; the best arm moved 0.010 -> 0.020:
+#
+#   arm             recall@5     MRR   course
+#   vector              0.91  0.8250    0.875   <- still the default, and still better
+#   hybrid b=0        0.5867  0.3683    0.75
+#   hybrid b=.010     0.7233  0.5723    0.75    (previously shipped)
+#   hybrid b=.020     0.9000  0.7933    0.75    <- best hybrid arm
+#   hybrid b=.040     0.9000  0.7933    0.75
+#
+# **Hybrid still loses to dense on every axis**, and the `course` family is where it loses
+# worst — 0.75 against 0.875 — which is the family hybrid was added to help. So
+# `settings.retrieval_mode` stays "vector"; these constants are kept current so that
+# flipping the switch measures hybrid rather than measuring a stale constant.
 RRF_K = 60
-HYBRID_SCHOOL_BOOST = 0.010
-HYBRID_LEVEL_BOOST = 0.003
+HYBRID_SCHOOL_BOOST = 0.020
+HYBRID_LEVEL_BOOST = 0.006
+# Deliberately unswept. Sweeping it would mean tuning a third constant for a mode that is
+# not enabled and is worse on this corpus at every setting; the honest record is that no
+# measurement supports a value, not a number derived by scaling the dense one. The
+# cross-programme *warning* is computed in the tool layer and holds regardless of mode, so
+# a hybrid turn is not left without the protection — only without the ranking nudge.
+HYBRID_PROGRAM_BOOST = 0.0
 
 # The keyword fallback needs its own pair for the third time, because its scores are term
 # *counts* — small integers, at most 8 — not similarities. The 0.12 tuned for cosine space
 # is a rounding error here, and the 1.0 that was hardcoded before is worth exactly one
 # matched term.
 #
-# Swept by scripts/measure_degraded_retrieval.py, the first measurement this path has ever
-# had:
+# Swept by scripts/measure_degraded_retrieval.py. **Re-swept 2026-08-11** on the enlarged
+# corpus; the shipped pair survives, the degradation it describes got worse:
 #
 #   school  level   recall@5     MRR   home_scope  restricted
-#     0.00   0.00     0.3100  0.2517       0.17        0.75   (no scoping)
-#     1.00   0.00     0.5767  0.3930       0.42        1.00   (what was hardcoded)
-#     2.00   0.50     0.6967  0.4890       0.67        1.00
-#     5.00   1.00     0.7367  0.5363       0.67        1.00   <- shipped
-#     8.00   1.50     0.7367  0.5647       0.67        1.00
-#    12.00   2.00     0.7367  0.5547       0.67        1.00
+#     0.00   0.00     0.3300  0.2667       0.17        1.00   (no scoping)
+#     1.00   0.00     0.5567  0.3830       0.42        1.00   (what was once hardcoded)
+#     2.00   0.50     0.6367  0.4527       0.67        1.00
+#     5.00   1.00     0.6567  0.4897       0.67        1.00   <- shipped
+#     8.00   1.50     0.6567  0.5180       0.67        1.00
+#    12.00   2.00     0.6567  0.5180       0.67        1.00
+#    20.00   3.00     0.6567  0.5213       0.67        1.00
+#
+# Recall fell 0.7367 -> 0.6567 across the corpus growth at the same setting. Term counting
+# discriminates worse when 22 more pages share the home school and the vocabulary, which is
+# exactly the failure mode a keyword fallback has and a reason the caveat it ships with
+# needed re-measuring rather than re-using.
 #
 # **Not the argmax, deliberately.** MRR nominally peaks at 8.0, but recall has been flat
 # since 5.0 and everything above it is a hard partition already: a chunk must match a term
@@ -263,6 +352,7 @@ HYBRID_LEVEL_BOOST = 0.003
 # student being handed the School of Social Work's waitlist procedure, confidently.
 KEYWORD_SCHOOL_BOOST = 5.0
 KEYWORD_LEVEL_BOOST = 1.0
+KEYWORD_PROGRAM_BOOST = 0.0
 
 
 # Maps a program's school to the corpus slug its policies were ingested under.
@@ -338,6 +428,7 @@ def search_policy(
     mode: str | None = None,
     keyword_school_boost: float | None = None,
     keyword_level_boost: float | None = None,
+    program_boost: float | None = None,
 ) -> RetrievalResult:
     active = strategy or settings.chunk_strategy
     retrieval_mode = mode or settings.retrieval_mode
@@ -348,6 +439,16 @@ def search_policy(
         school_boost = HYBRID_SCHOOL_BOOST if hybrid else DEFAULT_SCHOOL_BOOST
     if level_boost is None:
         level_boost = HYBRID_LEVEL_BOOST if hybrid else DEFAULT_LEVEL_BOOST
+    if program_boost is None:
+        program_boost = HYBRID_PROGRAM_BOOST if hybrid else DEFAULT_PROGRAM_BOOST
+    if not scope.program_slug:
+        # No programme on the asker's side means no signal, and no signal must not become a
+        # verdict. The SQL term boosts `program_slug IS NULL` — school-wide pages — so
+        # leaving the boost on here would demote all 23 programme pages at once for anyone
+        # who has not said what they study, which is a ranking opinion held on no evidence.
+        # The same shape as the cross-programme warning: unknown is neither match nor
+        # mismatch.
+        program_boost = 0.0
 
     try:
         vector = embed_one(query)
@@ -359,8 +460,10 @@ def search_policy(
             "strategy": active,
             "school": scope.school,
             "level": scope.level,
+            "program": scope.program_slug,
             "school_boost": school_boost,
             "level_boost": level_boost,
+            "program_boost": program_boost,
         }
         if hybrid:
             params |= {"query": query, "rrf_k": RRF_K}
@@ -373,7 +476,10 @@ def search_policy(
             {
                 "terms": terms, "role": role, "k": k,
                 "strategy": active, "school": scope.school,
-                "level": scope.level,
+                "level": scope.level, "program": scope.program_slug,
+                "program_boost": (
+                    KEYWORD_PROGRAM_BOOST if program_boost is None else program_boost
+                ),
                 "school_boost": (
                     KEYWORD_SCHOOL_BOOST if keyword_school_boost is None else keyword_school_boost
                 ),

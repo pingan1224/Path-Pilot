@@ -26,7 +26,11 @@ from app.db.session import get_sessionmaker
 from app.services.retrieval import RetrievalScope, search_policy
 from eval.retrieval_cases import RETRIEVAL_CASES
 
-SCOPE = RetrievalScope(school="professional-studies", level="graduate")
+SCOPE = RetrievalScope(
+    school="professional-studies",
+    level="graduate",
+    program_slug="management-analytics-ms",
+)
 
 # (school_boost, level_boost). 0/0 is the no-scoping baseline; 1/0 is what was hardcoded
 # before this was measured, in its original home-school-only form.

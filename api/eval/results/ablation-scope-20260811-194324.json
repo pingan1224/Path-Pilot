@@ -1,0 +1,107 @@
+[
+  {
+    "school_boost": 0.12,
+    "program_boost": 0.0,
+    "recall": 0.91,
+    "mrr": 0.805,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.13,
+    "program_boost": 0.0,
+    "recall": 0.91,
+    "mrr": 0.805,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.14,
+    "program_boost": 0.0,
+    "recall": 0.91,
+    "mrr": 0.805,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.15,
+    "program_boost": 0.0,
+    "recall": 0.91,
+    "mrr": 0.815,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.16,
+    "program_boost": 0.0,
+    "recall": 0.91,
+    "mrr": 0.815,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.18,
+    "program_boost": 0.0,
+    "recall": 0.91,
+    "mrr": 0.815,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.2,
+    "program_boost": 0.0,
+    "recall": 0.91,
+    "mrr": 0.815,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  }
+]

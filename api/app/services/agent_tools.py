@@ -303,7 +303,7 @@ def tool_search_policy(ctx: ToolContext, query: str) -> dict[str, Any]:
         "note": (
             "DEGRADED SEARCH: semantic search is unavailable, so these passages were "
             "ranked by keyword overlap alone. Measured on this corpus, that finds the "
-            "right section about 74% of the time against 91% normally, and ranks it worse. "
+            "right section about 66% of the time against 91% normally, and ranks it worse. "
             "Two things follow. Say in your answer that policy search is degraded right "
             "now and the passage may not be the best one. And check that each passage is "
             "actually about this student's school and level before relying on it — the "

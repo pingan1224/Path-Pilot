@@ -1,0 +1,137 @@
+[
+  {
+    "school_boost": 0.15,
+    "program_boost": 0.0,
+    "recall": 0.91,
+    "mrr": 0.815,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.15,
+    "program_boost": 0.04,
+    "recall": 0.91,
+    "mrr": 0.825,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.15,
+    "program_boost": 0.08,
+    "recall": 0.91,
+    "mrr": 0.825,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.15,
+    "program_boost": 0.12,
+    "recall": 0.91,
+    "mrr": 0.825,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.15,
+    "program_boost": 0.14,
+    "recall": 0.91,
+    "mrr": 0.825,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.15,
+    "program_boost": 0.15,
+    "recall": 0.91,
+    "mrr": 0.825,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.15,
+    "program_boost": 0.16,
+    "recall": 0.91,
+    "mrr": 0.825,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.15,
+    "program_boost": 0.2,
+    "recall": 0.91,
+    "mrr": 0.825,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  },
+  {
+    "school_boost": 0.15,
+    "program_boost": 0.3,
+    "recall": 0.91,
+    "mrr": 0.825,
+    "families": {
+      "course": 0.875,
+      "generic": 1.0,
+      "home_scope": 0.9583,
+      "lexical": 1.0,
+      "multi": 0.5,
+      "paraphrase": 0.75,
+      "restricted": 1.0
+    }
+  }
+]

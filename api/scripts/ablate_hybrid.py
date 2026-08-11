@@ -19,11 +19,15 @@ from app.services.retrieval import RetrievalScope, search_policy
 from eval.retrieval_cases import RETRIEVAL_CASES
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "eval" / "results"
-SCOPE = RetrievalScope(school="professional-studies", level="graduate")
+SCOPE = RetrievalScope(
+    school="professional-studies",
+    level="graduate",
+    program_slug="management-analytics-ms",
+)
 
 # (label, mode, school_boost, level_boost)
 ARMS = [
-    ("vector", "vector", 0.12, 0.04),
+    ("vector", "vector", 0.15, 0.05),
     ("hybrid b=0", "hybrid", 0.0, 0.0),
     ("hybrid b=.005", "hybrid", 0.005, 0.0015),
     ("hybrid b=.010", "hybrid", 0.010, 0.003),

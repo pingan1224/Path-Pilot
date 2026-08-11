@@ -473,7 +473,8 @@ invocation, so narrowing the probe with `--only` cannot reset it to zero.
    confident prose, with nothing marking it as degraded.
 
 Degraded retrieval now has a measured size instead of the adjective "less relevant":
-**recall@5 0.91 → 0.74, MRR 0.815 → 0.536** (`scripts/measure_degraded_retrieval.py`), and
+**recall@5 0.91 → 0.66, MRR 0.825 → 0.521** (`scripts/measure_degraded_retrieval.py`,
+re-swept 2026-08-11 — the gap widened as the corpus grew), and
 the tool tells the model those numbers plus "check the passage is actually about this
 student's school" rather than a vague caveat.
 

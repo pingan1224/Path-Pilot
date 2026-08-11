@@ -165,9 +165,20 @@ def eval_retrieval(session, strategy: str | None = None) -> dict:
         raise SystemExit("Invalid retrieval labels:\n  " + "\n  ".join(problems))
 
     # The scope the running system supplies for the demo population: every labelled query
-    # is asked by a graduate student at the School of Professional Studies. Passing it here
-    # measures the pipeline as deployed rather than a version of it nobody runs.
-    scope = RetrievalScope(school="professional-studies", level="graduate")
+    # is asked by a graduate student at the School of Professional Studies, studying the one
+    # programme whose requirements are encoded. Passing it here measures the pipeline as
+    # deployed rather than a version of it nobody runs.
+    #
+    # `program_slug` was missing until 2026-08-11, and the omission was measurement error in
+    # the direction that flatters nothing: the programme boost switches off when the asker's
+    # programme is unknown, so the eval scored a configuration no signed-in student can be
+    # in — every one of them names a programme before reaching the assistant. Worth 0.010
+    # MRR, and worth more as a reminder that the eval's scope is part of what is under test.
+    scope = RetrievalScope(
+        school="professional-studies",
+        level="graduate",
+        program_slug="management-analytics-ms",
+    )
 
     rows = []
     for case in RETRIEVAL_CASES:

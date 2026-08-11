@@ -178,7 +178,7 @@ rather than the best one.
 | Unit tests (rule engine, decoder, missions, sequence, intake, search budget, faults, OCR boundary) | 297/297 | all |
 | Fault-injection scenarios | 6/6 | all |
 | Degradation coverage (agent's declared modes ever executed) | **4/4** *(was 0/4 before M9)* | all |
-| Degraded retrieval, recall@5 / MRR | 0.74 / 0.536 *(vs 0.91 / 0.815 healthy)* | reported |
+| Degraded retrieval, recall@5 / MRR | 0.66 / 0.521 *(vs 0.91 / 0.825 healthy)* | reported |
 | Assistant latency p50 / p95 | 6.4s / 23.0s *(p95 has ranged 15.2–23.0s across runs; the product target is under 20s and this is not always met)* | reported |
 | Forbidden (write) tool calls | 0 | = 0 |
 | Repeated identical tool calls | 0.00 | ≤ 0.20 |
@@ -394,7 +394,7 @@ is per-context so it cannot leak into another request.
 
 That last one turned "reduced service" from an adjective into a number. The degraded path
 had never been scored; measured against the same 50 labelled queries it runs at **recall@5
-0.74 / MRR 0.536, against 0.91 / 0.815 healthy**, and the fallback's own boost was swept
+0.66 / MRR 0.521, against 0.91 / 0.825 healthy**, and the fallback's own boost was swept
 rather than guessed — deliberately *not* at the argmax, because past the plateau the metric
 is tie-break noise on 50 points. The tool now hands the model those numbers and a specific
 warning that the wrong school's answer is the characteristic failure, instead of "results

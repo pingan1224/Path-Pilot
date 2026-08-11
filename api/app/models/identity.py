@@ -34,6 +34,19 @@ class User(Base, TimestampMixin):
     # cannot sign in at all, which is the right default for a record created by import.
     password_hash: Mapped[str | None] = mapped_column(String(256))
 
+    # The program a real signed-in user is studying. Demo accounts carry theirs on the
+    # `Student` fixture instead; `services.profile.program_for_user` reads whichever exists.
+    #
+    # Nullable because a user reaches this app before stating anything about themselves,
+    # and one-to-one because a person here is studying one program. A minor or second major
+    # would need a join table — deliberately not built until a real SPS degree needs it,
+    # for the same reason `User.role` is a column rather than a relationship.
+    program_id: Mapped[int | None] = mapped_column(
+        ForeignKey("programs.id", ondelete="SET NULL"), index=True
+    )
+
+    program: Mapped[Program | None] = relationship(foreign_keys=[program_id])
+
     student_profile: Mapped[Student | None] = relationship(
         back_populates="user", foreign_keys="Student.user_id", uselist=False
     )

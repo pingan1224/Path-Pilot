@@ -30,7 +30,7 @@ from app.missions.types import (
 )
 from app.models import Mission, MissionCandidate, MissionDecision
 from app.planning.types import CourseState, StatedCourse
-from app.services.profile import SUPPORTED_PROGRAM, list_profile, plan_for_user
+from app.services.profile import list_profile, plan_for_user, program_for_user
 
 ACKNOWLEDGED_GAPS = "acknowledged_gaps"
 ACCEPTED_RISK = "accepted_risk"
@@ -97,7 +97,7 @@ def create_mission(
     user_id: int,
     *,
     term: str,
-    program_code: str = SUPPORTED_PROGRAM,
+    program_code: str | None = None,
     created_by: str = "student",
 ) -> Mission:
     """Open (or reopen) a mission for a term.
@@ -120,6 +120,12 @@ def create_mission(
             existing.close_reason = None
             session.commit()
         return get_mission(session, user_id, existing.id)
+
+    # Resolved here rather than at the top of the function so reopening an existing mission
+    # never depends on the user's *current* program: the mission records the program it was
+    # opened for, and that is the one its steps must keep being evaluated against.
+    if program_code is None:
+        program_code = program_for_user(session, user_id).code
 
     mission = Mission(
         user_id=user_id, term=term, program_code=program_code, created_by=created_by

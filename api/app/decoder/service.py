@@ -38,12 +38,28 @@ from app.services.retrieval import RetrievalScope, search_policy
 # reading the one paragraph that mattered.
 PASSAGES_PER_CAUSE = 3
 
-# The decoder is offered for the one program whose requirements are encoded
-# (services.profile.SUPPORTED_PROGRAM), which is an SPS graduate degree. The scope cannot
-# be derived from a Student row the way the assistant's tools do it: a real signed-in user
-# has no Student fixture at all, which is the entire reason live mode exists. Stating the
-# scope here is honest about that; guessing per-request would not be.
-DECODER_SCOPE = RetrievalScope(school="professional-studies", level="graduate")
+# Fallback scope for a caller we know nothing about — an anonymous decode, which is the
+# product's entry point and deliberately requires no account.
+#
+# This was the *only* scope until 2026-08-11: the decoder served one encoded SPS graduate
+# program, and a real signed-in user had no Student row to derive anything from, so
+# stating it was more honest than guessing. Now that a user carries their own program, a
+# signed-in caller is scoped to it and only an anonymous one falls back here. The fallback
+# stays graduate-SPS because that is what the corpus is densest in, and it is still a
+# guess — which is why `_scope_for_user` prefers a real answer whenever one exists.
+DEFAULT_DECODER_SCOPE = RetrievalScope(school="professional-studies", level="graduate")
+
+
+def _scope_for_user(session: Session, user_id: int | None) -> RetrievalScope:
+    """The caller's own school and level when they are signed in, the fallback when not."""
+    if user_id is None:
+        return DEFAULT_DECODER_SCOPE
+    from app.services.profile import ProgramNotStatedError, program_for_user
+
+    try:
+        return program_for_user(session, user_id).scope
+    except ProgramNotStatedError:
+        return DEFAULT_DECODER_SCOPE
 
 
 def _reading_source_id(reason: FailureReason) -> str:
@@ -54,6 +70,7 @@ def _passages(
     session: Session,
     ctx_role: str,
     spec,
+    scope: RetrievalScope,
 ) -> tuple[list[dict], int, bool]:
     """Retrieve, then verify. Returns (grounded passages, dropped count, degraded).
 
@@ -68,7 +85,7 @@ def _passages(
         spec.policy_query,
         ctx_role,
         k=PASSAGES_PER_CAUSE * 2,
-        scope=DECODER_SCOPE,
+        scope=scope,
     )
 
     kept: list[dict] = []
@@ -378,10 +395,11 @@ def decode(
 
     uncovered: list[str] = []
     if with_policy:
+        scope = _scope_for_user(session, user_id)
         seen_chunks: set[str] = set()
         for reason in explain:
             spec = BY_REASON[reason]
-            found, dropped, was_degraded = _passages(session, role, spec)
+            found, dropped, was_degraded = _passages(session, role, spec, scope)
             for passage in found:
                 # Two causes can legitimately retrieve the same chunk — a hold page
                 # explains both readings of a hold message. Cite it once, credited to both.

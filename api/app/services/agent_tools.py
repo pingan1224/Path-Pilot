@@ -28,21 +28,16 @@ from app.models import (
     Section,
     Student,
     Term,
+    User,
     UserRole,
 )
 from app.services.freshness import FreshnessPolicies, humanize_age
 from app.services.readiness import compute_readiness
-from app.services.retrieval import RetrievalScope, search_policy
-
-# Maps a program's school to the corpus slug its policies were ingested under.
-#
-# A column on `programs` would be the right home for this in a system with more than one
-# program; as a single-program demo, a stated mapping beats a schema migration plus a
-# full re-embed of 2,836 chunks. Unmapped programs simply get no scope boost, which
-# degrades to the previous behaviour rather than to a wrong answer.
-SCHOOL_TO_CORPUS_SLUG = {
-    "School of Professional Studies": "professional-studies",
-}
+from app.services.retrieval import (
+    SCHOOL_TO_CORPUS_SLUG,
+    RetrievalScope,
+    search_policy,
+)
 
 MAX_SECTIONS = 6
 MAX_ATTEMPTS = 5
@@ -91,15 +86,31 @@ class ToolContext:
 
 
 def _scope_for(ctx: ToolContext) -> RetrievalScope:
-    """The asker's own school and level, so their policies outrank a peer school's."""
-    if ctx.subject_student_id is None:
-        return RetrievalScope()
-    student = ctx.session.get(Student, ctx.subject_student_id)
-    if student is None or student.program is None:
+    """The asker's own school and level, so their policies outrank a peer school's.
+
+    Both kinds of caller resolve, which they did not until 2026-08-11. This used to return
+    an empty scope whenever `subject_student_id` was None — and that is *always* true in
+    live mode, so every real user searched the corpus unscoped, without the boost measured
+    to take recall@5 from 0.7367 to 0.91. The demo students had the scoping; the actual
+    people did not.
+
+    Level is read from the program rather than inferred from its degree abbreviation. The
+    old inference treated anything outside (MS, MA, PhD) as undergraduate, which was
+    harmless while one graduate program existed and becomes a wrong-level answer the moment
+    the corpus carries both.
+    """
+    program = None
+    if ctx.subject_student_id is not None:
+        student = ctx.session.get(Student, ctx.subject_student_id)
+        program = student.program if student is not None else None
+    elif ctx.user_id is not None:
+        user = ctx.session.get(User, ctx.user_id)
+        program = user.program if user is not None else None
+
+    if program is None:
         return RetrievalScope()
     return RetrievalScope(
-        school=SCHOOL_TO_CORPUS_SLUG.get(student.program.school),
-        level="graduate" if student.program.degree in ("MS", "MA", "PhD") else "undergraduate",
+        school=SCHOOL_TO_CORPUS_SLUG.get(program.school), level=program.level
     )
 
 
@@ -465,9 +476,44 @@ def tool_get_my_plan(ctx: ToolContext) -> dict[str, Any]:
     Runs the deterministic planner over what the student entered, and labels the result as
     self-reported at every level so the model cannot narrate it as an official audit.
     """
-    from app.services.profile import plan_for_user
+    from app.services.profile import (
+        ProgramNotStatedError,
+        plan_for_user,
+        program_for_user,
+    )
 
-    result, meta = plan_for_user(ctx.session, ctx.user_id)
+    # A program this project has not encoded gets a refusal, never the nearest encoded
+    # program's rules. Auditing someone against a degree they are not in produces a
+    # confident, correctly-cited answer to a question nobody asked — the same failure the
+    # cross-school warning exists to prevent, one level up.
+    try:
+        program = program_for_user(ctx.session, ctx.user_id)
+    except ProgramNotStatedError as exc:
+        return {
+            "error": "program_not_stated",
+            "detail": str(exc),
+            "instruction": (
+                "Ask the student which program they are studying, then answer. Do not "
+                "assume a program and do not apply any requirement rules until they say."
+            ),
+        }
+
+    if not program.is_encoded:
+        ctx.degraded_modes.add("program_not_encoded")
+        return {
+            "error": "program_not_encoded",
+            "program": program.name,
+            "instruction": (
+                f"Path Pilot has not encoded the degree requirements for {program.name}, "
+                "so there is no degree audit for this student and you must not produce "
+                "one. Say plainly that their program is not supported for requirement "
+                "checking yet. You may still answer policy questions with search_policy "
+                "and point them at what only Albert knows. Never apply another program's "
+                "requirements to them, however similar it looks."
+            ),
+        }
+
+    result, meta = plan_for_user(ctx.session, ctx.user_id, program_code=program.code)
     source_id = f"selfreport:plan:{ctx.user_id}"
     ctx.seen_source_ids.add(source_id)
 

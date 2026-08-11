@@ -8,18 +8,91 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Course, ProfileCourse
+from app.models import Course, ProfileCourse, Program, Student, User
 from app.planning.loader import ProgramNotEncodedError, load_program_rules
 from app.planning.rules import evaluate_plan
 from app.planning.types import CourseState, PlanResult, StatedCourse
+from app.services.retrieval import SCHOOL_TO_CORPUS_SLUG, RetrievalScope
 
 # Planning is only offered for programs whose requirements have been hand-encoded and
 # validated. Everyone else gets policy answers, which is a smaller promise honestly kept.
-SUPPORTED_PROGRAM = "MASY-MS-REAL"
+#
+# A set rather than the single constant this used to be. Encoding a program is hand work
+# (see ingest/requirements.py on why a parser is not acceptable here), so this list grows
+# one validated program at a time and membership is the gate for degree-audit features.
+ENCODED_PROGRAMS: frozenset[str] = frozenset({"MASY-MS-REAL"})
 
 # How old a self-reported record gets before the UI nudges. Not a staleness claim about
 # authority — the data was never authoritative — just a prompt that plans drift.
 PROFILE_STALE_AFTER_DAYS = 120
+
+
+class ProgramNotStatedError(LookupError):
+    """Raised when a user has told us nothing about which program they are studying.
+
+    Distinct from ProgramNotEncodedError, and the distinction is what the student gets
+    told: "we do not support your program yet" is a statement about this product, while
+    "you have not said what you are studying" is a thing they can fix in one step.
+    """
+
+
+@dataclass
+class UserProgram:
+    """Which program a user is in, and what this product can do about it."""
+
+    code: str
+    name: str
+    school: str
+    level: str
+    is_encoded: bool
+    # The school as the ingested corpus names it, resolved once here so no caller has to
+    # know the mapping. None when this school has no ingested policies — which must read
+    # as "no scope signal", never as a match.
+    corpus_slug: str | None
+
+    @property
+    def scope(self) -> RetrievalScope:
+        return RetrievalScope(school=self.corpus_slug, level=self.level)
+
+
+def program_for_user(session: Session, user_id: int) -> UserProgram:
+    """Resolve a user's program from whichever record carries it.
+
+    Two paths, because there are two kinds of account. A demo account is a seeded fixture
+    whose program hangs off its `Student` row; a real account has no Student at all — that
+    is the entire reason live mode exists — and states its program on `users` directly.
+
+    Everything that used to default to one hardcoded program code goes through here, so a
+    student is planned against their own requirements or told plainly that this product
+    cannot plan for them. There is deliberately no fallback to a default program: quietly
+    auditing someone against a degree they are not enrolled in produces a confident,
+    correctly-cited answer to a question nobody asked.
+    """
+    user = session.get(User, user_id)
+    if user is None:
+        raise ProgramNotStatedError(f"No user with id {user_id!r}.")
+
+    program: Program | None = user.program
+    if program is None:
+        student = session.scalars(
+            select(Student).where(Student.user_id == user_id)
+        ).first()
+        program = student.program if student is not None else None
+
+    if program is None:
+        raise ProgramNotStatedError(
+            "This account has not said which program it is studying, so requirements "
+            "cannot be applied. Policy questions can still be answered."
+        )
+
+    return UserProgram(
+        code=program.code,
+        name=program.name,
+        school=program.school,
+        level=program.level,
+        is_encoded=program.code in ENCODED_PROGRAMS,
+        corpus_slug=SCHOOL_TO_CORPUS_SLUG.get(program.school),
+    )
 
 
 @dataclass
@@ -117,7 +190,7 @@ def plan_for_user(
     session: Session,
     user_id: int,
     *,
-    program_code: str = SUPPORTED_PROGRAM,
+    program_code: str | None = None,
     include_planned: bool = False,
     extra_courses: list[StatedCourse] | None = None,
 ) -> tuple[PlanResult, dict]:
@@ -125,7 +198,14 @@ def plan_for_user(
 
     `extra_courses` powers the what-if flow without persisting anything: a student can ask
     "what if I took this next term" and get an answer without committing to it.
+
+    `program_code` defaulted to one hardcoded program until 2026-08-11, which meant every
+    real user was audited against Management & Analytics MS whether or not they were in it.
+    It now resolves from the user, and an explicit code is only for callers that already
+    know one (a mission stores the program it was opened for).
     """
+    if program_code is None:
+        program_code = program_for_user(session, user_id).code
     program = load_program_rules(session, program_code)
 
     stated = [
@@ -164,11 +244,14 @@ def plan_for_user(
 
 
 __all__ = [
+    "ENCODED_PROGRAMS",
     "ProfileEntry",
     "ProgramNotEncodedError",
-    "SUPPORTED_PROGRAM",
+    "ProgramNotStatedError",
+    "UserProgram",
     "list_profile",
     "plan_for_user",
+    "program_for_user",
     "remove_course",
     "upsert_course",
 ]

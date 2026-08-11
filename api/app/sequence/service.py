@@ -19,7 +19,7 @@ from app.planning.types import StatedCourse
 from app.sequence.plan import ASSUMED_CREDIT_CAP, DEFAULT_HORIZON, build_sequence
 from app.sequence.terms import Season, Term
 from app.sequence.types import SequencePlan
-from app.services.profile import SUPPORTED_PROGRAM, list_profile
+from app.services.profile import list_profile, program_for_user
 
 # Roughly when each term starts, for picking a sensible default start term. Approximate on
 # purpose: this only decides which term the form is pre-filled with, and the alternative —
@@ -50,8 +50,10 @@ def sequence_for_user(
     deadline: Term | None = None,
     max_credits_per_term: int | None = None,
     horizon: int = DEFAULT_HORIZON,
-    program_code: str = SUPPORTED_PROGRAM,
+    program_code: str | None = None,
 ) -> tuple[SequencePlan, dict]:
+    if program_code is None:
+        program_code = program_for_user(session, user_id).code
     program = load_program_rules(session, program_code)
     entries = list_profile(session, user_id)
     stated = [

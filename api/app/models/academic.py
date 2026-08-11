@@ -93,6 +93,11 @@ class Program(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     degree: Mapped[str] = mapped_column(String(24), nullable=False)
     school: Mapped[str] = mapped_column(String(120), nullable=False)
+    # Stated, not inferred. Level used to be derived as `degree in ("MS", "MA", "PhD")`,
+    # which reads every undergraduate degree as graduate — and level is half of the
+    # retrieval scope, so getting it wrong hands an undergraduate the graduate credit-load
+    # rules with a real citation and an accurate quote.
+    level: Mapped[str] = mapped_column(String(16), default="graduate", nullable=False)
     total_credits_required: Mapped[int] = mapped_column(Integer, nullable=False)
 
     source: Mapped[str] = mapped_column(String(16), default="demo", nullable=False)

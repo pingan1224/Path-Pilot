@@ -265,6 +265,20 @@ KEYWORD_SCHOOL_BOOST = 5.0
 KEYWORD_LEVEL_BOOST = 1.0
 
 
+# Maps a program's school to the corpus slug its policies were ingested under.
+#
+# Lives here rather than beside the agent tools because both the assistant and the decoder
+# need it, and the decoder is downstream of the tools — importing it the other way would
+# close a cycle. It is also the single place that grows when the corpus covers more of the
+# university, so a school missing from this table is one grep away.
+#
+# An unmapped school simply gets no scope boost, which degrades to unscoped retrieval
+# rather than to a wrong answer.
+SCHOOL_TO_CORPUS_SLUG = {
+    "School of Professional Studies": "professional-studies",
+}
+
+
 @dataclass
 class RetrievalScope:
     """Whose policies apply to the person asking.

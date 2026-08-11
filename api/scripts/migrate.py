@@ -145,6 +145,40 @@ STATEMENTS = [
     # 2026-08-07) because that decides nothing; every choice inside it is still the
     # student's. Recording the origin keeps that visible rather than implicit.
     "ALTER TABLE missions ADD COLUMN IF NOT EXISTS created_by VARCHAR(16) NOT NULL DEFAULT 'student'",
+    # Level as a stated fact rather than one inferred from the degree abbreviation. The old
+    # inference (`degree in ("MS", "MA", "PhD")`) reads every undergraduate degree as
+    # graduate, and level is half the retrieval scope — an undergraduate scoped to graduate
+    # gets the wrong credit-load rules with a real citation attached. Existing rows are all
+    # graduate, so the default backfills them correctly; new undergraduate programs must
+    # set it explicitly.
+    "ALTER TABLE programs ADD COLUMN IF NOT EXISTS level VARCHAR(16) NOT NULL DEFAULT 'graduate'",
+    # A real signed-in user's program. Demo accounts carry theirs on the `students` fixture;
+    # live accounts had nowhere to put it, which is why every live user was planned against
+    # the one encoded program regardless of who they were.
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS program_id INTEGER REFERENCES programs(id) ON DELETE SET NULL",
+    "CREATE INDEX IF NOT EXISTS ix_users_program ON users (program_id)",
+    # Backfill for the column above.
+    #
+    # Seeded students belong to the *demo* program, whose requirements are written against
+    # invented MASY-GC courses and exist to feed the demo degree-audit path
+    # (`services.readiness`, which reads `students.program_id` and is untouched by this).
+    # What they self-report on the profile page is real MASY1-GC coursework, identical to
+    # what a live user enters, so the self-reported planner must evaluate them against the
+    # ingested catalog rules — which is exactly what the old hardcoded default did by
+    # accident. Making the program per-user turned that accident into a 409, so the
+    # intent is written down here instead.
+    #
+    # Idempotent twice over: only fills nulls, and matches no rows at all if the catalog
+    # program has not been ingested yet.
+    """
+    UPDATE users u
+       SET program_id = p.id
+      FROM programs p
+     WHERE u.program_id IS NULL
+       AND u.role = 'student'
+       AND p.source = 'catalog'
+       AND p.code = 'MASY-MS-REAL'
+    """,
 ]
 
 

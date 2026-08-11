@@ -14,6 +14,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import settings
 from app.db.session import DatabaseNotConfiguredError
+from app.services.profile import ProgramNotStatedError
 from app.routers import (
     assistant,
     auth,
@@ -86,6 +87,16 @@ async def validation_exception_handler(_: Request, exc: RequestValidationError) 
     first = exc.errors()[0] if exc.errors() else {}
     field = ".".join(str(part) for part in first.get("loc", ())[1:]) or "request"
     return _error(422, f"{field}: {first.get('msg', 'is invalid')}")
+
+
+@app.exception_handler(ProgramNotStatedError)
+async def program_not_stated_handler(
+    _: Request, exc: ProgramNotStatedError
+) -> JSONResponse:
+    # A precondition the student can satisfy, not a failure: they have not told us what
+    # they are studying, so no requirement rules apply yet. Given its own code so the UI
+    # can send them to the program picker rather than showing a generic error.
+    return _error(409, str(exc), code="program_not_stated")
 
 
 @app.exception_handler(DatabaseNotConfiguredError)

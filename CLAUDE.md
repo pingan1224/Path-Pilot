@@ -515,13 +515,45 @@ runs before any model call and fails the run if a forbidden phrase appears in a
 student-visible chunk. It cannot catch a phrase the corpus merely *licenses* by paraphrase —
 that judgement stays with the author, recorded in the comment above `OVERRIDE_LEAK`.
 
+## Scope: graduate only (decided 2026-08-11)
+
+This release serves SPS **graduate** programs. Undergraduate support is deferred, and the
+deferral is enforced rather than implied:
+
+- `ingest.sources.SUPPORTED_LEVELS` is `{"graduate"}`. `ingest.load` marks any page at an
+  unserved level `is_active=False`, and all three retrieval queries filter on `is_active`,
+  so those pages cannot be returned. The seed entries, the fetched snapshot and the
+  extracted text all stay in the repo — re-enabling is that constant plus `ingest.load`.
+- **This had to change the corpus, not just the roadmap.** The four undergraduate policy
+  pages were reaching the top 5 for a *graduate* asker on 55 of 250 labelled results —
+  "Residency Requirements > Bachelor's" at rank 2, undergraduate "Advanced Standing >
+  Transfer Credit" at rank 3. Deactivating them took that to 0 of 250. The 0.05 level boost
+  was nowhere near enough, and the label set could never have caught it: every labelled
+  query is graduate, so the damage ran in the one direction the eval does not look.
+- The program picker says so on screen. A student who cannot find their degree must learn
+  that this release does not cover it — otherwise the reasonable move is to pick the
+  nearest-looking one, which files them under another degree's rules.
+
+Two things undergraduate support needs beyond corpus work: the undergraduate overview page
+(not ingested, so undergraduate degrees cannot even be listed), and a rule vocabulary that
+can express general education, minors, level-distribution credits and a GPA threshold —
+`RequirementKind` is core/elective/capstone over all_of/credits/one_track today.
+
 ## Data layers
 
-- `documents` / `document_chunks` — 35 ingested bulletin pages, ~1,250 chunks per strategy
+- `documents` / `document_chunks` — 57 ingested bulletin pages (55 active, 4 undergraduate
+  deactivated), 1,461 chunks on the `heading` strategy
+- 23 SPS graduate programs in `programs` where `source='catalog'`, each citing its own
+  bulletin page; exactly one has encoded requirements (`ENCODED_PROGRAMS`)
 - `courses` where `source='catalog'` — 57 real MASY1-GC courses, 21 prerequisite edges
 - `requirements` where the program is `source='catalog'` — 5 encoded degree rules with
   `rule` in (all_of, credits, one_track) and 4 concentration tracks
 - everything `source='demo'` — the seeded scenarios the eval and screenshots depend on
+
+**`ingest.load` without `--embed` leaves the corpus unsearchable.** It replaces the chunk
+rows and the replacements have no vectors, so dense retrieval silently falls through to
+whatever still has one. Walked into twice, both times while reloading for an unrelated
+reason; the loader now counts unembedded chunks and says so loudly at the end.
 
 P4 facts: golden set in api/eval/golden.py (15 retrieval + 35 behavior cases) plus
 api/eval/decoder_cases.py (32 error messages); runner is scripts/run_eval.py (--gate for

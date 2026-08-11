@@ -214,9 +214,23 @@ export default function ProgramView({ current, onChanged }) {
         </ul>
       </div>
 
+      {/* Stated, not left to be inferred from an absence. A student who cannot find their
+          degree should learn that this release does not cover it — otherwise the plausible
+          reading is that the list is broken, and the plausible action is to pick a
+          near-miss, which files them under someone else's rules. */}
+      <div className="rounded-md border border-warning/45 px-4 py-3">
+        <p className="text-body">This release covers graduate programs only.</p>
+        <p className="mt-1 max-w-[68ch] text-meta leading-relaxed text-muted-foreground">
+          If you are an undergraduate, Path Pilot cannot answer for your program yet — the
+          undergraduate policies differ on credit loads, standing and residency, and it
+          would rather say so than answer you from the graduate rules. Please do not pick
+          the closest-looking degree from this list; it would apply the wrong requirements
+          to your record.
+        </p>
+      </div>
+
       <p className="max-w-[68ch] text-meta text-subtle">
-        Program names come from the NYU SPS bulletin. Undergraduate programs are not listed
-        yet — that page is not part of the ingested corpus.
+        Program names come from the NYU SPS bulletin.
       </p>
     </section>
   )

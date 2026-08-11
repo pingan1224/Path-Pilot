@@ -25,10 +25,11 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 
 from app.db.session import get_sessionmaker
 from app.models import Document, DocumentChunk
+from ingest.sources import SUPPORTED_LEVELS
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 CHUNKS_DIR = DATA_DIR / "chunks"
@@ -111,6 +112,13 @@ def load_strategy(session, strategy: str) -> tuple[int, int]:
             session.flush()
             documents += 1
 
+        # A page for a level this release does not serve is loaded and deactivated rather
+        # than skipped: the snapshot, the provenance and the chunks all stay, and retrieval
+        # cannot reach it because every query path filters on `is_active`. Set on each pass,
+        # not only at creation, so changing SUPPORTED_LEVELS takes effect on a re-run
+        # instead of needing the rows deleted first.
+        document.is_active = first["level"] in SUPPORTED_LEVELS
+
         # Set on every pass, not only at creation: it is derived from the URL, so it is
         # idempotent, and pages loaded before this column existed would otherwise keep a
         # null and read as school-wide policy — the exact confusion it exists to prevent.
@@ -177,6 +185,28 @@ def main() -> None:
     if args.embed:
         print("\nembedding ...")
         subprocess.run([sys.executable, "-m", "scripts.embed_corpus"], check=True)
+        return
+
+    # Loading replaces this strategy's rows, and the replacements have no vectors. Without
+    # --embed the corpus is therefore left *unsearchable* on the dense path — every query
+    # falls through to whatever handful of chunks still carry an embedding, which looks
+    # like catastrophically bad retrieval rather than like a missing step.
+    #
+    # Said loudly because it has been walked into twice, both times while reloading for a
+    # reason that had nothing to do with embeddings (backfilling a column, flipping a
+    # flag), and both times the next measurement was nonsense until someone noticed.
+    with get_sessionmaker()() as session:
+        missing = session.scalar(
+            select(func.count())
+            .select_from(DocumentChunk)
+            .where(DocumentChunk.embedding.is_(None))
+        )
+    if missing:
+        print(
+            f"\n!! {missing} chunk(s) have no embedding. Dense retrieval is broken until "
+            "you run:\n     python -m scripts.embed_corpus\n"
+            "   (or re-run this command with --embed)"
+        )
 
 
 if __name__ == "__main__":

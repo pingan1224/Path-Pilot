@@ -28,6 +28,30 @@ from dataclasses import dataclass
 
 BASE = "https://bulletins.nyu.edu"
 
+# Which levels this release actually serves.
+#
+# Graduate only, decided 2026-08-11. Undergraduate support needs things this release does
+# not have: the undergraduate overview page is not ingested, so undergraduate degrees
+# cannot even be listed in the programme picker, and the rule vocabulary (core / elective /
+# capstone, over all_of / credits / one_track) cannot express general education, minors,
+# level-distribution credits or a GPA threshold.
+#
+# **Deciding that had to change the corpus, not only the roadmap.** The four undergraduate
+# policy pages below were ingested as the level-discrimination comparison set, and measured
+# on 2026-08-11 they were reaching the top 5 for a *graduate* asker on 55 of 250 labelled
+# results — 22%. Not near-misses either: "Residency Requirements > Bachelor's" at rank 2,
+# undergraduate "Advanced Standing > Transfer Credit" at rank 3, the undergraduate grading
+# page at rank 2. Undergraduate and graduate policy diverge on exactly those topics, which
+# is why they were included as a comparison set in the first place, and the 0.05 level
+# boost does not come close to separating them.
+#
+# So pages whose level is not served are loaded but marked inactive: retrieval filters on
+# `documents.is_active` in all three query paths, so they cannot be returned, while the
+# seed entries, the fetched snapshot and the extracted text all stay in the repository.
+# Supporting undergraduates later is this constant plus a re-run of `ingest.load` — not a
+# re-scrape and not a rewrite of this list.
+SUPPORTED_LEVELS = {"graduate"}
+
 # Politeness. bulletins.nyu.edu publishes no Crawl-delay, so this is our own restraint.
 REQUEST_DELAY_SECONDS = 1.5
 USER_AGENT = (
@@ -146,10 +170,12 @@ SPS_GRADUATE_PROGRAMS = [
 #     loads, standing, and registration order, so this pair tests whether retrieval keeps
 #     the levels apart instead of blending them.
 #
-#     Four policy pages and no program pages: the undergraduate overview that would name
-#     the degrees is not ingested, so undergraduate programs cannot be listed the way the
-#     graduate ones are. That is a deliberate ordering, not an oversight — graduate
-#     coverage was taken first — and it is why the program picker is graduate-only.
+#     **Ingested but inactive in this release** — see SUPPORTED_LEVELS. They stay listed
+#     because the curation decision and its reasoning are worth keeping, and because
+#     re-activating them is a constant change rather than a re-scrape. They are also the
+#     evidence for the level facet: it was never measurable while every labelled query was
+#     graduate, and it turned out the damage ran the other way, with undergraduate pages
+#     answering graduate questions.
 SPS_UNDERGRADUATE = [
     _sps("/undergraduate/professional-studies/academic-policies/", "policies", "registrar", level="undergraduate"),
     _sps("/undergraduate/professional-studies/academic-calendar/", "calendar", "registrar", level="undergraduate"),

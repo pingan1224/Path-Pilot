@@ -121,9 +121,17 @@ jobs:
           python -m scripts.init_db
           python -m scripts.seed --reset
           python -m scripts.embed_corpus
+      # Three attempts per behavior case, at three times the tokens.
+      #
+      # Every failure this gate has produced was intermittent on re-run — B05, B20, and
+      # B35's write-tool call at 2 of 6 — so at one attempt the build result is partly a
+      # coin flip, and the usual response to a red build is to re-run it until it is
+      # green. That habit is worse than a slow gate: it trains everyone to discard the one
+      # signal the gate exists to send. Three attempts also triples the chance of catching
+      # a rare leak, since the hard zeros are counted on every attempt.
       - name: Run gated evaluation
         working-directory: api
-        run: python -m scripts.run_eval --gate
+        run: python -m scripts.run_eval --gate --repeat 3
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4

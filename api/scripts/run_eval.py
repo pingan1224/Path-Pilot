@@ -4,6 +4,7 @@
     .venv/Scripts/python -m scripts.run_eval --skip-agent    # retrieval only
     .venv/Scripts/python -m scripts.run_eval --only B13,B14  # subset of behavior cases
     .venv/Scripts/python -m scripts.run_eval --gate          # exit 1 if thresholds fail
+    .venv/Scripts/python -m scripts.run_eval --gate --repeat 3   # what CI runs
 
 Three parts:
 1. Retrieval — recall@5 and MRR over 15 labelled queries.
@@ -291,7 +292,30 @@ def check_behavior(case, result) -> tuple[bool, list[str]]:
     return (not failures, failures)
 
 
-def eval_behavior(session, only: set[str] | None) -> dict:
+def eval_behavior(session, only: set[str] | None, repeat: int = 1) -> dict:
+    """Score the behavior set, optionally running each case `repeat` times.
+
+    Repetition is not a way to be lenient — it is the only instrument this suite has for a
+    property it otherwise cannot see. The chat model rejects any temperature but 1, so a
+    borderline decision is a coin flip; at one attempt per case the gate reports that flip
+    as a verdict. Every failure this suite has produced turned out to be intermittent on
+    re-run: B05, then B20, and B35's write-tool call at 2 of 6.
+
+    What repetition changes, in two directions:
+
+    * **The hard zeros get stricter.** Leakage, forbidden tool calls and assistant failures
+      are counted across every attempt, so one leak in nine attempts fails the run. Three
+      attempts is three times the chance of catching a rare violation, not a third of the
+      weight.
+    * **The rates get honest.** high-stakes recall and over-escalation are means over all
+      attempts, so a case that escalates two times in three contributes 0.67 instead of
+      rounding to whichever side one sample landed on.
+
+    A case is reported `flaky` when its attempts disagree. That is deliberately *not*
+    gated: flakiness is a property of the system under test, and failing the build for it
+    would leave the gate permanently red while telling nobody anything new. It is reported
+    so it can be argued about with numbers.
+    """
     from app.services.agent import run_agent
 
     # A leakage probe whose phrase the public corpus also states cannot tell a leak from an
@@ -309,80 +333,99 @@ def eval_behavior(session, only: set[str] | None) -> dict:
     }
 
     cases = [c for c in BEHAVIOR_CASES if only is None or c.id in only]
+    # One entry per *attempt*, flattened. Every aggregate below is a mean over attempts,
+    # which is what makes a 2-of-3 case contribute 0.67 rather than rounding to whichever
+    # side a single sample happened to land on. Per-case verdicts are folded out afterwards.
     rows = []
     for i, case in enumerate(cases, 1):
-        print(f"  [{i}/{len(cases)}] {case.id} {case.question[:60]!r} ...", flush=True)
-        try:
-            result = run_agent(
-                session,
-                question=case.question,
-                acting_role=UserRole(case.role),
-                subject_student_id=by_name.get(case.subject) if case.subject else None,
+        label = f"  [{i}/{len(cases)}] {case.id} {case.question[:60]!r}"
+        print(f"{label} ..." if repeat == 1 else f"{label} (x{repeat}) ...", flush=True)
+        for attempt in range(1, repeat + 1):
+            _run_one_case(
+                session, run_agent, case, by_name, rows, attempt=attempt
             )
-        except Exception as exc:  # noqa: BLE001 — an eval must record failures, not die on them
-            rows.append(
-                {
-                    "id": case.id, "question": case.question, "expect": case.expect,
-                    "high_stakes": case.high_stakes, "passed": False,
-                    "failures": [f"CRASH: {type(exc).__name__}: {exc}"],
-                    "decision": None, "intent": None, "iterations": None,
-                    "latency_ms": None, "tools": [], "citations": 0,
-                    "intent_expected": case.expected_intent, "note": case.note,
-                    "trajectory": None,
-                }
-            )
-            continue
 
-        passed, failures = check_behavior(case, result)
+    return _aggregate_behavior(cases, rows, repeat)
 
-        # How it got there, scored alongside whether it got there. A forbidden tool is a
-        # trajectory defect that also fails the case: calling the one write tool on a
-        # question that did not ask for a write is the agent acting unbidden, which is a
-        # correctness problem and not merely inefficiency.
-        trajectory = score_trace(
-            result.tool_trace,
-            result.citations,
-            iterations=result.iterations,
-            must_not_call=forbidden_tools_for(case),
-            min_tool_calls=case.min_tool_calls,
+
+def _run_one_case(session, run_agent, case, by_name, rows: list, *, attempt: int) -> None:
+    """One attempt at one case, appended to `rows`. Never raises."""
+    try:
+        result = run_agent(
+            session,
+            question=case.question,
+            acting_role=UserRole(case.role),
+            subject_student_id=by_name.get(case.subject) if case.subject else None,
         )
-        if trajectory.forbidden_calls:
-            passed = False
-            failures = failures + [
-                f"FORBIDDEN TOOL: called {name}" for name in trajectory.forbidden_calls
-            ]
-
+    except Exception as exc:  # noqa: BLE001 — an eval must record failures, not die on them
         rows.append(
             {
-                "id": case.id,
-                "question": case.question,
+                "id": case.id, "attempt": attempt, "question": case.question,
                 "expect": case.expect,
-                "high_stakes": case.high_stakes,
-                "passed": passed,
-                "failures": failures,
-                "decision": result.decision.value,
-                "intent": result.intent,
-                "intent_expected": case.expected_intent,
-                "iterations": result.iterations,
-                "latency_ms": result.latency_ms,
-                "tools": [t["tool"] for t in result.tool_trace],
-                "citations": len(result.citations),
-                "note": case.note,
-                "trajectory": {
-                    "tool_calls": trajectory.tool_calls,
-                    "iterations": trajectory.iterations,
-                    "parallelism": trajectory.parallelism,
-                    "redundant_calls": trajectory.redundant_calls,
-                    "unused_results": trajectory.unused_results,
-                    "failed_calls": trajectory.failed_calls,
-                    "forbidden_calls": list(trajectory.forbidden_calls),
-                    "path_ratio": trajectory.path_ratio,
-                    "detail": list(trajectory.redundant_detail + trajectory.unused_detail),
-                },
-                "_score": trajectory,
+                "high_stakes": case.high_stakes, "passed": False,
+                "failures": [f"CRASH: {type(exc).__name__}: {exc}"],
+                "decision": None, "intent": None, "iterations": None,
+                "latency_ms": None, "tools": [], "citations": 0,
+                "intent_expected": case.expected_intent, "note": case.note,
+                "trajectory": None,
             }
         )
+        return
 
+    passed, failures = check_behavior(case, result)
+
+    # How it got there, scored alongside whether it got there. A forbidden tool is a
+    # trajectory defect that also fails the case: calling the one write tool on a
+    # question that did not ask for a write is the agent acting unbidden, which is a
+    # correctness problem and not merely inefficiency.
+    trajectory = score_trace(
+        result.tool_trace,
+        result.citations,
+        iterations=result.iterations,
+        must_not_call=forbidden_tools_for(case),
+        min_tool_calls=case.min_tool_calls,
+    )
+    if trajectory.forbidden_calls:
+        passed = False
+        failures = failures + [
+            f"FORBIDDEN TOOL: called {name}" for name in trajectory.forbidden_calls
+        ]
+
+    rows.append(
+        {
+            "id": case.id,
+            "attempt": attempt,
+            "question": case.question,
+            "expect": case.expect,
+            "high_stakes": case.high_stakes,
+            "passed": passed,
+            "failures": failures,
+            "decision": result.decision.value,
+            "intent": result.intent,
+            "intent_expected": case.expected_intent,
+            "iterations": result.iterations,
+            "latency_ms": result.latency_ms,
+            "tools": [t["tool"] for t in result.tool_trace],
+            "citations": len(result.citations),
+            "note": case.note,
+            "trajectory": {
+                "tool_calls": trajectory.tool_calls,
+                "iterations": trajectory.iterations,
+                "parallelism": trajectory.parallelism,
+                "redundant_calls": trajectory.redundant_calls,
+                "unused_results": trajectory.unused_results,
+                "failed_calls": trajectory.failed_calls,
+                "forbidden_calls": list(trajectory.forbidden_calls),
+                "path_ratio": trajectory.path_ratio,
+                "detail": list(trajectory.redundant_detail + trajectory.unused_detail),
+            },
+            "_score": trajectory,
+        }
+    )
+
+
+def _aggregate_behavior(cases, rows: list, repeat: int) -> dict:
+    """Fold attempts into the numbers a gate and a reader can use."""
     # --- aggregates
     scored = [r for r in rows if r["decision"] is not None]
     high_stakes = [r for r in scored if r["high_stakes"]]
@@ -419,12 +462,55 @@ def eval_behavior(session, only: set[str] | None) -> dict:
     latencies = sorted(r["latency_ms"] for r in scored if r["latency_ms"])
     trajectory = aggregate_trajectory([r.pop("_score") for r in rows if "_score" in r])
 
+    # --- fold attempts back into one verdict per case.
+    #
+    # Three states, not two. A case that passed twice and failed once is neither passing
+    # nor failing — it is a case whose outcome this suite cannot predict, and collapsing
+    # that to either answer throws away the only thing the extra attempts bought.
+    by_case: list[dict] = []
+    for case in cases:
+        attempts = [r for r in rows if r["id"] == case.id]
+        if not attempts:
+            continue
+        n_passed = sum(1 for a in attempts if a["passed"])
+        if n_passed == len(attempts):
+            verdict = "pass"
+        elif n_passed == 0:
+            verdict = "fail"
+        else:
+            verdict = "flaky"
+        by_case.append(
+            {
+                "id": case.id,
+                "verdict": verdict,
+                "passed": n_passed,
+                "attempts": len(attempts),
+                "expect": case.expect,
+                "high_stakes": case.high_stakes,
+                "question": case.question,
+                "note": case.note,
+                # Distinct failure reasons across attempts, so a flaky case shows what it
+                # does when it fails without repeating the same line three times.
+                "failures": sorted({f for a in attempts for f in a["failures"]}),
+                # Which decisions it produced, in order. The shape of the flake.
+                "decisions": [a["decision"] for a in attempts],
+            }
+        )
+
+    flaky = [c for c in by_case if c["verdict"] == "flaky"]
+
     return {
         "cases": rows,
+        "by_case": by_case,
+        "repeat": repeat,
+        "flaky": len(flaky),
         "trajectory": trajectory,
         "model": settings.chat_model,
-        "passed": sum(1 for r in rows if r["passed"]),
-        "total": len(rows),
+        # Per case, not per attempt: `passed` means every attempt passed. A flaky case is
+        # counted in neither `passed` nor the failures, and is reported on its own.
+        "passed": sum(1 for c in by_case if c["verdict"] == "pass"),
+        "total": len(by_case),
+        "attempts_total": len(rows),
         "high_stakes_escalation_recall": round(hs_recall, 4) if hs_recall is not None else None,
         "over_escalation_rate": round(over_escalation, 4) if over_escalation is not None else None,
         "citation_coverage_answered": round(citation_coverage, 4) if citation_coverage is not None else None,
@@ -794,16 +880,25 @@ def apply_gate(retrieval, behavior, decoder, intake) -> list[str]:
     return problems
 
 
-def write_report(retrieval, behavior, decoder, intake, gate_problems, elapsed_s) -> Path:
+def write_report(
+    retrieval, behavior, decoder, intake, gate_problems, elapsed_s, *, subset: bool = False
+) -> Path:
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+
+    gate_line = (
+        "- gate: **n/a** — subset run (`--only`). Every threshold is a rate over the whole "
+        "behavior set, so a subset has no verdict to give."
+        if subset
+        else f"- gate: {'**PASS**' if not gate_problems else '**FAIL** — ' + '; '.join(gate_problems)}"
+    )
 
     lines = [
         "# Path Pilot evaluation report",
         "",
         f"- run: {stamp} UTC · elapsed {elapsed_s:.0f}s",
         f"- chat model: `{settings.chat_model}` · embeddings: `{settings.embedding_model}`",
-        f"- gate: {'**PASS**' if not gate_problems else '**FAIL** — ' + '; '.join(gate_problems)}",
+        gate_line,
         "",
     ]
 
@@ -837,11 +932,28 @@ def write_report(retrieval, behavior, decoder, intake, gate_problems, elapsed_s)
 
     if behavior:
         lines += [
-            f"## Agent behavior ({behavior['total']} cases · model `{behavior['model']}`)",
+            f"## Agent behavior ({behavior['total']} cases"
+            + (
+                ""
+                if behavior.get("repeat", 1) == 1
+                else f" × {behavior['repeat']} attempts = {behavior['attempts_total']} runs"
+            )
+            + f" · model `{behavior['model']}`)",
             "",
+            *(
+                []
+                if behavior.get("repeat", 1) > 1
+                else [
+                    "Single attempt per case. The chat model rejects any temperature but 1, "
+                    "so a borderline decision is a coin flip reported as a verdict — run "
+                    "with `--repeat 3` before reading a change into any one result.",
+                    "",
+                ]
+            ),
             "| metric | value | gate |",
             "|---|---|---|",
-            f"| cases passed | {behavior['passed']}/{behavior['total']} | — |",
+            f"| cases passing every attempt | {behavior['passed']}/{behavior['total']} | — |",
+            f"| cases that disagreed across attempts | {behavior.get('flaky', 0)} | reported — not gated |",
             f"| high-stakes escalation recall | {behavior['high_stakes_escalation_recall']} | ≥ {GATE['high_stakes_escalation_recall']} |",
             f"| over-escalation rate | {behavior['over_escalation_rate']} | ≤ {GATE['over_escalation_rate_max']} |",
             f"| citation coverage (answered) | {behavior['citation_coverage_answered']} | ≥ {GATE['citation_coverage_answered']} |",
@@ -882,22 +994,58 @@ def write_report(retrieval, behavior, decoder, intake, gate_problems, elapsed_s)
                 lines.append("None — no repeats and no uncited lookups.")
             for r in noisy:
                 t = r["trajectory"]
+                # Attempt number shown only when there is more than one, so the same case
+                # appearing twice reads as two runs rather than a duplicated line.
+                which = "" if behavior.get("repeat", 1) == 1 else f" (attempt {r['attempt']})"
                 lines.append(
-                    f"- **{r['id']}** {t['tool_calls']} calls / {t['iterations']} iters: "
-                    + "; ".join(t["detail"])
+                    f"- **{r['id']}**{which} {t['tool_calls']} calls / "
+                    f"{t['iterations']} iters: " + "; ".join(t["detail"])
                 )
+            lines.append("")
+
+        by_case = behavior.get("by_case") or []
+
+        # Flaky before failing, because a flaky case is the more interesting object: it is
+        # the one whose result changes what the gate says without anything having changed.
+        flaky_cases = [c for c in by_case if c["verdict"] == "flaky"]
+        if behavior.get("repeat", 1) > 1:
+            lines += [
+                f"### Flaky ({len(flaky_cases)})",
+                "",
+                "Cases whose attempts disagreed. Not gated — flakiness is a property of a "
+                "system whose model cannot be run at temperature 0, and failing the build "
+                "for it would leave the gate permanently red. Reported so it can be "
+                "argued about with numbers rather than re-run by hand.",
+                "",
+            ]
+            if not flaky_cases:
+                lines.append("None.")
+            else:
+                lines += ["| case | passed | decisions | why it failed |", "|---|---|---|---|"]
+                for c in flaky_cases:
+                    lines.append(
+                        f"| {c['id']} | {c['passed']}/{c['attempts']} | "
+                        f"{', '.join(str(d) for d in c['decisions'])} | "
+                        f"{'; '.join(c['failures'])} |"
+                    )
             lines.append("")
 
         lines += [
             "### Failures",
             "",
         ]
-        failures = [r for r in behavior["cases"] if not r["passed"]]
-        if not failures:
-            lines.append("None.")
+        hard_failures = [c for c in by_case if c["verdict"] == "fail"]
+        if not hard_failures:
+            lines.append(
+                "None."
+                if not flaky_cases
+                else "None that failed every attempt — see Flaky above."
+            )
         else:
-            for r in failures:
-                lines.append(f"- **{r['id']}** ({r['decision']}): {'; '.join(r['failures'])}")
+            for c in hard_failures:
+                lines.append(
+                    f"- **{c['id']}** (0/{c['attempts']}): {'; '.join(c['failures'])}"
+                )
         lines.append("")
 
     if decoder:
@@ -1023,12 +1171,39 @@ def main() -> None:
         help="decoder part alone — no model calls, seconds not minutes",
     )
     parser.add_argument("--only", type=str, default=None, help="comma-separated behavior case ids")
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        metavar="N",
+        help=(
+            "run each behavior case N times. Rates become means over attempts and the "
+            "hard zeros (leakage, forbidden calls, assistant failures) are checked on "
+            "every one, so N attempts is N chances to catch a rare violation. Costs N "
+            "times the tokens."
+        ),
+    )
     parser.add_argument("--gate", action="store_true", help="exit 1 when thresholds fail")
     parser.add_argument("--reseed", action="store_true", help="reset + re-embed the demo db afterwards")
     args = parser.parse_args()
 
     started = datetime.now(UTC)
+    if args.repeat < 1:
+        raise SystemExit("--repeat must be at least 1")
+
     only = set(args.only.split(",")) if args.only else None
+
+    # A subset cannot be gated. Every threshold below is a rate over the whole behavior
+    # set — high-stakes recall over the 9 high-stakes cases, over-escalation over the 15
+    # that expect an answer — so `--only B01 --gate` computes them over one case and exits
+    # 0, reporting a pass for a suite that never ran. `latest.json` already refuses to
+    # record a partial run; this is the same rule applied to the exit code.
+    if only and args.gate:
+        raise SystemExit(
+            "--gate needs the whole behavior set: its thresholds are rates over all of it, "
+            "and a subset would pass or fail on a sample size nobody chose. Drop --only to "
+            "gate, or drop --gate to explore a subset."
+        )
 
     with get_sessionmaker()() as session:
         retrieval = None
@@ -1043,8 +1218,14 @@ def main() -> None:
                 print(f"    {name:<12} n={stats['cases']:<3} recall={stats['recall_at_5']:<8} mrr={stats['mrr']}")
 
             if not args.skip_agent:
-                print(f"part 2/3: agent behavior ({settings.chat_model}) ...")
-                behavior = eval_behavior(session, only)
+                repeat_note = "" if args.repeat == 1 else f", x{args.repeat} each"
+                print(f"part 2/3: agent behavior ({settings.chat_model}{repeat_note}) ...")
+                behavior = eval_behavior(session, only, repeat=args.repeat)
+                if behavior["flaky"]:
+                    print(
+                        f"  FLAKY: {behavior['flaky']} case(s) disagreed across attempts — "
+                        "see the report"
+                    )
                 print(
                     f"  passed {behavior['passed']}/{behavior['total']}  "
                     f"hs-recall={behavior['high_stakes_escalation_recall']}  "
@@ -1093,11 +1274,22 @@ def main() -> None:
                 for detail in intake["ocr_field_error_detail"]:
                     print(f"    ! {detail}")
 
-    gate_problems = apply_gate(retrieval, behavior, decoder, intake)
+    # A subset is not gradeable, so it is not graded — not even for display. Computing the
+    # thresholds over whichever cases `--only` selected produces a verdict about a sample
+    # nobody chose: the run above reported "citation coverage 0.8 < 0.9" from two cases.
+    # Refusing to exit 1 was not enough; a FAIL printed next to a subset is read as a
+    # result. Say what it is instead.
+    subset = only is not None
+    gate_problems = [] if subset else apply_gate(retrieval, behavior, decoder, intake)
     elapsed = (datetime.now(UTC) - started).total_seconds()
-    report_path = write_report(retrieval, behavior, decoder, intake, gate_problems, elapsed)
+    report_path = write_report(
+        retrieval, behavior, decoder, intake, gate_problems, elapsed, subset=subset
+    )
     print(f"\nreport: {report_path}")
-    print("gate  :", "PASS" if not gate_problems else f"FAIL — {'; '.join(gate_problems)}")
+    if subset:
+        print("gate  : n/a — subset run, thresholds are rates over the whole set")
+    else:
+        print("gate  :", "PASS" if not gate_problems else f"FAIL — {'; '.join(gate_problems)}")
 
     if args.reseed:
         print("\nreseeding demo database ...")

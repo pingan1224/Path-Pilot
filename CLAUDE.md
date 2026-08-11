@@ -531,11 +531,26 @@ forbidden 0, gate PASS. The one failure is B20 flipping to escalate on a borderl
 1 of 3 on re-run, the same shape as B05 before it. Previous baseline, 2026-08-07 on the
 pre-program corpus: 34/35, recall 1.0, leakage 0, calls/run 2.34.
 
-**Both failures to date are the same flake, and the suite cannot see it.** Every case runs
-once, and the chat model rejects any temperature but 1, so a borderline decision is a coin
-flip the gate reports as a verdict. B35's write-tool call was 2 of 6 before it was fixed;
-B29-B32 open a mission on some runs and not others. `--repeat` is the missing feature, not
-a tighter threshold.
+**Every failure this suite has produced was intermittent**, and until 2026-08-11 it could
+not say so: one attempt per case, a model that rejects any temperature but 1, and a coin
+flip reported as a verdict. B35's write-tool call was 2 of 6 before it was fixed; B29-B32
+open a mission on some runs and not others.
+
+`--repeat N` is the instrument. CI runs `--gate --repeat 3`. Three things it changes, and
+the direction of the first is the point:
+
+- **The hard zeros get stricter.** Leakage, forbidden calls and assistant failures are
+  counted on every attempt, so one leak in nine fails the run. They are never a vote —
+  a majority rule would let two clean attempts outnumber a real violation.
+- **Rates become means over attempts.** Over-escalation read 0.0714 at one attempt and
+  0.0238 over three; the second is the estimate, the first was a sample.
+- **A third verdict, `flaky`.** A case whose attempts disagree is neither passed nor
+  failed, and is reported with its decision sequence rather than gated — flakiness is a
+  property of the system, and failing the build for it leaves the gate permanently red.
+
+At `--repeat 3` on 2026-08-11: 34/35 passing every attempt, **1 flaky** (B20, 2/3,
+`escalated, answered, answered`), 0 failing all three. A subset run (`--only`) now reports
+`gate: n/a` instead of grading thresholds against a sample nobody chose.
 Decoder run 2026-08-06: 28/32, coverage 0.8333, accuracy 1.00, 0 confidently wrong. The
 decoder set's `held_out` family is written to fail — its misses are the table's backlog, and
 adding those exact phrasings to the table is the one way of moving coverage that means

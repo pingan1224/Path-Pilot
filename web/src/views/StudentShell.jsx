@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { api } from "@/api"
+import { ProgramNotice } from "@/components/nocturne"
 import { Button } from "@/components/ui/button"
 import ChatHome from "./ChatHome"
 import DecoderView from "./DecoderView"
 import IntakeView from "./IntakeView"
 import MissionView from "./MissionView"
 import PlannerView from "./PlannerView"
+import ProgramView from "./ProgramView"
 import SequenceView from "./SequenceView"
 import StudentView from "./StudentView"
 
@@ -32,6 +34,7 @@ const NAV = [
   ["mission", "Registration mission"],
   ["sequence", "Term sequence"],
   ["planner", "Degree planner"],
+  ["program", "Your program"],
 ]
 
 const PANES = [
@@ -50,7 +53,15 @@ const LOAD_FAILED = Symbol("load failed")
 // left over from the door, a stale bookmark — lands on the chat instead of a blank frame.
 // A router library would buy back exactly this function plus pushState, priced at a
 // dependency; see the same call in App.jsx about the login doors.
-const VIEW_PATHS = ["intake", "decoder", "mission", "sequence", "planner", "dashboard"]
+const VIEW_PATHS = [
+  "intake",
+  "decoder",
+  "mission",
+  "sequence",
+  "planner",
+  "program",
+  "dashboard",
+]
 
 function viewFromLocation() {
   const segment = window.location.pathname.split("/").filter(Boolean)[0] ?? ""
@@ -77,10 +88,19 @@ export default function StudentShell({ me, onSignOut }) {
   }, [])
   const [missions, setMissions] = useState(null)
   const [courses, setCourses] = useState(null)
+  // null means "not stated yet", which is a real answer and not a failure — it is what a
+  // new account looks like, and the rail says so rather than showing nothing.
+  const [program, setProgram] = useState(null)
 
   const refresh = useCallback(() => {
     api.missions().then(setMissions).catch(() => setMissions(LOAD_FAILED))
     api.profileCourses().then(setCourses).catch(() => setCourses(LOAD_FAILED))
+    api
+      .program()
+      .then(setProgram)
+      .catch((err) =>
+        setProgram(err.code === "program_not_stated" ? null : LOAD_FAILED),
+      )
   }, [])
 
   // On mount and on every view change: Intake writes the profile, Mission writes the
@@ -183,6 +203,8 @@ export default function StudentShell({ me, onSignOut }) {
             view={view}
             nav={nav}
             onOpenView={setView}
+            program={program === LOAD_FAILED ? null : program}
+            programUnknown={program === null}
           />
         ) : null}
 
@@ -215,13 +237,42 @@ export default function StudentShell({ me, onSignOut }) {
                 ) : view === "decoder" ? (
                   <DecoderView onOpenPlanner={() => setView("planner")} />
                 ) : view === "mission" ? (
-                  <MissionView onOpenPlanner={() => setView("planner")} />
+                  // Intercepted here rather than inside the view: `GET /missions` succeeds
+                  // with an empty list for an unencoded program, so the view would offer to
+                  // start one and only refuse after the student picked a term. Every step
+                  // of a mission is computed from the program's requirements, so without
+                  // them there is nothing to invite anyone into.
+                  program && !program.is_encoded ? (
+                    <ProgramNotice
+                      code="program_not_encoded"
+                      message={`Path Pilot has not transcribed the degree requirements for ${program.program_name}, so it cannot track a registration mission for it. Policy answers and registration error decoding still work for your program.`}
+                      onChooseProgram={() => setView("program")}
+                    />
+                  ) : (
+                    <MissionView
+                      onOpenPlanner={() => setView("planner")}
+                      onOpenProgram={() => setView("program")}
+                    />
+                  )
                 ) : view === "sequence" ? (
-                  <SequenceView onOpenPlanner={() => setView("planner")} />
+                  <SequenceView
+                    onOpenPlanner={() => setView("planner")}
+                    onOpenProgram={() => setView("program")}
+                  />
+                ) : view === "program" ? (
+                  <ProgramView
+                    current={program === LOAD_FAILED ? null : program}
+                    onChanged={async (updated) => {
+                      setProgram(updated)
+                      // The rail and every tool page read requirements for this program,
+                      // so re-read rather than patching state locally.
+                      refresh()
+                    }}
+                  />
                 ) : view === "dashboard" && me.student_id ? (
                   <StudentView studentId={me.student_id} />
                 ) : (
-                  <PlannerView />
+                  <PlannerView onOpenProgram={() => setView("program")} />
                 )}
               </div>
             </div>
@@ -269,7 +320,18 @@ function RowGroup({ children }) {
  * one sentence this portfolio project owes every screen. Readiness is re-read from the
  * server on each view change, never held from a previous turn.
  */
-function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenView }) {
+function Rail({
+  mission,
+  courseCount,
+  ready,
+  failed,
+  onRetry,
+  view,
+  nav,
+  onOpenView,
+  program,
+  programUnknown,
+}) {
   const done = mission ? mission.steps.filter((s) => s.state === "done").length : 0
   const blockers = mission?.open_blockers ?? []
   const active = mission?.steps.find((s) => s.state === "active")
@@ -289,6 +351,46 @@ function Rail({ mission, courseCount, ready, failed, onRetry, view, nav, onOpenV
       <div className="mb-3.5 nx-label">
         {mission ? `Registration readiness · ${mission.term}` : "Your record"}
       </div>
+
+      {/* The program sits above readiness because it decides what readiness can even
+          mean: three of the six tools evaluate rules that belong to one program, and
+          without it they refuse. An unset program is "Action required" in words, not a
+          coloured dot — the same rule every other state on this rail follows. */}
+      {programUnknown ? (
+        <div className="mb-3.5">
+          <RowGroup>
+            <StatusRow
+              tone="warn"
+              label="Tell us your program"
+              meta="Degree progress, sequencing and missions need to know which rules apply to you."
+              value="Action required"
+            />
+          </RowGroup>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2 w-full"
+            onClick={() => onOpenView("program")}
+          >
+            Choose your program
+          </Button>
+        </div>
+      ) : program ? (
+        <div className="mb-3.5">
+          <RowGroup>
+            <StatusRow
+              tone={program.is_encoded ? "good" : "warn"}
+              label={program.program_name}
+              meta={
+                program.is_encoded
+                  ? "Requirements encoded — degree progress available"
+                  : "Requirements not encoded — policy answers and error decoding only"
+              }
+              value={program.is_encoded ? "Full support" : "Limited"}
+            />
+          </RowGroup>
+        </div>
+      ) : null}
 
       {failed ? (
         <>

@@ -98,6 +98,19 @@ def load_program_rules(session: Session, program_code: str) -> ProgramRules:
             f"No encoded catalog program with code {program_code!r}. "
             "Planning is only supported for programs whose requirements have been encoded."
         )
+    if program.total_credits_required is None:
+        # The program exists and is listed, but nobody has transcribed what it requires.
+        # Loud rather than silent: a plan built against a null total reports every student
+        # as needing zero credits, and reports it confidently.
+        #
+        # Worded for the student, because this string reaches the screen. Naming the ingest
+        # script here — as it did once — tells the person reading it to go and run
+        # something they have no access to, in a vocabulary that is not theirs.
+        raise ProgramNotEncodedError(
+            f"Path Pilot has not transcribed the degree requirements for {program.name}, "
+            "so it cannot check your record against them. Policy answers and registration "
+            "error decoding still work for your program."
+        )
 
     courses = load_catalog_courses(session)
 

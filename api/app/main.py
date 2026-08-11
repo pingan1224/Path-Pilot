@@ -14,6 +14,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import settings
 from app.db.session import DatabaseNotConfiguredError
+from app.planning.loader import ProgramNotEncodedError
 from app.services.profile import ProgramNotStatedError
 from app.routers import (
     assistant,
@@ -97,6 +98,17 @@ async def program_not_stated_handler(
     # they are studying, so no requirement rules apply yet. Given its own code so the UI
     # can send them to the program picker rather than showing a generic error.
     return _error(409, str(exc), code="program_not_stated")
+
+
+@app.exception_handler(ProgramNotEncodedError)
+async def program_not_encoded_handler(
+    _: Request, exc: ProgramNotEncodedError
+) -> JSONResponse:
+    # Distinct from the above, and the distinction is the whole product boundary: the
+    # student told us something true and this tool cannot audit it. The UI says so and
+    # keeps offering what does work — policy answers, error decoding — rather than
+    # sending them to change an answer that was correct.
+    return _error(409, str(exc), code="program_not_encoded")
 
 
 @app.exception_handler(DatabaseNotConfiguredError)

@@ -49,6 +49,54 @@ export function ErrorNote({ children }) {
   )
 }
 
+/**
+ * True when a failure is about which program the student is in, rather than a fault.
+ * Callers branch on this to choose between ProgramNotice and their own error handling.
+ */
+export function isProgramIssue(code) {
+  return code === "program_not_stated" || code === "program_not_encoded"
+}
+
+/**
+ * The screen a student sees when a tool cannot serve their program.
+ *
+ * Two causes, and they are not the same message. `program_not_stated` means they have not
+ * said what they study — one action fixes it. `program_not_encoded` means they said
+ * something true and this tool has not transcribed that degree's requirements; there is
+ * nothing for them to fix, and offering a "Try again" button would imply otherwise.
+ *
+ * Returns null for any other error so callers fall through to their own handling —
+ * this component answers one question and must not swallow unrelated failures.
+ */
+export function ProgramNotice({ code, message, onChooseProgram }) {
+  if (!isProgramIssue(code)) return null
+
+  const stated = code === "program_not_stated"
+  return (
+    <div className="flex flex-col items-start gap-3 rounded-md border border-warning/45 px-4 py-3.5">
+      <div>
+        <p className="text-body">
+          {stated
+            ? "Path Pilot does not know which program you are in."
+            : "This is not available for your program."}
+        </p>
+        <p className="mt-1 max-w-[62ch] text-meta leading-relaxed text-muted-foreground">
+          {message}
+        </p>
+      </div>
+      {onChooseProgram ? (
+        <button
+          type="button"
+          className="rounded-md border border-border px-3 py-1.5 text-meta hover:bg-secondary"
+          onClick={onChooseProgram}
+        >
+          {stated ? "Choose your program" : "Change your program"}
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
 export function WarnNote({ children }) {
   return (
     <p className="rounded-md border border-warning/45 px-3 py-2 text-meta leading-relaxed text-muted-foreground">

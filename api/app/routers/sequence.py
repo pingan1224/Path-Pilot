@@ -17,7 +17,6 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_session
 from app.models import UserRole
-from app.planning.loader import ProgramNotEncodedError
 from app.sequence.service import sequence_for_user
 from app.sequence.terms import Term, TermParseError
 from app.sequence.types import CONSTRAINT_LABEL
@@ -107,16 +106,16 @@ def get_sequence(
             status_code=422, detail="deadline: cannot be before the starting term."
         )
 
-    try:
-        plan, meta = sequence_for_user(
-            session,
-            identity.user.id,
-            start_term=start,
-            deadline=finish_by,
-            max_credits_per_term=max_credits_per_term,
-        )
-    except ProgramNotEncodedError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    # ProgramNotEncodedError propagates to the handler in main.py, which returns 409 with
+    # a `program_not_encoded` code the UI can act on. Caught here it collapsed into a
+    # generic conflict, indistinguishable from "you have not said what you study".
+    plan, meta = sequence_for_user(
+        session,
+        identity.user.id,
+        start_term=start,
+        deadline=finish_by,
+        max_credits_per_term=max_credits_per_term,
+    )
 
     terms_out: list[TermOut] = []
     for term, placements in plan.by_term().items():

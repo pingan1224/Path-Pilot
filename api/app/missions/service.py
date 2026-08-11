@@ -30,6 +30,7 @@ from app.missions.types import (
 )
 from app.models import Mission, MissionCandidate, MissionDecision
 from app.planning.types import CourseState, StatedCourse
+from app.planning.loader import ProgramNotEncodedError
 from app.services.profile import list_profile, plan_for_user, program_for_user
 
 ACKNOWLEDGED_GAPS = "acknowledged_gaps"
@@ -125,7 +126,18 @@ def create_mission(
     # never depends on the user's *current* program: the mission records the program it was
     # opened for, and that is the one its steps must keep being evaluated against.
     if program_code is None:
-        program_code = program_for_user(session, user_id).code
+        program = program_for_user(session, user_id)
+        if not program.is_encoded:
+            # Refuse before writing. Every step of a mission is computed from the program's
+            # requirements, so a mission for a program with none is a container that can
+            # never be read — `mission_state` raises on load — and the row would sit there
+            # being reopened by each retry. A mission is not the place to discover that.
+            raise ProgramNotEncodedError(
+                f"Path Pilot has not encoded the degree requirements for {program.name}, "
+                "so it cannot track a registration mission for it. Policy answers and "
+                "error decoding are still available."
+            )
+        program_code = program.code
 
     mission = Mission(
         user_id=user_id, term=term, program_code=program_code, created_by=created_by

@@ -29,7 +29,6 @@ from app.intake import (
 )
 from app.intake.types import ExtractedRow, RowStatus
 from app.models import UserRole
-from app.planning.loader import ProgramNotEncodedError
 from app.planning.types import CourseState
 from app.services.auth import Identity, require_roles
 
@@ -103,8 +102,7 @@ async def post_transcript(
         reading = read_transcript(session, data)
     except UnreadableUploadError as exc:
         raise HTTPException(status_code=422, detail=f"file: {exc}") from exc
-    except ProgramNotEncodedError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    # ProgramNotEncodedError deliberately propagates — see main.py.
 
     return ReadingOut(
         pages=reading.pages,

@@ -98,7 +98,11 @@ class Program(Base, TimestampMixin):
     # retrieval scope, so getting it wrong hands an undergraduate the graduate credit-load
     # rules with a real citation and an accurate quote.
     level: Mapped[str] = mapped_column(String(16), default="graduate", nullable=False)
-    total_credits_required: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Null for a program whose requirements have not been encoded — the total is simply not
+    # known for it, and storing 0 would assert that the degree requires no credits. Encoding
+    # a program (ingest/requirements.py) sets this and validates that the requirements sum
+    # to it.
+    total_credits_required: Mapped[int | None] = mapped_column(Integer)
 
     source: Mapped[str] = mapped_column(String(16), default="demo", nullable=False)
     catalog_url: Mapped[str | None] = mapped_column(String(1024))

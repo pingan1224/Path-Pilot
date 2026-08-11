@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react"
 import { api } from "@/api"
 import { Finding } from "@/components/Finding"
-import { ErrorNote, Eyebrow, INPUT_CLASS, Muted, Tone, WarnNote } from "@/components/nocturne"
+import {
+  ErrorNote,
+  Eyebrow,
+  INPUT_CLASS,
+  Muted,
+  ProgramNotice,
+  Tone,
+  WarnNote,
+  isProgramIssue,
+} from "@/components/nocturne"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -39,7 +48,7 @@ const BASIS_META = {
 
 const CREDIT_CHOICES = [3, 6, 9, 12]
 
-export default function SequenceView({ onOpenPlanner }) {
+export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
   const [startTerm, setStartTerm] = useState("")
   const [deadline, setDeadline] = useState("")
   const [maxCredits, setMaxCredits] = useState("")
@@ -59,7 +68,7 @@ export default function SequenceView({ onOpenPlanner }) {
         }),
       )
     } catch (err) {
-      setError(err.message)
+      setError(err)
     } finally {
       setBusy(false)
     }
@@ -73,10 +82,20 @@ export default function SequenceView({ onOpenPlanner }) {
   if (error && !plan) {
     return (
       <div className="flex flex-col items-start gap-3">
-        <ErrorNote>Could not compute a sequence: {error}</ErrorNote>
-        <Button variant="outline" size="sm" onClick={() => load()}>
-          Try again
-        </Button>
+        {isProgramIssue(error.code) ? (
+          <ProgramNotice
+            code={error.code}
+            message={error.message}
+            onChooseProgram={onOpenProgram}
+          />
+        ) : (
+          <>
+            <ErrorNote>Could not compute a sequence: {error.message}</ErrorNote>
+            <Button variant="outline" size="sm" onClick={() => load()}>
+              Try again
+            </Button>
+          </>
+        )}
       </div>
     )
   }
@@ -90,7 +109,7 @@ export default function SequenceView({ onOpenPlanner }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {error ? <ErrorNote>{error}</ErrorNote> : null}
+      {error ? <ErrorNote>{error.message}</ErrorNote> : null}
 
       <Card>
         <CardHeader>

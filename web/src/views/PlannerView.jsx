@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from "react"
 import { api } from "@/api"
 import { Finding } from "@/components/Finding"
-import { ErrorNote, Eyebrow, INPUT_CLASS, Muted, Tone } from "@/components/nocturne"
+import {
+  ErrorNote,
+  Eyebrow,
+  INPUT_CLASS,
+  Muted,
+  ProgramNotice,
+  Tone,
+  isProgramIssue,
+} from "@/components/nocturne"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -28,10 +36,12 @@ const STATE_LABEL = {
   planned: "Planned",
 }
 
-export default function PlannerView() {
+export default function PlannerView({ onOpenProgram }) {
   const [courses, setCourses] = useState(null)
   const [plan, setPlan] = useState(null)
   const [includePlanned, setIncludePlanned] = useState(false)
+  // The whole error, not just its message: a program-shaped failure gets its own screen
+  // rather than a generic note with a retry that cannot help.
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -45,7 +55,7 @@ export default function PlannerView() {
       setPlan(planned)
       setError(null)
     } catch (err) {
-      setError(err.message)
+      setError(err)
     }
   }
 
@@ -60,7 +70,7 @@ export default function PlannerView() {
       await api.profilePut(payload)
       await refresh()
     } catch (err) {
-      setError(err.message)
+      setError(err)
     } finally {
       setBusy(false)
     }
@@ -72,19 +82,31 @@ export default function PlannerView() {
       await api.profileDelete(code)
       await refresh()
     } catch (err) {
-      setError(err.message)
+      setError(err)
     } finally {
       setBusy(false)
     }
   }
 
   if (error && !plan) {
+    // A program-shaped refusal is not a failure to retry — it is the product boundary,
+    // and it gets a screen that says which of the two it is.
     return (
       <div className="flex flex-col items-start gap-3">
-        <ErrorNote>Could not read your plan: {error}</ErrorNote>
-        <Button variant="outline" size="sm" onClick={refresh}>
-          Try again
-        </Button>
+        {isProgramIssue(error.code) ? (
+          <ProgramNotice
+            code={error.code}
+            message={error.message}
+            onChooseProgram={onOpenProgram}
+          />
+        ) : (
+          <>
+            <ErrorNote>Could not read your plan: {error.message}</ErrorNote>
+            <Button variant="outline" size="sm" onClick={refresh}>
+              Try again
+            </Button>
+          </>
+        )}
       </div>
     )
   }
@@ -98,7 +120,7 @@ export default function PlannerView() {
 
   return (
     <div className="flex flex-col gap-4">
-      {error ? <ErrorNote>{error}</ErrorNote> : null}
+      {error ? <ErrorNote>{error.message}</ErrorNote> : null}
 
       <CourseEditor courses={courses} onSave={saveCourse} onRemove={removeCourse} busy={busy} />
 

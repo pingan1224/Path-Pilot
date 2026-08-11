@@ -9,16 +9,17 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.models import UserRole
-from app.planning.loader import ProgramNotEncodedError
+from app.models import Program, UserRole
 from app.planning.types import CourseState, Verdict
 from app.services.auth import Identity, require_roles
 from app.services.profile import (
     list_profile,
     plan_for_user,
+    program_for_user,
     remove_course,
     upsert_course,
 )
@@ -145,6 +146,74 @@ def _plan_response(result, meta) -> PlanOut:
     )
 
 
+class ProgramIn(BaseModel):
+    program_code: str = Field(min_length=1, max_length=24)
+
+
+class ProgramOut(BaseModel):
+    program_code: str
+    program_name: str
+    level: str
+    is_encoded: bool
+    # What the student can expect, stated rather than left for them to discover by finding
+    # a page that refuses. An unencoded program is a smaller promise honestly kept.
+    capabilities: list[str]
+
+
+def _program_out(program) -> ProgramOut:
+    capabilities = ["policy_answers", "error_decoding", "albert_checklist"]
+    if program.is_encoded:
+        capabilities += ["degree_audit", "course_sequence", "registration_mission"]
+    return ProgramOut(
+        program_code=program.code,
+        program_name=program.name,
+        level=program.level,
+        is_encoded=program.is_encoded,
+        capabilities=capabilities,
+    )
+
+
+@router.get("/program", response_model=ProgramOut)
+def get_program(
+    identity: Identity = Depends(student_only),
+    session: Session = Depends(get_session),
+) -> ProgramOut:
+    # ProgramNotStatedError is handled globally (main.py) as a 409 with its own code, so
+    # the UI can route to the picker instead of showing a generic failure.
+    return _program_out(program_for_user(session, identity.user.id))
+
+
+@router.put("/program", response_model=ProgramOut)
+def put_program(
+    payload: ProgramIn,
+    identity: Identity = Depends(student_only),
+    session: Session = Depends(get_session),
+) -> ProgramOut:
+    """Set the signed-in user's program.
+
+    Only `source='catalog'` programs are settable. The demo program is a fixture built from
+    invented courses; letting a real account select it would produce a degree audit against
+    a degree that does not exist.
+
+    No user id in the body — a student sets their own program and nobody else's, the same
+    rule every other endpoint in this router follows.
+    """
+    program = session.scalars(
+        select(Program).where(
+            Program.code == payload.program_code, Program.source == "catalog"
+        )
+    ).first()
+    if program is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No program with code {payload.program_code!r}.",
+        )
+
+    identity.user.program_id = program.id
+    session.commit()
+    return _program_out(program_for_user(session, identity.user.id))
+
+
 @router.get("/courses", response_model=list[CourseOut])
 def get_courses(
     identity: Identity = Depends(student_only),
@@ -186,12 +255,12 @@ def get_plan(
     identity: Identity = Depends(student_only),
     session: Session = Depends(get_session),
 ) -> PlanOut:
-    try:
-        result, meta = plan_for_user(
-            session, identity.user.id, include_planned=include_planned
-        )
-    except ProgramNotEncodedError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    # ProgramNotEncodedError propagates to main.py's handler, which distinguishes it from
+    # ProgramNotStatedError by error code — one sends the student to the picker, the other
+    # tells them their (correct) answer is not one this tool can audit.
+    result, meta = plan_for_user(
+        session, identity.user.id, include_planned=include_planned
+    )
     return _plan_response(result, meta)
 
 
@@ -216,13 +285,10 @@ def post_what_if(
         )
         for c in payload.courses
     ]
-    try:
-        result, meta = plan_for_user(
-            session,
-            identity.user.id,
-            include_planned=True,
-            extra_courses=extra,
-        )
-    except ProgramNotEncodedError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    result, meta = plan_for_user(
+        session,
+        identity.user.id,
+        include_planned=True,
+        extra_courses=extra,
+    )
     return _plan_response(result, meta)

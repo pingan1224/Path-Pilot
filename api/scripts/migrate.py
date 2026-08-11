@@ -157,6 +157,9 @@ STATEMENTS = [
     # the one encoded program regardless of who they were.
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS program_id INTEGER REFERENCES programs(id) ON DELETE SET NULL",
     "CREATE INDEX IF NOT EXISTS ix_users_program ON users (program_id)",
+    # A program the picker can offer but the planner cannot audit has no known credit
+    # total. NULL says that; 0 would say the degree requires no credits.
+    "ALTER TABLE programs ALTER COLUMN total_credits_required DROP NOT NULL",
     # Backfill for the column above.
     #
     # Seeded students belong to the *demo* program, whose requirements are written against

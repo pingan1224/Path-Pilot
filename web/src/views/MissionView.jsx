@@ -11,7 +11,16 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { ErrorNote, Eyebrow, INPUT_CLASS, Muted, Tone, WarnNote } from "@/components/nocturne"
+import {
+  ErrorNote,
+  Eyebrow,
+  INPUT_CLASS,
+  Muted,
+  ProgramNotice,
+  Tone,
+  WarnNote,
+  isProgramIssue,
+} from "@/components/nocturne"
 
 /**
  * The registration mission: a resumable task, shown as the five steps it actually is.
@@ -78,7 +87,7 @@ function useSettledSteps(steps) {
   return settled
 }
 
-export default function MissionView({ onOpenPlanner }) {
+export default function MissionView({ onOpenPlanner, onOpenProgram }) {
   const [missions, setMissions] = useState(null)
   const [activeId, setActiveId] = useState(null)
   const [error, setError] = useState(null)
@@ -92,7 +101,7 @@ export default function MissionView({ onOpenPlanner }) {
         setMissions(list)
         setActiveId((current) => current ?? (list.length > 0 ? list[0].id : null))
       })
-      .catch((err) => setError(err.message))
+      .catch((err) => setError(err))
   }, [])
 
   useEffect(load, [load])
@@ -108,7 +117,7 @@ export default function MissionView({ onOpenPlanner }) {
     try {
       replace(await fn())
     } catch (err) {
-      setError(err.message)
+      setError(err)
     } finally {
       setBusy(false)
     }
@@ -122,7 +131,7 @@ export default function MissionView({ onOpenPlanner }) {
       setMissions((list) => [mission, ...(list ?? []).filter((m) => m.id !== mission.id)])
       setActiveId(mission.id)
     } catch (err) {
-      setError(err.message)
+      setError(err)
     } finally {
       setBusy(false)
     }
@@ -131,10 +140,20 @@ export default function MissionView({ onOpenPlanner }) {
   if (error && !missions) {
     return (
       <div className="flex flex-col items-start gap-3">
-        <ErrorNote>Could not read your missions: {error}</ErrorNote>
-        <Button variant="outline" size="sm" onClick={load}>
-          Try again
-        </Button>
+        {isProgramIssue(error.code) ? (
+          <ProgramNotice
+            code={error.code}
+            message={error.message}
+            onChooseProgram={onOpenProgram}
+          />
+        ) : (
+          <>
+            <ErrorNote>Could not read your missions: {error.message}</ErrorNote>
+            <Button variant="outline" size="sm" onClick={load}>
+              Try again
+            </Button>
+          </>
+        )}
       </div>
     )
   }
@@ -150,7 +169,7 @@ export default function MissionView({ onOpenPlanner }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {error ? <ErrorNote>{error}</ErrorNote> : null}
+      {error ? <ErrorNote>{error.message}</ErrorNote> : null}
 
       {missions.length === 0 ? (
         <StartCard onStart={start} busy={busy} />

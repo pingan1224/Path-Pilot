@@ -29,7 +29,16 @@ async function request(path, options) {
     throw new UnauthenticatedError(body?.error?.message ?? "Not signed in.");
   }
   if (!response.ok) {
-    throw new Error(body?.error?.message ?? `Request failed (${response.status})`);
+    const error = new Error(
+      body?.error?.message ?? `Request failed (${response.status})`,
+    );
+    // The server's own code, carried through. Two 409s mean different things —
+    // `program_not_stated` sends the student to the picker, `program_not_encoded` tells
+    // them their (correct) answer is one this tool cannot audit — and a bare message
+    // string forces callers to match on prose to tell them apart.
+    error.code = body?.error?.code ?? null;
+    error.status = response.status;
+    throw error;
   }
   return body;
 }
@@ -54,6 +63,16 @@ export const api = {
     }),
   // planner — always the signed-in user's own record
   catalogSearch: (q) => request(`/catalog/courses?q=${encodeURIComponent(q)}`),
+  // Which programs a student can say they are in, and which one they picked. Only
+  // `is_encoded` programs can be audited; the rest still get policy answers and error
+  // decoding, and the picker says so rather than letting them find out from a refusal.
+  programs: () => request("/catalog/programs"),
+  program: () => request("/profile/program"),
+  setProgram: (programCode) =>
+    request("/profile/program", {
+      method: "PUT",
+      body: JSON.stringify({ program_code: programCode }),
+    }),
   profileCourses: () => request("/profile/courses"),
   profilePut: (payload) =>
     request("/profile/courses", { method: "PUT", body: JSON.stringify(payload) }),

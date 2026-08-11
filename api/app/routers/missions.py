@@ -21,7 +21,6 @@ from app.missions import service
 from app.missions.service import MissionNotFoundError
 from app.missions.types import MissionFacts, MissionState
 from app.models import UserRole
-from app.planning.loader import ProgramNotEncodedError
 from app.services.auth import Identity, require_roles
 
 router = APIRouter(prefix="/missions", tags=["missions"])
@@ -192,8 +191,7 @@ def _load(session: Session, user_id: int, mission_id: int) -> MissionOut:
         mission, facts, state, meta = service.mission_state(session, user_id, mission_id)
     except MissionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except ProgramNotEncodedError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    # ProgramNotEncodedError deliberately propagates — see main.py.
     return _mission_out(mission, facts, state, meta)
 
 

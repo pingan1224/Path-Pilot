@@ -3,6 +3,45 @@
 A registration-readiness and academic-planning tool for NYU SPS graduate students, built
 from a graduate coursework RFP response into a running, measured system.
 
+<p align="center">
+  <img src="docs/assets/path-pilot-demo.png" alt="Path Pilot demo sign-in screen with two fictional student scenarios" width="900" />
+</p>
+
+## 30-second overview
+
+**Problem.** Students need a trustworthy answer to “am I ready to register, and can I still
+graduate on time?” without pretending a prototype can see their real university record.
+
+**What I built.** A student-facing planning workspace that combines authenticated readiness
+checks, a registration-error decoder, transcript review, course planning, constraint-based term
+sequencing, and a tool-using assistant that cites and qualifies its claims.
+
+**My role.** I designed and implemented the end-to-end system: the React experience, FastAPI
+and Postgres backend, permission-scoped agent tools, retrieval/evaluation harnesses, and the
+production deployment path.
+
+**Stack.** React + Vite · FastAPI · PostgreSQL + pgvector · Moonshot Kimi · OpenAI embeddings
+and OCR · Render · Vercel · GitHub Actions.
+
+**Evidence from the latest gated run.** **35/35** agent-behaviour cases passed · **28/28**
+authorization-boundary checks passed · **0** restricted-document leaks.
+
+```mermaid
+flowchart LR
+    S[Student] --> W[React + Vite workspace]
+    W -->|same-origin /api| A[FastAPI API]
+    A --> I[Session identity + permission checks]
+    I --> D[(PostgreSQL + pgvector)]
+    A --> T[Scoped planning, mission, and retrieval tools]
+    T --> D
+    A --> L[Moonshot Kimi]
+    A --> E[OpenAI embeddings / OCR]
+    A --> Q[Evaluation, authz, and fault probes]
+```
+
+**Deployment.** The Render API and Vercel frontend are deployed; public Vercel aliases are
+currently disabled while the project is not being shared externally.
+
 > **Not an NYU system.** This is an independent personal project, not affiliated with,
 > endorsed by, or connected to New York University. It has no access to Albert and cannot
 > see your real record. Every student, hold, and case in the demo is fictional. Policy text
@@ -488,7 +527,8 @@ actually costs).
 | M9 | Fault injection: every declared degraded path executed and watched | ✅ |
 | M10 | Transcript photos: OCR that is never allowed to be trusted | ✅ |
 | M11 | Multi-turn context budgeting: freshness-aware reuse of tool results | ◻ Next |
-| M12 | Invite-only beta, rate limits, deployment | ◻ |
+| M12-A | Render + Vercel deployment (access-controlled) | ✅ |
+| M12-B | Invite-only beta and rate limits | ◻ |
 | — | Staff views (advisor queue, registrar pressure, finance cases) removed; student-only | ✅ |
 
 ## Honest limitations

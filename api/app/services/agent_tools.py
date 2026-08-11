@@ -32,6 +32,7 @@ from app.models import (
     UserRole,
 )
 from app.services.freshness import FreshnessPolicies, humanize_age
+from app.services.profile import program_page_slug
 from app.services.readiness import compute_readiness
 from app.services.retrieval import (
     SCHOOL_TO_CORPUS_SLUG,
@@ -110,7 +111,13 @@ def _scope_for(ctx: ToolContext) -> RetrievalScope:
     if program is None:
         return RetrievalScope()
     return RetrievalScope(
-        school=SCHOOL_TO_CORPUS_SLUG.get(program.school), level=program.level
+        school=SCHOOL_TO_CORPUS_SLUG.get(program.school),
+        level=program.level,
+        # The degree's own page, so a passage written for a sibling degree can be told
+        # apart. Built here rather than by calling program_for_user because this function
+        # already holds the Program row; `services.profile.program_page_slug` owns the
+        # derivation so both paths slug a URL the same way.
+        program_slug=program_page_slug(program.catalog_url),
     )
 
 
@@ -202,6 +209,21 @@ def tool_search_policy(ctx: ToolContext, query: str) -> dict[str, Any]:
             and chunk.school != scope.school
             and chunk.school != "synthetic"
         )
+        # The same mistake one level down, and the one school and level cannot catch.
+        #
+        # Since the corpus carries a page per degree, all 23 SPS graduate programmes match
+        # on both facets while each page carries its own "Policies" section. Measured when
+        # those pages landed: "what is the attendance policy" returned Publishing (MS)'s
+        # programme policies above the school-wide page. A student reading an internship
+        # GPA rule written for another degree has no way to know it is not theirs.
+        #
+        # `None` on either side means no signal — a school-wide policy page belongs to
+        # every programme — and must not be read as a mismatch.
+        cross_program = (
+            bool(scope.program_slug)
+            and bool(chunk.program_slug)
+            and chunk.program_slug != scope.program_slug
+        )
         passages.append(
             {
                 "source_id": source_id,
@@ -214,9 +236,12 @@ def tool_search_policy(ctx: ToolContext, query: str) -> dict[str, Any]:
                 "relevance": chunk.score,
                 "school": chunk.school,
                 "school_differs_from_students_own": cross_school,
+                "written_for_program": chunk.program_slug,
+                "program_differs_from_students_own": cross_program,
             }
         )
     any_cross_school = any(p["school_differs_from_students_own"] for p in passages)
+    any_cross_program = any(p["program_differs_from_students_own"] for p in passages)
     remaining = MAX_POLICY_SEARCHES - len(ctx.policy_queries)
     return {
         "passages": passages,
@@ -241,6 +266,23 @@ def tool_search_policy(ctx: ToolContext, query: str) -> dict[str, Any]:
             "is actually about this student's own school, say that plainly instead of "
             "generalizing from what is."
             if any_cross_school
+            else None
+        ),
+        # Server-computed for the same reason as the school warning: the model cannot be
+        # relied on to notice "(MS)" in a heading, and here the two pages agree on school
+        # and level, so nothing else in the result distinguishes them.
+        "cross_program_warning": (
+            "One or more passages above come from a DIFFERENT degree program's page (see "
+            'each passage\'s "written_for_program" and '
+            '"program_differs_from_students_own" fields). Every program at this school '
+            "publishes its own policies — internship eligibility, concentration rules, "
+            "credit structure — and they differ. A rule written for another program is not "
+            "this student's rule, even though the school and the degree level match and "
+            "the passage looks like general policy. Say which program a passage is for "
+            "whenever it is not the student's own, and prefer the school-wide policy page "
+            "(the passages with no program named) when the question is about a "
+            "school-wide rule."
+            if any_cross_program
             else None
         ),
         # The corpus does not tell you it lacks a page; the nearest five chunks come back

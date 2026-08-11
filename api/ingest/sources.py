@@ -88,15 +88,68 @@ SPS_GRADUATE = [
     _sps("/graduate/professional-studies/cost-attendance/tuition-fees/", "financial", "bursar"),
     _sps("/graduate/professional-studies/cost-attendance/financial-aid-scholarships/", "financial", "financial_aid"),
     _sps("/graduate/professional-studies/courses/masy1-gc/", "courses", "department"),
-    # Degree requirements for the program the planner supports. The bulletin has no
-    # "Management and Systems MS" page; MASY1-GC coursework belongs to Management
-    # Analytics, which is the page that states the credit structure.
+]
+
+# --- One page per SPS graduate degree.
+#
+# The overview page above names 23 programs; these are the pages those names link to, and
+# each states what its own degree requires. Two things they are for:
+#
+# 1. **A student who is not in the one encoded program still gets their own school's
+#    answer.** Before this, "what does my degree require" retrieved either Management &
+#    Analytics or nothing, for everybody. Twenty-two programs' students were being answered
+#    from a page about somebody else's degree, which is the cross-school failure with the
+#    school held constant.
+# 2. **Encoding a program starts here.** `ingest.requirements` transcribes by hand from an
+#    ingested page (a parser guessing at a requirements table would be guessing at the
+#    thing the planner depends on), so a program cannot be promoted to encoded until its
+#    page is in the corpus.
+#
+# **The paths are extracted from the overview page's own links, never slugified from the
+# names.** `Marketing and Strategic Communications, Executive (MS)` lives at
+# `executive-masters-marketing-strategic-communications/` — no rule derives that from the
+# title, and a constructed URL that 404s is a page silently missing from the corpus rather
+# than a loud failure.
+#
+# `office` is `department`: a question about what a degree requires goes to the program,
+# not to the registrar. Management & Analytics keeps `registrar` below for the same reason
+# it always had it — it is the planner's rules source, not just a reading page.
+SPS_GRADUATE_PROGRAMS = [
+    _sps("/graduate/professional-studies/programs/entrepreneurship-management-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/event-management-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/executive-coaching-organizational-consulting-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/financial-planning-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/global-affairs-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/global-hospitality-management-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/global-security-conflict-cyber-crime-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/global-sport-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/human-capital-analytics-technology-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/human-capital-management-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/human-capital-management-human-capital-analytics-technology-ms-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/integrated-marketing-ms/", "requirements", "department"),
+    # Management & Analytics is the encoded program: its requirements are transcribed in
+    # ingest/requirements.py and the planner evaluates against them.
     _sps("/graduate/professional-studies/programs/management-analytics-ms/", "requirements", "registrar"),
+    _sps("/graduate/professional-studies/programs/executive-masters-marketing-strategic-communications/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/professional-writing-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/project-management-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/public-relations-corporate-communication-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/publishing-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/real-estate-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/real-estate-development-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/sports-business-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/translation-interpreting-ms/", "requirements", "department"),
+    _sps("/graduate/professional-studies/programs/travel-tourism-management-ms/", "requirements", "department"),
 ]
 
 # --- Same school, different level. Graduate and undergraduate policies diverge on credit
 #     loads, standing, and registration order, so this pair tests whether retrieval keeps
 #     the levels apart instead of blending them.
+#
+#     Four policy pages and no program pages: the undergraduate overview that would name
+#     the degrees is not ingested, so undergraduate programs cannot be listed the way the
+#     graduate ones are. That is a deliberate ordering, not an oversight — graduate
+#     coverage was taken first — and it is why the program picker is graduate-only.
 SPS_UNDERGRADUATE = [
     _sps("/undergraduate/professional-studies/academic-policies/", "policies", "registrar", level="undergraduate"),
     _sps("/undergraduate/professional-studies/academic-calendar/", "calendar", "registrar", level="undergraduate"),
@@ -127,7 +180,9 @@ PEER_SCHOOLS = [
     _peer("arts", "/graduate/arts/academic-policies/", "policies", "registrar"),
 ]
 
-SOURCES: list[Source] = SPS_GRADUATE + SPS_UNDERGRADUATE + PEER_SCHOOLS
+SOURCES: list[Source] = (
+    SPS_GRADUATE + SPS_GRADUATE_PROGRAMS + SPS_UNDERGRADUATE + PEER_SCHOOLS
+)
 
 
 def by_slug() -> dict[str, Source]:

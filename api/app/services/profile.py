@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -27,6 +28,19 @@ ENCODED_PROGRAMS: frozenset[str] = frozenset({"MASY-MS-REAL"})
 PROFILE_STALE_AFTER_DAYS = 120
 
 
+# Bulletin degree pages live at .../programs/<slug>/, and `Document.program_slug` is
+# derived from the same shape (see ingest/load.py). Matching on it is how a page written
+# for this student's own degree is told from one written for a sibling degree.
+_PROGRAM_PATH = re.compile(r"/programs/([^/]+)/?$")
+
+
+def program_page_slug(catalog_url: str | None) -> str | None:
+    if not catalog_url:
+        return None
+    match = _PROGRAM_PATH.search(catalog_url.split("?")[0])
+    return match.group(1) if match else None
+
+
 class ProgramNotStatedError(LookupError):
     """Raised when a user has told us nothing about which program they are studying.
 
@@ -50,9 +64,15 @@ class UserProgram:
     # as "no scope signal", never as a match.
     corpus_slug: str | None
 
+    # How the ingested corpus slugs this program's own bulletin page, taken from the URL
+    # the row already carries. None for a program with no ingested page.
+    page_slug: str | None
+
     @property
     def scope(self) -> RetrievalScope:
-        return RetrievalScope(school=self.corpus_slug, level=self.level)
+        return RetrievalScope(
+            school=self.corpus_slug, level=self.level, program_slug=self.page_slug
+        )
 
 
 def program_for_user(session: Session, user_id: int) -> UserProgram:
@@ -92,6 +112,7 @@ def program_for_user(session: Session, user_id: int) -> UserProgram:
         level=program.level,
         is_encoded=program.code in ENCODED_PROGRAMS,
         corpus_slug=SCHOOL_TO_CORPUS_SLUG.get(program.school),
+        page_slug=program_page_slug(program.catalog_url),
     )
 
 

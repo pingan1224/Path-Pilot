@@ -26,11 +26,14 @@ from app.services.profile import (
 
 class _Program:
     def __init__(self, code, name="A Program", school="School of Professional Studies",
-                 level="graduate"):
+                 level="graduate", catalog_url=None):
         self.code = code
         self.name = name
         self.school = school
         self.level = level
+        # Its own bulletin page. The corpus slugs pages by this URL's last segment, which
+        # is how a passage written for this degree is told from one written for a sibling.
+        self.catalog_url = catalog_url
 
 
 class _User:
@@ -124,6 +127,44 @@ def test_an_unmapped_school_yields_no_scope_signal_rather_than_a_wrong_one():
     # None means "no signal either way" and must never be read as a match.
     assert resolved.corpus_slug is None
     assert resolved.scope.school is None
+
+
+def test_scope_carries_the_program_page_slug():
+    """The third discriminating facet, and the one school and level cannot supply.
+
+    Every SPS graduate degree shares a school and a level, and each one's page carries its
+    own Policies section, so without this a passage written for another degree is
+    indistinguishable from school-wide policy.
+    """
+    resolved = _resolve(
+        _User(
+            _Program(
+                "GA-MS",
+                catalog_url="https://bulletins.nyu.edu/graduate/professional-studies/programs/global-affairs-ms/",
+            )
+        )
+    )
+    assert resolved.page_slug == "global-affairs-ms"
+    assert resolved.scope.program_slug == "global-affairs-ms"
+
+
+def test_a_program_with_no_ingested_page_yields_no_program_signal():
+    """Null must read as "no signal", never as "matches everything" — a school-wide policy
+    page also carries no program, and the two must not be conflated into a match."""
+    resolved = _resolve(_User(_Program("X", catalog_url=None)))
+    assert resolved.page_slug is None
+    assert resolved.scope.program_slug is None
+
+    # A non-program page (the school overview) must not be mistaken for a degree page.
+    overview = _resolve(
+        _User(
+            _Program(
+                "Y",
+                catalog_url="https://bulletins.nyu.edu/graduate/professional-studies/",
+            )
+        )
+    )
+    assert overview.page_slug is None
 
 
 def test_unencoded_program_is_not_silently_added_to_the_gate():

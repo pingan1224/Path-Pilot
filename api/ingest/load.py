@@ -19,6 +19,7 @@ restricted case lives in the synthetic fixtures.
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from datetime import UTC, datetime
@@ -34,6 +35,21 @@ CHUNKS_DIR = DATA_DIR / "chunks"
 MANIFEST = DATA_DIR / "raw" / "manifest.json"
 
 ALL_ROLES = ["student", "advisor"]
+
+# Bulletin degree pages live at .../programs/<slug>/. Everything else is school-wide.
+PROGRAM_PATH = re.compile(r"/programs/([^/]+)/?$")
+
+
+def program_slug_for(url: str) -> str | None:
+    """Which degree a page belongs to, or None for school-wide policy.
+
+    Derived from the URL rather than carried on the seed list, because the URL is what
+    actually distinguishes the pages and cannot drift out of step with them. Null is the
+    meaningful default: a school-wide policy page applies to every programme, so it must
+    never be treated as belonging to one.
+    """
+    match = PROGRAM_PATH.search(url.split("?")[0])
+    return match.group(1) if match else None
 
 
 def load_manifest() -> dict[str, dict]:
@@ -94,6 +110,11 @@ def load_strategy(session, strategy: str) -> tuple[int, int]:
             session.add(document)
             session.flush()
             documents += 1
+
+        # Set on every pass, not only at creation: it is derived from the URL, so it is
+        # idempotent, and pages loaded before this column existed would otherwise keep a
+        # null and read as school-wide policy — the exact confusion it exists to prevent.
+        document.program_slug = program_slug_for(document.url)
 
         # Replace only this strategy's rows for this document.
         session.execute(

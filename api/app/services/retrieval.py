@@ -90,7 +90,7 @@ HYBRID_SQL = text(
         FROM vec FULL OUTER JOIN lex ON vec.id = lex.id
     )
     SELECT dc.id, dc.text, dc.heading_path, dc.section_keys,
-           d.title, d.url, d.office, d.fetched_at, d.school, d.level,
+           d.title, d.url, d.office, d.fetched_at, d.school, d.level, d.program_slug,
            (f.vec_rrf + f.lex_rrf) AS raw_score,
            f.vec_rrf + f.lex_rrf
              + CASE WHEN d.school IS NULL
@@ -130,7 +130,7 @@ VECTOR_SQL = text(
     WITH candidates AS (
         SELECT dc.id, dc.text, dc.heading_path, dc.section_keys,
                d.title, d.url, d.office, d.fetched_at,
-               d.school, d.level, d.scope,
+               d.school, d.level, d.scope, d.program_slug,
                1 - (dc.embedding <=> CAST(:query_vec AS vector)) AS raw_score
         FROM document_chunks dc
         JOIN documents d ON d.id = dc.document_id
@@ -142,7 +142,7 @@ VECTOR_SQL = text(
         LIMIT :candidate_k
     )
     SELECT id, text, heading_path, section_keys, title, url, office, fetched_at,
-           school, level, raw_score,
+           school, level, program_slug, raw_score,
            raw_score
              + CASE WHEN school IS NULL
                       OR school = CAST(:school AS varchar)
@@ -171,7 +171,7 @@ KEYWORD_SQL = text(
     WITH matched AS (
         SELECT dc.id, dc.text, dc.heading_path, dc.section_keys,
                d.title, d.url, d.office, d.fetched_at,
-               d.school, d.level,
+               d.school, d.level, d.program_slug,
                (
                  SELECT count(*) FROM unnest(CAST(:terms AS varchar[])) AS term
                  WHERE dc.text ILIKE '%' || term || '%'
@@ -184,7 +184,7 @@ KEYWORD_SQL = text(
           AND dc.visible_to_roles @> ARRAY[:role]::varchar(16)[]
     )
     SELECT id, text, heading_path, section_keys, title, url, office, fetched_at,
-           school, level, match_count,
+           school, level, program_slug, match_count,
            match_count
              + CASE WHEN school IS NULL
                       OR school = CAST(:school AS varchar)
@@ -290,6 +290,12 @@ class RetrievalScope:
 
     school: str | None = None
     level: str | None = None
+    # The asker's own degree, as the corpus slugs it (see `Document.program_slug`). Used to
+    # tell a page written for *their* programme from one written for a sibling programme —
+    # a distinction school and level cannot make, because every SPS graduate degree shares
+    # both. Deliberately not part of any boost: changing ranking needs its own sweep, and
+    # the failure this addresses is one of attribution, not of ordering.
+    program_slug: str | None = None
 
 
 @dataclass
@@ -307,6 +313,9 @@ class RetrievedChunk:
     score: float
     rank: int
     school: str | None = None
+    # Which degree's page this came from; None means school-wide policy, which applies to
+    # everybody and must never be read as belonging to one programme.
+    program_slug: str | None = None
     # Similarity before the scope boost, kept so a ranking change is attributable.
     raw_score: float | None = None
 
@@ -394,6 +403,7 @@ def search_policy(
             score=round(float(row.score), 4),
             rank=i + 1,
             school=getattr(row, "school", None),
+            program_slug=getattr(row, "program_slug", None),
             raw_score=round(float(row.raw_score), 4) if hasattr(row, "raw_score") else None,
         )
         for i, row in enumerate(rows)

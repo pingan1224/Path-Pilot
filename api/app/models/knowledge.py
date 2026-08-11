@@ -51,6 +51,16 @@ class Document(Base, TimestampMixin):
     topic: Mapped[str | None] = mapped_column(String(32), index=True)
     scope: Mapped[str] = mapped_column(String(16), default="home", nullable=False)
 
+    # Which degree programme this page belongs to, for pages that belong to exactly one.
+    # Null for school-wide policy, which applies to everybody.
+    #
+    # A third discriminating facet was needed once the corpus carried a page per degree.
+    # School and level cannot separate them — all 23 SPS graduate programmes share both —
+    # and every one of those pages has a "Policies" section that competes with the
+    # school-wide policy page. Measured when they landed: "what is the attendance policy"
+    # returned Publishing (MS)'s programme policies above the school's own.
+    program_slug: Mapped[str | None] = mapped_column(String(120), index=True)
+
     # True for documents we authored rather than fetched. Only the restricted-access
     # fixtures behind the leakage tests are synthetic: no genuinely internal university
     # document would be appropriate to scrape, and inventing public policy alongside real

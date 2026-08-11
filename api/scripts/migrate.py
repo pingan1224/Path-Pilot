@@ -160,6 +160,15 @@ STATEMENTS = [
     # A program the picker can offer but the planner cannot audit has no known credit
     # total. NULL says that; 0 would say the degree requires no credits.
     "ALTER TABLE programs ALTER COLUMN total_credits_required DROP NOT NULL",
+    # Which degree a corpus page belongs to, for the pages that belong to exactly one.
+    # Null means school-wide, which is the right answer for everybody.
+    #
+    # School and level stopped discriminating once a page per degree was ingested: all 23
+    # SPS graduate programmes share both, and each page carries its own "Policies" section.
+    # Backfilled from the URL by ingest.load, which is where the seed list's facets are
+    # already applied.
+    "ALTER TABLE documents ADD COLUMN IF NOT EXISTS program_slug VARCHAR(120)",
+    "CREATE INDEX IF NOT EXISTS ix_documents_program ON documents (program_slug)",
     # Backfill for the column above.
     #
     # Seeded students belong to the *demo* program, whose requirements are written against

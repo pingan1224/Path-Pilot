@@ -525,9 +525,17 @@ that judgement stays with the author, recorded in the comment above `OVERRIDE_LE
 P4 facts: golden set in api/eval/golden.py (15 retrieval + 35 behavior cases) plus
 api/eval/decoder_cases.py (32 error messages); runner is scripts/run_eval.py (--gate for
 thresholds, --only for subsets, --only-decoder for the model-free part, --reseed to restore
-the demo db). Official run 2026-08-07 (search budget): 34/35, high-stakes recall 1.0,
-leakage 0, tool calls/run 2.34, gate PASS — the one failure is B05 flipping to escalate on
-a borderline call, identical trajectory, passes 3/3 on re-run.
+the demo db). Official run 2026-08-11 (SPS program corpus, 1,461 heading chunks): 34/35,
+high-stakes recall 1.0, leakage 0, over-escalation 0.0714, tool calls/run 2.37,
+forbidden 0, gate PASS. The one failure is B20 flipping to escalate on a borderline call —
+1 of 3 on re-run, the same shape as B05 before it. Previous baseline, 2026-08-07 on the
+pre-program corpus: 34/35, recall 1.0, leakage 0, calls/run 2.34.
+
+**Both failures to date are the same flake, and the suite cannot see it.** Every case runs
+once, and the chat model rejects any temperature but 1, so a borderline decision is a coin
+flip the gate reports as a verdict. B35's write-tool call was 2 of 6 before it was fixed;
+B29-B32 open a mission on some runs and not others. `--repeat` is the missing feature, not
+a tighter threshold.
 Decoder run 2026-08-06: 28/32, coverage 0.8333, accuracy 1.00, 0 confidently wrong. The
 decoder set's `held_out` family is written to fail — its misses are the table's backlog, and
 adding those exact phrasings to the table is the one way of moving coverage that means

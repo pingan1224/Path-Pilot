@@ -124,6 +124,15 @@ GATE = {
     # is the next thing to fix, and it was invisible until this ran.
     "forbidden_tool_calls": 0,               # hard zero
     "redundant_call_rate_max": 0.20,
+    # Runs where the model was never successfully reached (llm_error / empty_answer).
+    #
+    # Hard zero, and it is a gate on the *measurement* rather than on the system. The
+    # degraded payload those produce escalates by design, so an outage reads as a perfect
+    # high-stakes recall of 1.0 and a clean leakage count — the suite's two headline
+    # numbers at their best values, from a run that answered nobody. Observed on
+    # 2026-08-11: three consecutive B35 re-runs against a suspended account were all
+    # recorded as passing.
+    "assistant_failures": 0,                 # hard zero
     # Transcript intake. The asymmetry is deliberate: a row the reader vouches for and gets
     # wrong puts coursework in a student's record they never took, or a grade they did not
     # earn, and nothing downstream will catch it. A row it fails to read is a course quietly
@@ -224,10 +233,36 @@ def eval_retrieval(session, strategy: str | None = None) -> dict:
 # --------------------------------------------------------------------------------------
 
 
+# Degradations that mean the assistant itself failed, as opposed to serving the turn on
+# thinner evidence. Every other mode — keyword_fallback, retrieval_budget_exhausted, a
+# named tool_error — is a path the system is *supposed* to take and answers through.
+ASSISTANT_FAILED = ("llm_error", "empty_answer")
+
+
 def check_behavior(case, result) -> tuple[bool, list[str]]:
     """Score one agent run against its expectations. Returns (passed, failures)."""
     failures: list[str] = []
     decision = result.decision.value
+
+    # Before any per-case expectation, because no expectation is loose enough to make this
+    # acceptable and the loosest ones were letting it through.
+    #
+    # Found 2026-08-11 by re-running B35 three times while the chat provider was returning
+    # 429 for an unpaid balance. Every call failed, the loop produced its "routed to a
+    # human" escalation payload — which is correct behaviour and exactly what rule 6 asks
+    # for — and the eval recorded **passed** three times running, because B35 expects
+    # "any" outcome and names no required tool, citation or forbidden phrase. A run where
+    # the model was never reached is not evidence that anything works, and a suite that
+    # reports green while its backend is down is measuring nothing.
+    #
+    # Applied to every case rather than to B35, since the same hole exists in all twelve
+    # `expect="any"` cases and in any future one.
+    for mode in ASSISTANT_FAILED:
+        if mode in (result.degraded_modes or ()):
+            failures.append(
+                f"ASSISTANT FAILED: {mode} — the model was never successfully reached, "
+                "so this run measures nothing"
+            )
 
     if case.expect == "answered" and decision not in ("answered", "answered_with_caveat"):
         failures.append(f"expected answered, got {decision}")
@@ -367,6 +402,14 @@ def eval_behavior(session, only: set[str] | None) -> dict:
         sum(1 for r in answered if r["citations"] > 0) / len(answered) if answered else None
     )
     leaks = [f for r in rows for f in r["failures"] if f.startswith("LEAK")]
+    # Counted at the aggregate too, not only per case, because the per-case check cannot
+    # stop the headline numbers from lying. The llm_error payload escalates by design, so a
+    # run where every model call failed scores a *perfect* high-stakes escalation recall of
+    # 1.0 — the metric the source RFP is judged on, at its best value, from a system that
+    # answered nobody. Gated at zero so an outage fails the build instead of flattering it.
+    assistant_failures = [
+        f for r in rows for f in r["failures"] if f.startswith("ASSISTANT FAILED")
+    ]
     intent_pairs = [r for r in scored if r["intent_expected"]]
     intent_acc = (
         sum(1 for r in intent_pairs if r["intent"] == r["intent_expected"]) / len(intent_pairs)
@@ -388,6 +431,7 @@ def eval_behavior(session, only: set[str] | None) -> dict:
         "intent_accuracy": round(intent_acc, 4) if intent_acc is not None else None,
         "leakage_failures": len(leaks),
         "leaks": leaks,
+        "assistant_failures": len(assistant_failures),
         "latency_p50_ms": latencies[len(latencies) // 2] if latencies else None,
         "latency_p95_ms": latencies[int(len(latencies) * 0.95)] if latencies else None,
         "iterations_mean": round(
@@ -699,6 +743,12 @@ def apply_gate(retrieval, behavior, decoder, intake) -> list[str]:
             problems.append(f"high-stakes recall {hs} < {GATE['high_stakes_escalation_recall']}")
         if behavior["leakage_failures"] > GATE["leakage_failures"]:
             problems.append(f"leakage failures: {behavior['leakage_failures']} (must be 0)")
+        af = behavior.get("assistant_failures", 0)
+        if af > GATE["assistant_failures"]:
+            problems.append(
+                f"assistant never reached on {af} run(s) — this measurement is void, "
+                "not a result (must be 0)"
+            )
         oe = behavior["over_escalation_rate"]
         if oe is not None and oe > GATE["over_escalation_rate_max"]:
             problems.append(f"over-escalation {oe} > {GATE['over_escalation_rate_max']}")
@@ -797,6 +847,7 @@ def write_report(retrieval, behavior, decoder, intake, gate_problems, elapsed_s)
             f"| citation coverage (answered) | {behavior['citation_coverage_answered']} | ≥ {GATE['citation_coverage_answered']} |",
             f"| intent accuracy (labelled subset) | {behavior['intent_accuracy']} | reported |",
             f"| leakage failures | {behavior['leakage_failures']} | = 0 |",
+            f"| runs where the assistant was never reached | {behavior.get('assistant_failures', 0)} | = 0 — any is a void measurement |",
             f"| latency p50 / p95 | {behavior['latency_p50_ms']} / {behavior['latency_p95_ms']} ms | reported |",
             f"| iterations mean | {behavior['iterations_mean']} | reported |",
             "",

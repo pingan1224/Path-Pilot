@@ -141,7 +141,10 @@ class Requirement(Base, TimestampMixin):
     kind: Mapped[RequirementKind] = mapped_column(
         SAEnum(RequirementKind, name="requirement_kind"), nullable=False
     )
-    min_credits: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Float for the same reason Course.credits is: a group of 1.5-credit courses sums to a
+    # half. Event Management's core curriculum is 16.5, which an integer column rounds into a
+    # requirement the bulletin does not state.
+    min_credits: Mapped[float] = mapped_column(Float, nullable=False)
     min_courses: Mapped[int | None] = mapped_column(Integer)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     notes: Mapped[str | None] = mapped_column(Text)

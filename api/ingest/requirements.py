@@ -50,7 +50,7 @@ class RequirementSpec:
     name: str
     kind: RequirementKind
     rule: str
-    min_credits: int
+    min_credits: float
     courses: list[str] = field(default_factory=list)
     tracks: list[TrackSpec] = field(default_factory=list)
     min_courses: int | None = None
@@ -280,6 +280,134 @@ GLOBAL_SECURITY: list[RequirementSpec] = [
 ]
 
 
+ENTREPRENEURSHIP: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Curriculum", kind=RequirementKind.core, rule="all_of", min_credits=18,
+        courses=[
+            "ENTR1-GC 1100", "ENTR1-GC 1200", "ENTR1-GC 1300",
+            "ENTR1-GC 1400", "ENTR1-GC 1500", "ENTR1-GC 1600",
+        ],
+    ),
+    RequirementSpec(
+        name="Elective Courses", kind=RequirementKind.elective, rule="credits",
+        min_credits=9, min_courses=3,
+        courses=[
+            "ENTR1-GC 2100", "ENTR1-GC 2200", "ENTR1-GC 2300", "ENTR1-GC 2400",
+            "ENTR1-GC 2500", "ENTR1-GC 2600", "ENTR1-GC 2700", "ENTR1-GC 9000",
+        ],
+        # The page also groups six of these into three named specialisations of two courses
+        # each. They are presentation, not requirement — nothing says a specialisation must
+        # be completed — so they are not encoded as tracks, which would invent a rule.
+        caveat=(
+            "Select 9 credits from the listed courses. The bulletin groups six of them into "
+            "three optional specialisations (Social Innovation and Entrepreneurship, Family "
+            "Business, Entrepreneurial Leadership) of two courses each; taking a "
+            "specialisation in full is a choice, not a requirement."
+        ),
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="all_of", min_credits=3,
+        courses=["ENTR1-GC 3100", "ENTR1-GC 3200"],  # Launchpad I and II, 1.5 each
+    ),
+]
+
+
+EVENT_MANAGEMENT: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Curriculum", kind=RequirementKind.core, rule="all_of", min_credits=16.5,
+        courses=[
+            "MSEM1-GC 1005", "MSEM1-GC 1010", "MSEM1-GC 1015", "MSEM1-GC 1020",
+            "MSEM1-GC 1025", "MSEM1-GC 1030", "MSEM1-GC 1035",
+        ],
+    ),
+    RequirementSpec(
+        name="Internship", kind=RequirementKind.core, rule="all_of", min_credits=1.5,
+        courses=["MSEM1-GC 1100"],
+        caveat=(
+            "Students with at least two years of relevant full-time work experience, or the "
+            "part-time equivalent, may qualify for a waiver; waiving it allows an additional "
+            "1.5 credits of electives. Whether you qualify is not something this tool can "
+            "check — ask your adviser."
+        ),
+    ),
+    RequirementSpec(
+        name="Electives", kind=RequirementKind.elective, rule="credits", min_credits=15,
+        # The union of the three published tracks. The bulletin says students may select
+        # across all three rather than complete one, so these are a pool, not `one_track`.
+        courses=[
+            "MSEM1-GC 2000", "MSEM1-GC 2005", "MSEM1-GC 2010", "MSEM1-GC 2015",
+            "TCSB1-GC 2140", "TCSB1-GC 2040", "TCSB1-GC 2010", "MSEM1-GC 2020",
+            "MSEM1-GC 2025",
+            "MSEM1-GC 2030", "MSEM1-GC 2035", "MSEM1-GC 2040", "MSEM1-GC 2045",
+            "MSEM1-GC 2055", "MSEM1-GC 2050", "MSEM1-GC 2060",
+        ],
+        caveat=(
+            "Select 15 credits across the Business Development, Sport Event Management and "
+            "Event Operations tracks. Up to 6 credits may come from the MS in Tourism "
+            "Management, the MS in Hospitality Industry Studies or related programmes in "
+            "consultation with your adviser — those cannot be counted here. Current Issues "
+            "in Events (MSEM1-GC 2050) is published as 1.5-3 credits, so how much it "
+            "contributes is not fixed."
+        ),
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="one_track", min_credits=3,
+        tracks=[
+            TrackSpec("Consulting Practicum", ["MSEM1-GC 3000"]),
+            TrackSpec("Individual Thesis", ["MSEM1-GC 3005"]),
+        ],
+        caveat="The bulletin offers these as alternatives; complete one.",
+    ),
+]
+
+
+EXECUTIVE_COACHING: list[RequirementSpec] = [
+    # Every listed course is required; the page's "Module 1 / Module 2" headings order the
+    # cohort's residencies rather than offering a choice, so they are presentation.
+    RequirementSpec(
+        name="Fundamental Core Requirements", kind=RequirementKind.core, rule="all_of",
+        min_credits=27,
+        courses=[
+            "ECOC1-GC 1000", "ECOC1-GC 1010", "ECOC1-GC 1020", "ECOC1-GC 1030",
+            "ECOC1-GC 1040", "ECOC1-GC 2010", "ECOC1-GC 2020", "ECOC1-GC 2030",
+            "ECOC1-GC 2040", "ECOC1-GC 3010", "ECOC1-GC 3020",
+        ],
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="all_of", min_credits=3,
+        courses=["ECOC1-GC 4000"],
+        caveat=(
+            "The bulletin states this capstone's prerequisites as course titles rather than "
+            "codes, so they are recorded but not checked here — see the course entry."
+        ),
+    ),
+]
+
+
+EXECUTIVE_MARKETING: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Requirements", kind=RequirementKind.core, rule="all_of", min_credits=21,
+        courses=[
+            "EMSC1-GC 10", "EMSC1-GC 20", "EMSC1-GC 30", "EMSC1-GC 40", "EMSC1-GC 50",
+            "EMSC1-GC 60", "EMSC1-GC 70", "EMSC1-GC 80", "EMSC1-GC 90", "EMSC1-GC 100",
+        ],
+    ),
+    RequirementSpec(
+        name="Electives", kind=RequirementKind.elective, rule="credits",
+        min_credits=6, min_courses=4,
+        courses=[
+            "EMSC1-GC 200", "EMSC1-GC 210", "EMSC1-GC 220",
+            "EMSC1-GC 230", "EMSC1-GC 240", "EMSC1-GC 250",
+        ],
+        caveat="Select four electives from the listed courses.",
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="all_of", min_credits=3,
+        courses=["EMSC1-GC 300"],
+    ),
+]
+
+
 PROGRAMS: list[ProgramSpec] = [
     ProgramSpec(
         page_slug="graduate__professional-studies__programs__management-analytics-ms",
@@ -304,6 +432,40 @@ PROGRAMS: list[ProgramSpec] = [
         name="Global Security, Conflict, and Cyber Crime",
         total_credits=36,
         requirements=GLOBAL_SECURITY,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__entrepreneurship-management-ms",
+        code="ENTR-MS-REAL",
+        name="Entrepreneurship and Management",
+        total_credits=30,
+        requirements=ENTREPRENEURSHIP,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__event-management-ms",
+        code="MSEM-MS-REAL",
+        name="Event Management",
+        total_credits=36,
+        requirements=EVENT_MANAGEMENT,
+    ),
+    ProgramSpec(
+        page_slug=(
+            "graduate__professional-studies__programs__"
+            "executive-coaching-organizational-consulting-ms"
+        ),
+        code="ECOC-MS-REAL",
+        name="Executive Coaching and Organizational Consulting",
+        total_credits=30,
+        requirements=EXECUTIVE_COACHING,
+    ),
+    ProgramSpec(
+        page_slug=(
+            "graduate__professional-studies__programs__"
+            "executive-masters-marketing-strategic-communications"
+        ),
+        code="EMSC-MS-REAL",
+        name="Marketing and Strategic Communications, Executive",
+        total_credits=30,
+        requirements=EXECUTIVE_MARKETING,
     ),
 ]
 

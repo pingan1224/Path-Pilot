@@ -80,7 +80,7 @@ class TrackRule:
 class RequirementRuleSpec:
     name: str
     rule: str  # all_of | credits | one_track
-    min_credits: int
+    min_credits: float
     course_codes: tuple[str, ...] = ()
     tracks: tuple[TrackRule, ...] = ()
     min_courses: int | None = None

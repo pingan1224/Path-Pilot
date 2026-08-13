@@ -211,6 +211,7 @@ STATEMENTS = [
     # Course.credits; the cast is safe in this direction and the re-ingest restores the
     # fractions the parser had been discarding.
     "ALTER TABLE courses ALTER COLUMN credits TYPE double precision",
+    "ALTER TABLE requirements ALTER COLUMN min_credits TYPE double precision",
 ]
 
 

@@ -217,7 +217,13 @@ def _build_one(
         return ArtifactOut(
             id=id,
             type="course_sequence",
-            version=1,
+            # v2 (2026-08-13) carries `delay_costs`: what each of next term's courses costs
+            # if it waits. Deliberately *not* a new artifact type. The data is computed with
+            # the plan and travels with it, so a second type would mean a second builder and
+            # a second card producing the same numbers — the parallel-surface mistake this
+            # codebase has now paid for twice, in four personas and in two tool surfaces.
+            # An older client ignores the field and renders the grid it always did.
+            version=2,
             status="feasible" if plan.feasible else "infeasible",
             canonical_ref=None,
             data=plan.model_dump(mode="json"),

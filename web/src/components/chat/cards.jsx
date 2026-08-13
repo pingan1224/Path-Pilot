@@ -263,6 +263,15 @@ export function SequenceCard({ plan, onOpenView }) {
     .flatMap((t) => t.courses)
     .filter((c) => c.offering_basis !== "published").length
 
+  // What each of next term's courses costs if it waits, keyed for the row that names it.
+  // The grid answers "in what order"; this answers "why this one, why now" — which is the
+  // question the product is for, so it renders beside the course rather than under the
+  // card. A course that can wait says so: a card where every row shouts is a card students
+  // stop reading.
+  const costByCode = Object.fromEntries(
+    (plan.delay_costs ?? []).map((c) => [c.code, c]),
+  )
+
   return (
     <Card>
       <CardHeader>
@@ -280,25 +289,46 @@ export function SequenceCard({ plan, onOpenView }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        {plan.terms.map((term) => (
-          <div key={term.term} className="rounded-md border bg-muted/40 p-2">
+        {plan.terms.map((term, termIndex) => (
+          <div
+            key={term.term}
+            className={
+              termIndex === 0
+                ? "rounded-md border border-primary/40 bg-muted/40 p-2"
+                : "rounded-md border bg-muted/40 p-2"
+            }
+          >
             <p className="text-sm font-semibold">
               {term.term}{" "}
               <span className="font-normal text-muted-foreground">
                 · {term.credits} cr
               </span>
+              {termIndex === 0 ? (
+                <span className="font-normal text-muted-foreground"> · next term</span>
+              ) : null}
             </p>
             <div className="mt-1 flex flex-col gap-1">
               {term.courses.map((course) => {
                 const badge = BASIS_BADGE[course.offering_basis] ?? BASIS_BADGE.unstated
+                const cost = termIndex === 0 ? costByCode[course.course_code] : undefined
                 return (
-                  <p
-                    key={course.course_code}
-                    className="flex flex-wrap items-center gap-2 text-sm"
-                  >
-                    <span className="font-mono">{course.course_code}</span>
-                    <Badge variant={badge.variant}>{badge.label}</Badge>
-                  </p>
+                  <div key={course.course_code} className="flex flex-col gap-0.5">
+                    <p className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className="font-mono">{course.course_code}</span>
+                      <Badge variant={badge.variant}>{badge.label}</Badge>
+                      {cost?.breaks_plan ? (
+                        <Badge variant="destructive">Cannot wait</Badge>
+                      ) : cost?.terms_lost > 0 ? (
+                        <Badge variant="secondary">
+                          +{cost.terms_lost} term{cost.terms_lost === 1 ? "" : "s"} if it
+                          waits
+                        </Badge>
+                      ) : null}
+                    </p>
+                    {cost ? (
+                      <p className="text-meta text-muted-foreground">{cost.explanation}</p>
+                    ) : null}
+                  </div>
                 )
               })}
             </div>

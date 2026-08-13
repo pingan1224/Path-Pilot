@@ -165,3 +165,39 @@ def test_actions_carry_no_endpoints():
     # The action model has no field a URL or HTTP method could arrive through — the
     # client's registry owns the mapping. If this test breaks, the contract changed.
     assert set(ArtifactAction.model_fields) == {"type", "candidate_id"}
+
+
+# ---- what a card is promised, per type ---------------------------------------------
+#
+# The contract says an existing type's shape changing means bumping its `version`, and
+# nothing was checking either half. `course_sequence` went from v1 to v2 on 2026-08-13 —
+# it now carries `delay_costs`, the reason each of next term's courses is on the list —
+# and the whole suite stayed green through the change. A version is a promise to clients;
+# an unasserted one is a comment.
+
+
+def test_course_sequence_promises_delay_costs_at_v2():
+    """Both halves together. Asserting the version alone would pass on a build that bumped
+    the number and shipped no field; asserting the field alone would let the shape change
+    under a client told it was v1."""
+    from app.routers.sequence import SequenceOut
+
+    assert "delay_costs" in SequenceOut.model_fields, (
+        "the sequence payload no longer carries delay_costs; a v2 course_sequence card "
+        "renders per-course reasons from it"
+    )
+    field = SequenceOut.model_fields["delay_costs"]
+    assert field.default_factory is not None or field.default is not None, (
+        "delay_costs must default to empty — an infeasible plan has no baseline to price "
+        "against, and the card has to render without it"
+    )
+
+
+def test_delay_cost_keeps_breaks_plan_separable_from_a_number():
+    """"There is no later plan" is not a large number of terms. If these ever collapse
+    into one field, a client will render the strongest statement the product makes as an
+    ordinary delay."""
+    from app.routers.sequence import DelayCostOut
+
+    assert {"terms_lost", "breaks_plan"} <= set(DelayCostOut.model_fields)
+    assert DelayCostOut.model_fields["terms_lost"].annotation == (int | None)

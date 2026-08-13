@@ -168,6 +168,43 @@ def test_one_track_rejects_credits_spread_across_tracks():
     finding = evaluate_requirement(spec, stated(("A1", "completed"), ("R1", "completed")), {})
     assert finding.verdict is Verdict.not_satisfied
     assert "more than one option" in finding.detail
+    assert "spread across tracks" in finding.summary
+
+
+def test_a_course_listed_under_several_options_is_not_called_spread():
+    """Global Affairs' eight concentrations share most of their courses, so one course
+    "starts" six of them. Telling that student their work is scattered describes something
+    they have not done; what is true is that the record does not yet name their option."""
+    spec = RequirementRuleSpec(
+        "Concentration",
+        "one_track",
+        6,
+        tracks=(TrackRule("Analytics", ("SHARED", "A2")), TrackRule("Risk", ("SHARED", "R2"))),
+    )
+    finding = evaluate_requirement(spec, stated(("SHARED", "completed")), {})
+
+    assert finding.verdict is Verdict.not_satisfied
+    assert "spread" not in finding.detail
+    assert "does not yet say which one" in finding.detail
+    assert "advisor" in finding.next_step
+
+
+def test_a_named_required_course_counts_as_progress_in_its_own_track():
+    """It is the strongest signal of which option someone is taking. Reading only the pool
+    reports "not started" to a student holding the course the track is built around."""
+    spec = RequirementRuleSpec(
+        "Concentration",
+        "one_track",
+        18,
+        tracks=(
+            TrackRule("Peacebuilding", ("E1", "E2", "E3"), min_courses=2, required_codes=("R1",)),
+            TrackRule("Security", ("S1", "S2", "S3"), min_courses=2, required_codes=("R2",)),
+        ),
+    )
+    finding = evaluate_requirement(spec, stated(("R1", "completed")), {})
+
+    assert "not started" not in finding.summary
+    assert "Peacebuilding" in finding.summary
 
 
 def test_one_track_satisfied_when_a_track_is_complete():
@@ -497,3 +534,86 @@ def test_an_outstanding_named_course_is_reported_before_the_pool_shortfall():
     )
     assert "R1" in finding.detail
     assert "R1" in finding.next_step
+
+
+# --- One course, one requirement.
+#
+# Global Affairs draws its electives from the union of the same eight concentrations its
+# concentration requirement is built from, so every concentration course is also an elective
+# course. Counted twice, a student who has finished the core and a concentration — thirty of
+# forty-two credits — is told only the thesis remains, when three elective courses do too.
+# Wrongly telling someone they are about to graduate is the failure this engine exists to
+# prevent, so a `credits` pool counts only what earlier requirements have not already spent.
+
+
+@pytest.fixture
+def overlapping_program():
+    """Core and electives drawing on one shared list, as the bulletin actually states it."""
+    catalog = {c: course(c) for c in ("C1", "C2", "P1", "P2", "P3", "P4", "P5")}
+    return ProgramRules(
+        name="Overlap MS",
+        total_credits=21,
+        courses=catalog,
+        requirements=(
+            RequirementRuleSpec("Core", "all_of", 6, course_codes=("C1", "C2")),
+            RequirementRuleSpec(
+                "Concentration", "one_track", 6,
+                tracks=(TrackRule("Pooled", ("P1", "P2", "P3", "P4", "P5"), min_courses=2),),
+            ),
+            RequirementRuleSpec(
+                "Electives", "credits", 9,
+                course_codes=("C1", "C2", "P1", "P2", "P3", "P4", "P5"),
+            ),
+        ),
+        source_url="https://example.edu/program",
+        verified_on="2026-08-05",
+    )
+
+
+def _elective_finding(result):
+    return next(f for f in result.findings if f.summary.startswith("Electives"))
+
+
+def test_a_credits_pool_does_not_recount_what_an_earlier_requirement_used(
+    overlapping_program,
+):
+    done = [StatedCourse(c, CourseState.completed) for c in ("C1", "C2", "P1", "P2")]
+    finding = _elective_finding(evaluate_plan(overlapping_program, done))
+
+    assert finding.verdict is Verdict.not_satisfied, finding.detail
+    assert "0 of 9" in finding.detail
+
+
+def test_the_student_is_told_why_their_courses_did_not_count_here(overlapping_program):
+    """Twelve credits of work and "0 of 9" reads as a lost record unless it says why."""
+    done = [StatedCourse(c, CourseState.completed) for c in ("C1", "C2", "P1", "P2")]
+    finding = _elective_finding(evaluate_plan(overlapping_program, done))
+
+    assert "already counted toward an earlier requirement" in finding.detail
+    assert "C1" in finding.detail and "P1" in finding.detail
+
+
+def test_a_surplus_beyond_the_pool_draw_is_still_the_students_to_spend(
+    overlapping_program,
+):
+    """The concentration needs two of the five. The other three are electives, not gone."""
+    done = [
+        StatedCourse(c, CourseState.completed)
+        for c in ("C1", "C2", "P1", "P2", "P3", "P4", "P5")
+    ]
+    finding = _elective_finding(evaluate_plan(overlapping_program, done))
+
+    assert finding.verdict is Verdict.satisfied, finding.detail
+    assert "9 of 9" in finding.detail
+
+
+def test_requirements_that_name_their_own_courses_are_untouched(overlapping_program):
+    """Only `credits` subtracts. A named course cannot be taken away by an earlier rule —
+    were `all_of` to honour consumption, a shared course would be reported missing."""
+    done = [StatedCourse(c, CourseState.completed) for c in ("C1", "C2", "P1", "P2")]
+    result = evaluate_plan(overlapping_program, done)
+
+    core = next(f for f in result.findings if f.summary.startswith("Core"))
+    concentration = next(f for f in result.findings if f.summary.startswith("Concentration"))
+    assert core.verdict is Verdict.satisfied
+    assert concentration.verdict is Verdict.satisfied

@@ -26,8 +26,14 @@ from app.sequence.solver import (
     topological_order,
 )
 from app.sequence.terms import Season, Term, TermParseError
-from app.planning.rules import CourseRule, ProgramRules, RequirementRuleSpec, TrackRule
-from app.sequence.plan import _needs_for_requirement
+from app.planning.rules import (
+    CourseRule,
+    ProgramRules,
+    RequirementRuleSpec,
+    TrackRule,
+    courses_applied,
+)
+from app.sequence.plan import _candidate_tracks, _needs_for_requirement
 from app.sequence.types import Constraint, CourseNeed
 
 FALL26 = Term.parse("Fall 2026")
@@ -445,3 +451,65 @@ def test_a_full_track_still_contributes_every_course():
         spec, _pool_program(), frozenset(), track_name="Full"
     )
     assert [n.code for n in needs] == ["P1", "P2"]
+
+
+# --- An elective pool drawn from the same courses as the concentration.
+#
+# Global Affairs' electives are "additional credits from any of the concentrations", so every
+# concentration course is also an elective course. Counting them in both places drops the
+# elective placeholder out of the sequence entirely and hands the student a finish date one
+# term early — which is the number they act on.
+
+
+def _overlapping_program():
+    return ProgramRules(
+        name="Overlap",
+        total_credits=18,
+        requirements=(
+            _pool_spec(),
+            RequirementRuleSpec(
+                "Electives", "credits", 9, course_codes=("P1", "P2", "P3", "P4", "P5")
+            ),
+        ),
+        courses={
+            code: CourseRule(code=code, title=code, credits=3)
+            for code in ("P1", "P2", "P3", "P4", "P5")
+        },
+    )
+
+
+def test_electives_still_owed_when_the_concentration_used_the_same_courses():
+    program = _overlapping_program()
+    held = frozenset({"P1", "P2", "P3"})
+    spent = courses_applied(
+        _pool_spec(), set(held), program.courses, track_name="Pool"
+    )
+
+    needs, _u, assumptions = _needs_for_requirement(
+        program.requirements[1], program, held, spent=frozenset(spent)
+    )
+
+    assert [n.credits for n in needs] == [9], "the full elective pool is still owed"
+    assert any("9" in a.statement for a in assumptions)
+
+
+def test_a_surplus_past_the_concentration_count_does_reach_the_electives():
+    """Five held, three spent on the concentration: six credits of electives remain."""
+    program = _overlapping_program()
+    held = frozenset({"P1", "P2", "P3", "P4", "P5"})
+    spent = courses_applied(
+        _pool_spec(), set(held), program.courses, track_name="Pool"
+    )
+
+    needs, _u, _a = _needs_for_requirement(
+        program.requirements[1], program, held, spent=frozenset(spent)
+    )
+
+    assert [n.credits for n in needs] == [3]
+
+
+def test_a_finished_pool_track_is_not_re_sequenced():
+    """`is_complete`, not "holds every listed course" — the strict test never fires for a
+    pool, so a student who has finished a concentration is offered all of them again."""
+    program = _overlapping_program()
+    assert _candidate_tracks(program, frozenset({"P1", "P2", "P3"})) == ["Pool"]

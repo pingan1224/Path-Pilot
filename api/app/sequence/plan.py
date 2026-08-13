@@ -20,7 +20,7 @@ what it is.
 
 from __future__ import annotations
 
-from app.planning.rules import ProgramRules, RequirementRuleSpec
+from app.planning.rules import ProgramRules, RequirementRuleSpec, courses_applied
 from app.planning.types import CourseState, StatedCourse
 from app.sequence.offerings import OfferingBasis, parse_offering
 from app.sequence.solver import (
@@ -61,6 +61,7 @@ def _needs_for_requirement(
     held: frozenset[str],
     *,
     track_name: str | None = None,
+    spent: frozenset[str] = frozenset(),
 ) -> tuple[list[CourseNeed], list[str], list[Assumption]]:
     """The courses this requirement still needs, plus anything unplaceable or assumed."""
     needs: list[CourseNeed] = []
@@ -123,10 +124,14 @@ def _needs_for_requirement(
         )
 
     if spec.rule == "credits":
+        # `spent` is what the requirements above have already used. Global Affairs draws
+        # its electives from the same courses its concentrations are made of, so counting
+        # them here as well would drop nine credits out of the sequence and hand the
+        # student a finish date a term too early.
         earned = sum(
             program.courses[c].credits
             for c in spec.course_codes
-            if c in held and c in program.courses
+            if c in held and c not in spent and c in program.courses
         )
         short = max(spec.min_credits - earned, 0)
         if short:
@@ -169,9 +174,11 @@ def _candidate_tracks(program: ProgramRules, held: frozenset[str]) -> list[str |
     for spec in program.requirements:
         if spec.rule != "one_track" or not spec.tracks:
             continue
-        finished = [
-            t for t in spec.tracks if all(c in held for c in t.course_codes)
-        ]
+        # `is_complete`, not "holds every listed course": a pool track is finished at its
+        # own count, and the stricter test would call a finished concentration unfinished
+        # and re-sequence all eight of Global Affairs' options against a student who has
+        # already chosen one.
+        finished = [t for t in spec.tracks if t.is_complete(held)]
         if finished:
             return [finished[0].name]
         return [t.name for t in spec.tracks]
@@ -223,13 +230,17 @@ def build_sequence(
         unplaceable: list[str] = []
         assumptions = list(base_assumptions)
 
+        spent: set[str] = set()
         for spec in program.requirements:
             spec_needs, spec_unplaceable, spec_assumptions = _needs_for_requirement(
-                spec, program, held, track_name=track
+                spec, program, held, track_name=track, spent=frozenset(spent)
             )
             needs.extend(spec_needs)
             unplaceable.extend(spec_unplaceable)
             assumptions.extend(spec_assumptions)
+            spent |= courses_applied(
+                spec, set(held) - spent, program.courses, track_name=track
+            )
 
         if unplaceable:
             assumptions.append(

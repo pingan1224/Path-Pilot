@@ -282,8 +282,17 @@ def evaluate_requirement(
     courses: dict[str, CourseRule],
     *,
     counting_states: frozenset[CourseState] = frozenset({CourseState.completed}),
+    consumed: frozenset[str] = frozenset(),
 ) -> Finding:
-    """One requirement, one finding. Dispatches on `rule` rather than inferring intent."""
+    """One requirement, one finding. Dispatches on `rule` rather than inferring intent.
+
+    `consumed` is what earlier requirements have already applied. Only the `credits` rule
+    honours it, because only that rule means "and this much *more*" — Global Affairs draws
+    its electives from the same union of courses its concentrations are built from, so
+    counting a course in both places would report a student twelve credits closer to
+    graduating than they are. A rule that names specific courses is not at risk: nothing
+    else can take them.
+    """
     citation = Citation(
         label=spec.name, url=spec.source_url, verified_on=spec.verified_on, quote=spec.caveat
     )
@@ -314,8 +323,13 @@ def evaluate_requirement(
     if spec.rule == "one_track":
         # Credit counting answers this wrong: one course from each of two tracks is the
         # full credit total and completes neither.
+        # A named required course counts as progress in its track. It is the strongest
+        # signal there is about which option someone is taking, and reading only the pool
+        # would say "not started" to a student holding the very course the track is built
+        # around.
         progress = [
-            (track, [c for c in track.course_codes if c in held]) for track in spec.tracks
+            (track, [c for c in track.required_codes + track.course_codes if c in held])
+            for track in spec.tracks
         ]
         complete = [t for t, done in progress if t.is_complete(held)]
         if complete:
@@ -328,7 +342,35 @@ def evaluate_requirement(
             )
 
         started = [(t, done) for t, done in progress if done]
+        counts = "; ".join(f"{t.name} needs {t.required_count}" for t, _ in progress)
         if len(started) > 1:
+            # Options can list the same course. Global Affairs' eight concentrations share
+            # most of theirs, so one course "starts" six of them — and telling that student
+            # their work is scattered describes something they have not done. What is true
+            # is narrower: their record does not yet say which option they are taking.
+            counted = {c for _, done in started for c in done}
+            covering = [
+                t
+                for t, _ in started
+                if counted <= set(t.required_codes) | set(t.course_codes)
+            ]
+            if covering:
+                return Finding(
+                    verdict=Verdict.not_satisfied,
+                    key=rkey,
+                    summary=f"{spec.name}: which option is not yet clear",
+                    detail=(
+                        f"{', '.join(sorted(counted))} "
+                        + ("is" if len(counted) == 1 else "are")
+                        + " listed under more than one option ("
+                        + ", ".join(t.name for t in covering)
+                        + "), so your record does not yet say which one you are taking. "
+                        f"{counts}."
+                    ),
+                    citations=(citation,),
+                    next_step=f"Tell your advisor which {spec.name} option you are taking.",
+                )
+
             names = ", ".join(t.name for t, _ in started)
             return Finding(
                 verdict=Verdict.not_satisfied,
@@ -345,13 +387,7 @@ def evaluate_requirement(
                 # models any "pick one path and finish it" choice, and Global Security uses
                 # it for a capstone that is a thesis or a practicum — telling that student to
                 # pick a concentration would describe a decision their degree does not have.
-                next_step=(
-                    f"Pick one {spec.name} option and complete it: "
-                    + "; ".join(
-                        f"{t.name} needs {t.required_count}" for t, _ in progress
-                    )
-                    + "."
-                ),
+                next_step=f"Pick one {spec.name} option and complete it: {counts}.",
             )
         if started:
             track, done = started[0]
@@ -432,12 +468,16 @@ def evaluate_requirement(
         )
 
     # rule == "credits"
+    available = held - consumed
     listed_credits = sum(
-        courses[c].credits for c in spec.course_codes if c in held and c in courses
+        courses[c].credits for c in spec.course_codes if c in available and c in courses
     )
     # Courses the student holds that this tool cannot place: the elective scope is wider
     # than the listed set, so silence here would wrongly reject a legitimate choice.
-    unknown_held = [c for c in held if c not in courses]
+    unknown_held = [c for c in available if c not in courses]
+    # Said out loud, because a student who has taken six courses off this very list and is
+    # told they have none of it done will otherwise think the tool has lost their record.
+    elsewhere = [c for c in spec.course_codes if c in consumed]
 
     if listed_credits >= spec.min_credits:
         return Finding(
@@ -449,6 +489,13 @@ def evaluate_requirement(
         )
 
     detail = f"{listed_credits} of {spec.min_credits} credits so far."
+    if elsewhere:
+        detail += (
+            f" {', '.join(sorted(elsewhere))} "
+            + ("is" if len(elsewhere) == 1 else "are")
+            + " on this list too, but already counted toward an earlier requirement, so "
+            "the same credits are not counted twice."
+        )
     if spec.caveat:
         detail += f" {spec.caveat}"
     if unknown_held:
@@ -467,6 +514,57 @@ def evaluate_requirement(
         next_step="Confirm your elective choice with your advisor and in Albert.",
         check_in_albert=bool(unknown_held) or bool(spec.caveat),
     )
+
+
+def courses_applied(
+    spec: RequirementRuleSpec,
+    held: set[str],
+    courses: dict[str, CourseRule],
+    *,
+    track_name: str | None = None,
+) -> set[str]:
+    """Which of the student's courses this requirement uses up.
+
+    A course is one course; a degree cannot spend it twice. This is what a later `credits`
+    pool subtracts, so it is deliberately capped at what the requirement actually needs —
+    a student who takes eight courses from a concentration that asks for six has two left
+    to spend elsewhere, and saying otherwise would take credits away from them.
+
+    Where the choice is arbitrary — which five of a pool of thirty-eight, which of two
+    tracks a shared course belongs to — it is made in the bulletin's listed order. Every
+    course in such a pool carries the same credits, so the arithmetic does not depend on
+    the choice; only the wording of what is left does.
+
+    `track_name` names the track to attribute against. The sequence planner sequences one
+    concentration at a time and knows which; an audit of a record does not, and infers it.
+    """
+    if spec.rule == "all_of":
+        return {c for c in spec.course_codes if c in held}
+
+    if spec.rule == "one_track":
+        if not spec.tracks:
+            return set()
+        named_track = next((t for t in spec.tracks if t.name == track_name), None)
+        # Failing that, the track the record most resembles. Not a claim about which one
+        # the student has chosen — that is theirs — only about attributing their courses.
+        track = named_track or max(
+            spec.tracks,
+            key=lambda t: len([c for c in t.required_codes + t.course_codes if c in held]),
+        )
+        named = {c for c in track.required_codes if c in held}
+        pool = [c for c in track.course_codes if c in held and c not in named]
+        return named | set(pool[: track.pool_count])
+
+    # rule == "credits": what it counted, and no more.
+    used: set[str] = set()
+    total = 0.0
+    for code in spec.course_codes:
+        if total >= spec.min_credits:
+            break
+        if code in held and code in courses:
+            used.add(code)
+            total += courses[code].credits
+    return used
 
 
 def evaluate_plan(
@@ -498,12 +596,23 @@ def evaluate_plan(
         else:
             result.credits_planned += credits
 
+    # Requirements are evaluated in the order the bulletin states them, each one spending
+    # the courses it needs. Order matters and the bulletin's is the right one: the named
+    # requirements come first and the "additional credits" pool last, which is what
+    # "additional" means.
+    held = {c.code for c in stated_courses if c.state in counting}
+    spent: set[str] = set()
     for spec in program.requirements:
         result.add(
             evaluate_requirement(
-                spec, stated, program.courses, counting_states=frozenset(counting)
+                spec,
+                stated,
+                program.courses,
+                counting_states=frozenset(counting),
+                consumed=frozenset(spent),
             )
         )
+        spent |= courses_applied(spec, held - spent, program.courses)
 
     # Prerequisites only matter for what the student has not yet taken.
     for course in stated_courses:

@@ -401,3 +401,48 @@ def test_course_findings_name_their_subject_and_requirement_findings_do_not(prog
     assert prereq.subject == "A2"
     assert unknown.subject == "XYZ-GC 1"
     assert requirement.subject is None
+
+
+# --- Pool concentrations: a track that lists more courses than it requires.
+#
+# Management & Analytics states each concentration as exactly two courses and requires both,
+# so "complete the track" and "hold every course in it" were the same sentence and the rule
+# was written that way. Financial Planning lists five per concentration and asks for three.
+# Encoding that under the old reading told a student they owed two courses they do not,
+# which is the direction of error this whole engine exists to avoid.
+
+
+def _pool(name="Financial Analytics"):
+    return TrackRule(name, ("F1", "F2", "F3", "F4", "F5"), min_courses=3)
+
+
+def test_a_pool_track_completes_at_its_required_count_not_its_length():
+    spec = RequirementRuleSpec("Concentration", "one_track", 9, tracks=(_pool(),))
+    finding = evaluate_requirement(
+        spec, stated(("F1", "completed"), ("F2", "completed"), ("F3", "completed")), {}
+    )
+    assert finding.verdict is Verdict.satisfied, finding.detail
+
+
+def test_a_pool_track_short_of_its_count_says_how_many_more_not_which():
+    """Naming every untaken course would overstate the requirement by the pool's surplus."""
+    spec = RequirementRuleSpec("Concentration", "one_track", 9, tracks=(_pool(),))
+    finding = evaluate_requirement(
+        spec, stated(("F1", "completed"), ("F2", "completed")), {}
+    )
+    assert finding.verdict is Verdict.not_satisfied
+    assert "2 of 3" in finding.detail
+    assert "Choose 1 more" in finding.detail
+    # The surplus must not be presented as owed.
+    assert "F4" in finding.detail and "F5" in finding.detail  # offered as options
+    assert "Choose 1 more" in finding.next_step
+
+
+def test_a_full_track_still_requires_every_course():
+    """The default is unchanged: no min_courses means all of them, the stricter reading."""
+    spec = RequirementRuleSpec(
+        "Concentration", "one_track", 6, tracks=(TrackRule("Risk", ("R1", "R2")),)
+    )
+    finding = evaluate_requirement(spec, stated(("R1", "completed")), {})
+    assert finding.verdict is Verdict.not_satisfied
+    assert "R2" in finding.detail

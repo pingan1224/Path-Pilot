@@ -26,6 +26,8 @@ from app.sequence.solver import (
     topological_order,
 )
 from app.sequence.terms import Season, Term, TermParseError
+from app.planning.rules import CourseRule, ProgramRules, RequirementRuleSpec, TrackRule
+from app.sequence.plan import _needs_for_requirement
 from app.sequence.types import Constraint, CourseNeed
 
 FALL26 = Term.parse("Fall 2026")
@@ -389,3 +391,57 @@ def test_every_named_constraint_really_does_unblock_it():
             enforce=ALL_CONSTRAINTS - {constraint},
         )
         assert relaxed is not None, f"{constraint} was named but does not unblock it"
+
+
+# --- Pool concentrations, at the layer that turns a requirement into courses to schedule.
+#
+# A track listing five courses and requiring three must contribute three. Scheduling the
+# surplus invents coursework the student does not owe and pushes the finish term out by the
+# difference — the same over-statement the audit side guards against, in the place a student
+# actually reads a date off.
+
+
+def _pool_spec():
+    return RequirementRuleSpec(
+        "Concentration",
+        "one_track",
+        9,
+        tracks=(TrackRule("Pool", ("P1", "P2", "P3", "P4", "P5"), min_courses=3),),
+    )
+
+
+def _pool_program():
+    return ProgramRules(
+        name="Pool",
+        total_credits=9,
+        requirements=(_pool_spec(),),
+        courses={
+            code: CourseRule(code=code, title=code, credits=3)
+            for code in ("P1", "P2", "P3", "P4", "P5")
+        },
+    )
+
+
+def test_a_pool_track_contributes_only_its_required_count():
+    needs, _unplaceable, _assumptions = _needs_for_requirement(
+        _pool_spec(), _pool_program(), frozenset(), track_name="Pool"
+    )
+    assert [n.code for n in needs] == ["P1", "P2", "P3"]
+
+
+def test_a_pool_track_counts_what_is_already_held():
+    """Two held means one left to schedule, not three."""
+    needs, _unplaceable, _assumptions = _needs_for_requirement(
+        _pool_spec(), _pool_program(), frozenset({"P1", "P2"}), track_name="Pool"
+    )
+    assert [n.code for n in needs] == ["P3"]
+
+
+def test_a_full_track_still_contributes_every_course():
+    spec = RequirementRuleSpec(
+        "Concentration", "one_track", 6, tracks=(TrackRule("Full", ("P1", "P2")),)
+    )
+    needs, _u, _a = _needs_for_requirement(
+        spec, _pool_program(), frozenset(), track_name="Full"
+    )
+    assert [n.code for n in needs] == ["P1", "P2"]

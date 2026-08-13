@@ -120,6 +120,7 @@ def load_program_rules(session: Session, program_code: str) -> ProgramRules:
             TrackRule(
                 name=track.name,
                 course_codes=tuple(sorted(c.code for c in track.courses)),
+                min_courses=track.min_courses,
             )
             for track in sorted(requirement.tracks, key=lambda t: t.sort_order)
         )

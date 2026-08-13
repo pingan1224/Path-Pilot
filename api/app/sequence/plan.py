@@ -70,6 +70,15 @@ def _needs_for_requirement(
     if spec.rule == "one_track":
         track = next((t for t in spec.tracks if t.name == track_name), None)
         codes = list(track.course_codes) if track else []
+        if track and track.is_pool:
+            # A pool track offers more courses than it needs, so scheduling all of them
+            # would invent coursework the student does not owe and push the finish date out
+            # by the difference. Which ones they pick is theirs to decide; what the sequence
+            # can honestly do is place enough of them, taking the ones already held first
+            # and then filling in listed order so two runs on the same record agree.
+            outstanding = track.required_count - sum(1 for c in codes if c in held)
+            unheld = [c for c in codes if c not in held]
+            codes = [c for c in codes if c in held] + unheld[: max(outstanding, 0)]
     elif spec.rule == "all_of":
         codes = list(spec.course_codes)
     else:

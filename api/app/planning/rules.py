@@ -61,6 +61,19 @@ class CourseRule:
 class TrackRule:
     name: str
     course_codes: tuple[str, ...]
+    # None means every listed course is required — Management & Analytics states its
+    # concentrations that way. Financial Planning lists five and asks for three, so the
+    # courses are a pool and this is how many to draw from it.
+    min_courses: int | None = None
+
+    @property
+    def required_count(self) -> int:
+        return self.min_courses or len(self.course_codes)
+
+    @property
+    def is_pool(self) -> bool:
+        """True when the track offers more courses than it requires."""
+        return self.required_count < len(self.course_codes)
 
 
 @dataclass(frozen=True)
@@ -285,7 +298,7 @@ def evaluate_requirement(
         progress = [
             (track, [c for c in track.course_codes if c in held]) for track in spec.tracks
         ]
-        complete = [t for t, done in progress if len(done) == len(t.course_codes)]
+        complete = [t for t, done in progress if len(done) >= t.required_count]
         if complete:
             return Finding(
                 verdict=Verdict.satisfied,
@@ -309,18 +322,37 @@ def evaluate_requirement(
                     "requirement."
                 ),
                 citations=(citation,),
-                next_step="Pick one concentration and complete both of its courses.",
+                next_step=(
+                    "Pick one concentration and complete it: "
+                    + "; ".join(
+                        f"{t.name} needs {t.required_count}" for t, _ in progress
+                    )
+                    + "."
+                ),
             )
         if started:
             track, done = started[0]
             remaining = [c for c in track.course_codes if c not in done]
+            short = track.required_count - len(done)
+            if track.is_pool:
+                # Naming every untaken course would overstate the requirement by the size of
+                # the pool: five are listed and three complete it, so "remaining: <five
+                # courses>" tells a student they owe two more than they do.
+                detail = (
+                    f"{len(done)} of {track.required_count} {track.name} courses done. "
+                    f"Choose {short} more from: {', '.join(remaining)}."
+                )
+                next_step = f"Choose {short} more {track.name} course(s)."
+            else:
+                detail = f"Remaining in {track.name}: {', '.join(remaining)}."
+                next_step = f"Plan {', '.join(remaining)}."
             return Finding(
                 verdict=Verdict.not_satisfied,
                 key=rkey,
                 summary=f"{spec.name}: {track.name} in progress",
-                detail=f"Remaining in {track.name}: {', '.join(remaining)}.",
+                detail=detail,
                 citations=(citation,),
-                next_step=f"Plan {', '.join(remaining)}.",
+                next_step=next_step,
             )
         # Nothing counted yet — but "not started" is wrong if a track course is in flight,
         # and a student reading that about a course they are sitting in stops believing
@@ -334,13 +366,19 @@ def evaluate_requirement(
         if underway:
             track, courses_now = underway[0]
             remaining = [c for c in track.course_codes if c not in courses_now]
+            short = track.required_count - len(courses_now)
+            still_needs = (
+                f"{short} more from {', '.join(remaining)}"
+                if track.is_pool
+                else ", ".join(remaining)
+            )
             return Finding(
                 verdict=Verdict.not_satisfied,
                 key=rkey,
                 summary=f"{spec.name}: {track.name} underway",
                 detail=(
                     f"You are taking {', '.join(courses_now)} now. Once complete, "
-                    f"{track.name} still needs {', '.join(remaining)}."
+                    f"{track.name} still needs {still_needs}."
                 ),
                 citations=(citation,),
                 next_step=f"Plan {', '.join(remaining)}.",

@@ -21,7 +21,7 @@ from app.services.retrieval import SCHOOL_TO_CORPUS_SLUG, RetrievalScope
 # A set rather than the single constant this used to be. Encoding a program is hand work
 # (see ingest/requirements.py on why a parser is not acceptable here), so this list grows
 # one validated program at a time and membership is the gate for degree-audit features.
-ENCODED_PROGRAMS: frozenset[str] = frozenset({"MASY-MS-REAL"})
+ENCODED_PROGRAMS: frozenset[str] = frozenset({"MASY-MS-REAL", "MSFP-MS-REAL"})
 
 # How old a self-reported record gets before the UI nudges. Not a staleness claim about
 # authority — the data was never authoritative — just a prompt that plans drift.

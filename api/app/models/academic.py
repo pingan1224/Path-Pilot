@@ -69,8 +69,21 @@ class RequirementTrack(Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    # How many of the track's courses complete it. NULL means all of them, which is what
+    # Management & Analytics states — each of its concentrations is exactly two courses and
+    # both are required. Financial Planning lists five per concentration and asks for three,
+    # so a track whose courses are a pool rather than a list needs to say how deep to draw.
+    # Reading NULL as "all" keeps the stricter interpretation as the default: a track that
+    # forgot to declare its number demands everything rather than accepting one course.
+    min_courses: Mapped[int | None] = mapped_column(Integer)
+
     requirement: Mapped["Requirement"] = relationship(back_populates="tracks")
     courses: Mapped[list["Course"]] = relationship(secondary=requirement_track_courses)
+
+    @property
+    def required_course_count(self) -> int:
+        """The number of courses that complete this track."""
+        return self.min_courses or len(self.courses)
 
 
 class Term(Base, TimestampMixin):

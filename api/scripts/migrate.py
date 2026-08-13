@@ -203,6 +203,10 @@ STATEMENTS = [
     # text carries truncations. So the clause is stored verbatim and the planner is expected
     # to say it cannot verify, which is true, instead of staying quiet, which is not.
     "ALTER TABLE courses ADD COLUMN IF NOT EXISTS prerequisite_unparsed TEXT",
+    # How many of a concentration's courses complete it. NULL keeps the previous meaning —
+    # all of them — which is correct for Management & Analytics, where each concentration is
+    # two courses and both are required. Financial Planning lists five and asks for three.
+    "ALTER TABLE requirement_tracks ADD COLUMN IF NOT EXISTS min_courses INTEGER",
 ]
 
 

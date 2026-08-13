@@ -176,7 +176,8 @@ def test_unencoded_program_is_not_silently_added_to_the_gate():
     "ENTR-MS-REAL", "MSEM-MS-REAL", "ECOC-MS-REAL", "EMSC-MS-REAL",
     "GLOB-MS-REAL", "GLSP-MS-REAL", "MSPM-MS-REAL", "HCAT-MS-REAL",
     "PWRT-MS-REAL", "HRCM-MS-REAL", "TRAN-MS-REAL", "TCSB-MS-REAL",
-    "TCTM-MS-REAL", "TCHS-MS-REAL",
+    "TCTM-MS-REAL", "TCHS-MS-REAL", "INTG-MS-REAL", "PUBB-MS-REAL",
+    "PRCC-MS-REAL", "REAL-MS-REAL", "DEVE-MS-REAL",
 }), (
         "ENCODED_PROGRAMS changed. Confirm the new program's requirements are actually "
         "encoded and validated, then update this assertion."

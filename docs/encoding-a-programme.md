@@ -1,8 +1,8 @@
 # Encoding a degree programme
 
 How to add a programme to `ingest/requirements.py`, and the traps that have already cost
-time. Eight of twenty-three SPS graduate degrees are encoded; the rest are the same work
-repeated, which is why this is written down.
+time. Twenty-two of the twenty-three SPS graduate degrees are encoded; the twenty-third
+cannot be, for a reason worth reading before assuming it was skipped.
 
 Encoding is hand work on purpose. The requirements table is prose and layout — an area
 header, an indented list, a footnote that redefines "elective" — and a parser guessing at it
@@ -42,7 +42,9 @@ would be guessing at the thing the whole planner depends on.
 | "Required course X, then select five of the following" | `one_track` + `TrackSpec(required=[X], min_courses=5)` |
 | Capstone stated as "A **or** B" | `one_track`, one course per track |
 
-Two judgements the wording does not make for you:
+| "3 credits from each of the three areas, and 3 more from any" | one `credits` requirement per area, then one more for the extra — see below |
+
+Judgements the wording does not make for you:
 
 **A pool is not always worth enumerating.** Financial Planning lists five per concentration
 and asks for three — naming the three describes the requirement. Global Security lists
@@ -56,10 +58,28 @@ order a cohort's residencies rather than offering a choice, and Entrepreneurship
 named specialisations are optional groupings of elective courses. Neither is a requirement,
 and encoding them as tracks would invent a rule the bulletin does not state.
 
-**Where the capstone lives.** Global Affairs lists its thesis inside the core table. It is
-still encoded as its own `capstone` requirement, because that kind is what tells the
-sequence planner a capstone needs a term to itself. The requirement kinds describe the
-degree, not the page's layout.
+**Where the capstone lives.** Global Affairs and Public Relations list their capstones inside
+the core table. Both are still encoded as their own `capstone` requirement, because that kind
+is what tells the sequence planner a capstone needs a term to itself. The requirement kinds
+describe the degree, not the page's layout. The converse also happens: neither Real Estate
+degree states a capstone at all — the "Applied Project" that ends each concentration is a
+course inside it — and inventing one would assert a structure the bulletin does not have.
+
+**A pool of mixed credit values cannot state a course count.** Human Capital Management asks
+for "6 credits" from a list running 1.5 to 3, which is two courses or four depending on
+which. Those pools carry no `min_courses` and say so in the caveat. Only a uniform pool —
+Project Management's seven 3-credit courses, HCAT's seven 1.5-credit ones — can state a
+count. This is also why "Select six of the following: 9" is not a typo.
+
+**Two rules the vocabulary cannot state, and which way to fail.** Integrated Marketing asks
+for four courses from one concentration *or* three from one and one from another. Public
+Relations does the same with its concentration electives. Both are encoded as the strict
+reading, because the two ways of being wrong are not equivalent: a credit pool would accept
+four courses from four different concentrations and call a student finished who is not, while
+the strict reading tells a student on the mixed path that they owe a course they do not. The
+second is recoverable — the caveat is carried verbatim into the finding, so they read the
+bulletin's own sentence beside the tool's — and the first is the failure this engine exists
+to prevent. When a rule cannot be stated exactly, fail toward "not yet" rather than "done".
 
 ## When two requirements share a pool
 
@@ -74,6 +94,13 @@ from the requirement that names it.
 The failure this prevents is worth stating, because it looks like a pass: before it, a
 student who had finished the core and a concentration — thirty of forty-two credits — was
 told that only the thesis remained, and the sequence gave them a finish date a term early.
+
+Publishing is the shape this makes possible. Its three Areas of Study are not a choice —
+three credits are required from *each*, plus three more from any one of them, plus six
+elective credits the page also allows to be drawn from the areas. That is four `credits`
+requirements over overlapping pools, stated in the bulletin's order, and it is only correct
+because each one spends what it takes: the areas take three each, the additional-credits
+requirement sees what is left, the electives see what is left after that.
 
 ## Traps that have already bitten
 
@@ -99,19 +126,24 @@ and the published text carries truncations. Those courses carry
 
 **Prefixes are not degrees.** Real Estate and Real Estate Development share three course
 prefixes; Global Affairs and Global Security share two. A degree's requirements can draw on
-several catalogues.
+several catalogues, and these two name each other as legitimate sources of electives.
+
+**A page can list a course that does not exist.** Real Estate Development's elective table
+contains `DEVE1-GC 3024` with no title beside it and no entry in any course catalogue. It is
+left out of the encoding and named in the caveat. Validation refuses a code it cannot find,
+which is the right default — the fix is to say what was dropped, not to relax the check.
 
 ## What is left
 
-Encoded: Management and Analytics, Financial Planning, Global Security, Entrepreneurship and
-Management, Event Management, Executive Coaching, Marketing and Strategic Communications,
-Global Affairs.
+Twenty-two of the twenty-three are encoded. The twenty-third is not a backlog item.
 
-Not yet encoded: Global Hospitality, Global Sport, Human Capital Management, Human Capital
-Analytics and Technology, the HCM/HCAT dual degree, Integrated Marketing, Professional
-Writing, Project Management, Public Relations and Corporate Communication, Publishing, Real
-Estate, Real Estate Development, Sports Business, Translation and Interpreting, Travel and
-Tourism Management.
+**The HCM/HCAT dual degree cannot be encoded from its page.** It states 45 credits, says
+students complete the HCM degree and then the HCAT degree, and gives its learning outcomes as
+the union of the two. It publishes no requirements table. Since HCM is 30 credits and HCAT is
+30, something worth 15 credits is shared or waived, and the page does not say what. Encoding
+it would mean inventing the overlap. It stays out of `ENCODED_PROGRAMS`, where it reads to a
+student as "this tool cannot audit your programme" — which is true, and better than a
+confident audit against requirements nobody published.
 
 Overlapping options also cost the rule engine a distinction it did not have. Global Affairs'
 eight concentrations share most of their courses, so one course "starts" six of them. That

@@ -952,6 +952,336 @@ GLOBAL_HOSPITALITY: list[RequirementSpec] = [
 ]
 
 
+# The first programme whose concentration rule the vocabulary cannot state exactly. The page
+# asks for four courses from one concentration, *or* three from one and one from another, *or*
+# three plus an advised course from another SPS graduate programme.
+#
+# Encoded as the strict reading — four from one — because the two readings fail in opposite
+# directions and only one of them is survivable. A credit pool would accept four courses from
+# four different concentrations, which the bulletin does not allow, and telling a student they
+# have finished when they have not is the failure this whole engine is built against. The
+# strict reading errs the other way: it tells a student on the three-plus-one path that they
+# owe a course they do not, and the caveat is carried verbatim into that finding, so what they
+# read is the bulletin's own sentence next to the tool's.
+INTEGRATED_MARKETING: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Requirements", kind=RequirementKind.core, rule="all_of", min_credits=27,
+        courses=[
+            "INTG1-GC 1000", "INTG1-GC 1005", "INTG1-GC 1011", "INTG1-GC 1015",
+            "INTG1-GC 1025", "INTG1-GC 1030", "INTG1-GC 1035", "INTG1-GC 1055",
+            "INTG1-GC 1060",
+        ],
+    ),
+    RequirementSpec(
+        name="Concentration Courses", kind=RequirementKind.elective, rule="one_track",
+        min_credits=12,
+        tracks=[
+            TrackSpec(
+                "Brand Management",
+                [
+                    "INTG1-GC 2200", "INTG1-GC 2205", "INTG1-GC 2210",
+                    "INTG1-GC 2015", "INTG1-GC 2115",
+                ],
+                min_courses=4,
+            ),
+            TrackSpec(
+                "Digital Marketing",
+                [
+                    "INTG1-GC 2100", "INTG1-GC 2105", "INTG1-GC 2120",
+                    "INTG1-GC 2015", "INTG1-GC 2115",
+                ],
+                min_courses=4,
+            ),
+            TrackSpec(
+                "Marketing Analytics",
+                [
+                    "INTG1-GC 2300", "INTG1-GC 2305", "INTG1-GC 2310",
+                    "INTG1-GC 2315", "INTG1-GC 2015",
+                ],
+                min_courses=4,
+            ),
+        ],
+        caveat=(
+            "Complete four courses from any one concentration; or three courses from one "
+            "concentration and one from either of the others; or, with advisement, three "
+            "courses plus one 3-credit course in a related field from another NYU SPS "
+            "graduate programme. Only the first of those three is checked here, so if you "
+            "are on either of the others this requirement will read as unfinished — confirm "
+            "with your advisor. Internship (INTG1-GC 2015) is listed under all three "
+            "concentrations and Operations Strategy (INTG1-GC 2115) under two; it "
+            "additionally requires 18 completed credits and a minimum GPA of 3.0 to apply."
+        ),
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="all_of", min_credits=3,
+        courses=["INTG1-GC 4000"],
+    ),
+]
+
+
+# Publishing does not offer a choice between areas of study — it requires all three, three
+# credits each, plus a fourth three from whichever the student likes. That is four `credits`
+# requirements in the bulletin's own order, and it works because a course is spent once: the
+# three area requirements take their three credits each, the additional-credits requirement
+# sees only what is left, and the electives — which the page also allows to be drawn from the
+# areas — see what is left after that.
+PUBLISHING_CONTENT = [
+    "PUBB1-GC 3310", "PUBB1-GC 3320", "PUBB1-GC 3360", "PUBB1-GC 3370", "PUBB1-GC 3375",
+    "PUBB1-GC 3380", "PUBB1-GC 3400", "PUBB1-GC 3401", "PUBB1-GC 3403", "PUBB1-GC 3404",
+    "PUBB1-GC 3406", "PUBB1-GC 3408", "PUBB1-GC 3409", "PUBB1-GC 3411", "PUBB1-GC 3421",
+    "PUBB1-GC 3440", "PUBB1-GC 3441", "PUBB1-GC 3454", "PUBB1-GC 3455", "PUBB1-GC 3456",
+    "PUBB1-GC 3457",
+]
+PUBLISHING_MARKETING = [
+    "PUBB1-GC 3110", "PUBB1-GC 3160", "PUBB1-GC 3451", "PUBB1-GC 3453", "PUBB1-GC 3470",
+    "PUBB1-GC 3471", "PUBB1-GC 3472", "PUBB1-GC 3473", "PUBB1-GC 3474", "PUBB1-GC 3475",
+]
+PUBLISHING_PROFITABILITY = [
+    "PUBB1-GC 2010", "PUBB1-GC 3200", "PUBB1-GC 3210", "PUBB1-GC 3220", "PUBB1-GC 3230",
+    "PUBB1-GC 3432", "PUBB1-GC 3450", "PUBB1-GC 3561",
+]
+PUBLISHING_SEMINARS = [
+    "PUBB1-GC 3015", "PUBB1-GC 3025", "PUBB1-GC 3035", "PUBB1-GC 3045", "PUBB1-GC 3055",
+    "PUBB1-GC 3065", "PUBB1-GC 3075", "PUBB1-GC 3412", "PUBB1-GC 3413", "PUBB1-GC 3910",
+]
+
+_AREA_CAVEAT = (
+    "Three credits are required from each of the three Areas of Study. Courses here are "
+    "1.5 or 3 credits, so that is one course or two depending on which you choose."
+)
+
+PUBLISHING: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Required Courses", kind=RequirementKind.core, rule="all_of", min_credits=15,
+        courses=[
+            "PUBB1-GC 1005", "PUBB1-GC 1010", "PUBB1-GC 1100", "PUBB1-GC 1150",
+            "PUBB1-GC 1155", "PUBB1-GC 1200", "PUBB1-GC 1250",
+        ],
+    ),
+    RequirementSpec(
+        name="Media Content Development", kind=RequirementKind.elective, rule="credits",
+        min_credits=3, courses=PUBLISHING_CONTENT, caveat=_AREA_CAVEAT,
+    ),
+    RequirementSpec(
+        name="Media Marketing and Distribution", kind=RequirementKind.elective,
+        rule="credits", min_credits=3, courses=PUBLISHING_MARKETING, caveat=_AREA_CAVEAT,
+    ),
+    RequirementSpec(
+        name="Media Profitability", kind=RequirementKind.elective, rule="credits",
+        min_credits=3, courses=PUBLISHING_PROFITABILITY, caveat=_AREA_CAVEAT,
+    ),
+    RequirementSpec(
+        name="Additional Area of Study Credits", kind=RequirementKind.elective,
+        rule="credits", min_credits=3,
+        courses=PUBLISHING_CONTENT + PUBLISHING_MARKETING + PUBLISHING_PROFITABILITY,
+        caveat=(
+            "Three further credits from any one of the Areas of Study, on top of the three "
+            "required from each. Courses already counted toward an area are not counted "
+            "again here."
+        ),
+    ),
+    RequirementSpec(
+        name="Electives", kind=RequirementKind.elective, rule="credits", min_credits=6,
+        # The page allows these six credits to come from the seminars or from any area, so
+        # the pool is both.
+        courses=(
+            PUBLISHING_SEMINARS
+            + PUBLISHING_CONTENT
+            + PUBLISHING_MARKETING
+            + PUBLISHING_PROFITABILITY
+        ),
+        caveat=(
+            "Six credits from the advanced seminars, or further courses from any Area of "
+            "Study. Internship in Publishing (PUBB1-GC 3910) may be taken twice for a total "
+            "of 3 elective credits, but only with different companies, imprints or brands, "
+            "or in different functions within one company — a condition this tool cannot "
+            "check."
+        ),
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="all_of", min_credits=3,
+        courses=["PUBB1-GC 1900"],
+        caveat=(
+            "Taken in the final semester, with Finance in Publishing II (PUBB1-GC 1155) as "
+            "its co-requisite."
+        ),
+    ),
+]
+
+
+# Both concentrations require the same four courses and differ only in their elective pool,
+# so holding the shared four says nothing about which one a student is taking — which is
+# exactly what the "option is not yet clear" reading is for.
+#
+# The capstone is listed inside the core table and is separated out here, as Global Affairs'
+# is, so the sequence planner knows to give it a term.
+PUBLIC_RELATIONS_REQUIRED = ["PRCC1-GC 1000", "PRCC1-GC 1040", "PRCC1-GC 1050", "PRCC1-GC 1060"]
+
+PUBLIC_RELATIONS: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Requirements", kind=RequirementKind.core, rule="all_of", min_credits=18,
+        courses=[
+            "PRCC1-GC 1010", "PRCC1-GC 1020", "PRCC1-GC 1030",
+            "PRCC1-GC 1070", "PRCC1-GC 1080", "PRCC1-GC 1900",
+        ],
+    ),
+    RequirementSpec(
+        name="Concentrations", kind=RequirementKind.elective, rule="one_track",
+        min_credits=21,
+        tracks=[
+            TrackSpec(
+                "Public Relations Management",
+                [
+                    "PRCC1-GC 2200", "PRCC1-GC 2210", "PRCC1-GC 2220", "PRCC1-GC 2230",
+                    "PRCC1-GC 2240", "PRCC1-GC 3901", "PRCC1-GC 3100",
+                ],
+                min_courses=3,
+                required=PUBLIC_RELATIONS_REQUIRED,
+            ),
+            TrackSpec(
+                "Corporate and Organizational Communication",
+                [
+                    "PRCC1-GC 2100", "PRCC1-GC 2110", "PRCC1-GC 2120", "PRCC1-GC 2130",
+                    "PRCC1-GC 2140", "PRCC1-GC 2150", "PRCC1-GC 2160", "PRCC1-GC 3901",
+                    "PRCC1-GC 3100",
+                ],
+                min_courses=3,
+                required=PUBLIC_RELATIONS_REQUIRED,
+            ),
+        ],
+        caveat=(
+            "Each concentration is four required courses plus three concentration "
+            "electives. The bulletin also allows two of those electives plus one from the "
+            "other concentration; only the three-from-one reading is checked here, so if "
+            "you are mixing, confirm with your advisor. Internship (PRCC1-GC 3901) and "
+            "Special Topics (PRCC1-GC 3100) are printed under both concentrations as "
+            "optional courses; the internship additionally requires 18 completed credits "
+            "and a minimum GPA of 3.0 to apply."
+        ),
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="all_of", min_credits=3,
+        courses=["PRCC1-GC 4000"],
+    ),
+]
+
+
+# Real Estate and Real Estate Development are siblings and share courses in both directions
+# — each names the other as a legitimate source of electives. Neither states a capstone: the
+# "Applied Project" that ends each concentration is a course inside it, and calling it a
+# capstone here would assert a structure the bulletin does not.
+REAL_ESTATE: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Curriculum: Tier I", kind=RequirementKind.core, rule="all_of",
+        min_credits=12,
+        courses=["REAL1-GC 1075", "REAL1-GC 1055", "DEVE1-GC 1050", "REAL1-GC 1035"],
+    ),
+    RequirementSpec(
+        name="Core Curriculum: Tier II", kind=RequirementKind.core, rule="all_of",
+        min_credits=9,
+        courses=["REAL1-GC 1070", "REAL1-GC 1095", "DEVE1-GC 1060"],
+    ),
+    RequirementSpec(
+        name="Concentration Requirement", kind=RequirementKind.elective, rule="one_track",
+        min_credits=9,
+        tracks=[
+            TrackSpec(
+                "Finance and Investment",
+                ["REAL1-GC 2300", "REAL1-GC 2315", "REAL1-GC 2399"],
+            ),
+            TrackSpec(
+                "Asset Management",
+                ["REAL1-GC 2610", "REAL1-GC 2635", "REAL1-GC 2699"],
+            ),
+        ],
+        caveat=(
+            "Select one concentration and complete all three of its courses."
+        ),
+    ),
+    RequirementSpec(
+        name="Electives", kind=RequirementKind.elective, rule="credits", min_credits=12,
+        courses=[
+            "REAL1-GC 3015", "REAL1-GC 3025", "REAL1-GC 3035", "REAL1-GC 3075",
+            "REAL1-GC 3120", "REAL1-GC 3145", "REAL1-GC 3175", "REAL1-GC 3180",
+            "REAL1-GC 3185", "REAL1-GC 3405", "REAL1-GC 3410", "CONM1-GC 1015",
+            "DEVE1-GC 2005", "DEVE1-GC 2105", "DEVE1-GC 2200", "REAL1-GC 1065",
+            "REAL1-GC 2720", "REAL1-GC 3135", "REAL1-GC 3205",
+        ],
+        caveat=(
+            "Select 12 credits in any combination of the listed courses, courses from the "
+            "concentration you did not take, or — with the Program Director's permission — "
+            "courses from the MS in Real Estate Development. The last of those is outside "
+            "what can be checked here. The listed courses are 1.5 or 3 credits, so how many "
+            "courses 12 credits is depends on which you choose, and not all are offered "
+            "every semester."
+        ),
+    ),
+]
+
+
+REAL_ESTATE_DEVELOPMENT: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Curriculum: Tier I", kind=RequirementKind.core, rule="all_of",
+        min_credits=12,
+        courses=["REAL1-GC 1035", "DEVE1-GC 1050", "DEVE1-GC 1060", "REAL1-GC 1075"],
+    ),
+    RequirementSpec(
+        name="Core Curriculum: Tier II", kind=RequirementKind.core, rule="all_of",
+        min_credits=12,
+        courses=["DEVE1-GC 1010", "DEVE1-GC 1020", "DEVE1-GC 1025", "REAL1-GC 1055"],
+    ),
+    RequirementSpec(
+        name="Concentration Options", kind=RequirementKind.elective, rule="one_track",
+        min_credits=12,
+        tracks=[
+            TrackSpec(
+                "The Business of Development",
+                ["REAL1-GC 1095", "DEVE1-GC 2010", "REAL1-GC 2300", "DEVE1-GC 2015"],
+            ),
+            TrackSpec(
+                "Sustainable Development",
+                ["CONM1-GC 1015", "DEVE1-GC 2105", "DEVE1-GC 2110", "DEVE1-GC 2115"],
+            ),
+            TrackSpec(
+                "Global Real Estate",
+                ["DEVE1-GC 2200", "DEVE1-GC 2205", "REAL1-GC 3180", "DEVE1-GC 2215"],
+            ),
+            TrackSpec(
+                "Impact Development",
+                ["DEVE1-GC 3040", "DEVE1-GC 3015", "DEVE1-GC 2005", "DEVE1-GC 2315"],
+            ),
+        ],
+        caveat=(
+            "Select one of the four options and complete all four of its courses."
+        ),
+    ),
+    RequirementSpec(
+        name="Electives", kind=RequirementKind.elective, rule="credits", min_credits=6,
+        # DEVE1-GC 3024 is listed on the page — with no title beside it — and does not exist
+        # in the course catalogue, so it cannot be carried here. See the caveat.
+        courses=[
+            "DEVE1-GC 3000", "DEVE1-GC 3005", "REAL1-GC 1070", "REAL1-GC 2300",
+            "REAL1-GC 3055", "REAL1-GC 3120", "REAL1-GC 3175", "DEVE1-GC 1065",
+            "DEVE1-GC 3200", "DEVE1-GC 3100", "REAL1-GC 2635", "REAL1-GC 3025",
+            "REAL1-GC 3035", "REAL1-GC 3135", "REAL1-GC 3900", "CONM1-GC 3911",
+            "DEVE1-GC 3201", "DEVE1-GC 3202", "DEVE1-GC 3203", "DEVE1-GC 3204",
+            "DEVE1-GC 3205",
+        ],
+        caveat=(
+            "Select 6 credits in any combination of the listed courses, courses from the "
+            "options you did not take, or — with the Program Director's permission — "
+            "courses from the MS in Construction Management or the MS in Real Estate. Those "
+            "last are outside what can be checked here. Three further gaps: the bulletin "
+            "lists one course code (DEVE1-GC 3024) with no title and no entry in the course "
+            "catalogue, so it is not carried here; both Professional Internship courses "
+            "(DEVE1-GC 3100, CONM1-GC 3911) are published without a fixed credit value; and "
+            "the listed courses range from 1.5 to 3 credits, so how many 6 credits is "
+            "depends on which you choose."
+        ),
+    ),
+]
+
+
 PROGRAMS: list[ProgramSpec] = [
     ProgramSpec(
         page_slug="graduate__professional-studies__programs__management-analytics-ms",
@@ -1085,6 +1415,44 @@ PROGRAMS: list[ProgramSpec] = [
         name="Global Hospitality Management",
         total_credits=36,
         requirements=GLOBAL_HOSPITALITY,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__integrated-marketing-ms",
+        code="INTG-MS-REAL",
+        name="Integrated Marketing",
+        total_credits=42,
+        requirements=INTEGRATED_MARKETING,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__publishing-ms",
+        code="PUBB-MS-REAL",
+        name="Publishing",
+        total_credits=36,
+        requirements=PUBLISHING,
+    ),
+    ProgramSpec(
+        page_slug=(
+            "graduate__professional-studies__programs__"
+            "public-relations-corporate-communication-ms"
+        ),
+        code="PRCC-MS-REAL",
+        name="Public Relations and Corporate Communication",
+        total_credits=42,
+        requirements=PUBLIC_RELATIONS,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__real-estate-ms",
+        code="REAL-MS-REAL",
+        name="Real Estate",
+        total_credits=42,
+        requirements=REAL_ESTATE,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__real-estate-development-ms",
+        code="DEVE-MS-REAL",
+        name="Real Estate Development",
+        total_credits=42,
+        requirements=REAL_ESTATE_DEVELOPMENT,
     ),
 ]
 

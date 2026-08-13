@@ -26,7 +26,8 @@ ENCODED_PROGRAMS: frozenset[str] = frozenset({
     "ENTR-MS-REAL", "MSEM-MS-REAL", "ECOC-MS-REAL", "EMSC-MS-REAL",
     "GLOB-MS-REAL", "GLSP-MS-REAL", "MSPM-MS-REAL", "HCAT-MS-REAL",
     "PWRT-MS-REAL", "HRCM-MS-REAL", "TRAN-MS-REAL", "TCSB-MS-REAL",
-    "TCTM-MS-REAL", "TCHS-MS-REAL",
+    "TCTM-MS-REAL", "TCHS-MS-REAL", "INTG-MS-REAL", "PUBB-MS-REAL",
+    "PRCC-MS-REAL", "REAL-MS-REAL", "DEVE-MS-REAL",
 })
 
 # How old a self-reported record gets before the UI nudges. Not a staleness claim about

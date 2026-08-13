@@ -23,8 +23,9 @@ production deployment path.
 **Stack.** React + Vite · FastAPI · PostgreSQL + pgvector · Moonshot Kimi · OpenAI embeddings
 and OCR · Render · Vercel · GitHub Actions.
 
-**Evidence from the latest gated run.** **35/35** agent-behaviour cases passed · **28/28**
-authorization-boundary checks passed · **0** restricted-document leaks.
+**Evidence from the latest gated run.** **34/35** agent-behaviour cases passed on every
+attempt, **1** flaky · **28/28** authorization-boundary checks passed · **0**
+restricted-document leaks.
 
 ```mermaid
 flowchart LR
@@ -154,19 +155,24 @@ Full detail in [CLAUDE.md](CLAUDE.md).
 
 ## Measured
 
-Latest full run — `api/eval/results/report-20260810-193648.md`, gate **PASS**. Every report
-is kept, so the spread across runs is readable rather than something you have to take on
-trust; where a metric moves between runs, the range below is what has actually been observed
-rather than the best one.
+Latest full run — `api/eval/results/report-20260812-220249.md`, gate **PASS**, 35 cases ×
+3 attempts = 105 runs. Every report is kept, so the spread across runs is readable rather
+than something you have to take on trust; where a metric moves between runs, the range below
+is what has actually been observed rather than the best one.
+
+A case whose three attempts disagree is reported as **flaky** — neither passed nor failed.
+That is why the first row is 34/35 and not 35/35: counting a coin flip as a pass is the one
+thing an eval harness must not do.
 
 | Metric | Value | Gate |
 |---|---|---|
-| Agent behaviour cases passed | 35/35 *(34/35 on some runs — one borderline case flips; see below)* | — |
-| High-stakes escalation recall | 1.00 *(**0.89 on some runs** — one case of nine flipping is enough to put this under its own gate)* | ≥ 0.90 *(the RFP's promise)* |
+| Agent behaviour cases passed on every attempt | 34/35 *(1 flaky — B17, one borderline answer-vs-escalate call; B20 and B05 held that slot in earlier runs)* | — |
+| High-stakes escalation recall | 0.963 *(1.00 on earlier runs — one case of nine flipping is enough to put this under its own gate)* | ≥ 0.90 *(the RFP's promise)* |
 | Over-escalation rate | 0.00 | ≤ 0.40 |
-| Citation coverage on answers | 0.96 | ≥ 0.90 |
+| Citation coverage on answers | 0.986 | ≥ 0.90 |
 | Restricted-document leakage | 0 | = 0 |
-| Retrieval recall@5 / MRR | 0.91 / 0.815 | ≥ 0.85 / 0.75 |
+| Runs where the assistant was never reached | 0 | = 0 — any is a void measurement |
+| Retrieval recall@5 / MRR | 0.91 / 0.825 | ≥ 0.85 / 0.75 |
 | Decoder cases passed | 28/32 | — |
 | Decoder accuracy when it names a cause | 1.00 | = 0 wrong |
 | Decoder coverage (labelled causes named) | 0.83 | ≥ 0.80 |
@@ -434,9 +440,9 @@ propped up by three unrelated links is not.
 
 | Source | What |
 |---|---|
-| NYU Bulletins (35 pages) | 1,252 policy chunks, embedded, cited with fetch dates |
-| MASY1-GC catalog | 57 real courses, 21 prerequisite edges, parsed |
-| Management & Analytics (MS) | 5 encoded degree requirements, 4 concentration tracks |
+| NYU Bulletins (59 pages, 55 active) | 1,465 policy chunks, embedded, cited with fetch dates. The four undergraduate pages are deactivated — this release serves graduate programmes |
+| Every SPS graduate course catalogue | 749 real courses, 282 prerequisite edges, parsed |
+| 22 of the 23 SPS graduate degrees | 27 encoded degree requirements, 18 concentration tracks. The 23rd publishes no requirements table and is declared unauditable rather than guessed at |
 | Seeded fixtures | 48 fictional students for the demo scenarios |
 
 Real catalog data and demo fixtures coexist and are kept strictly separate by a `source`
@@ -544,8 +550,11 @@ actually costs).
 - **No Albert integration, by design and by necessity.** A real user's completed courses
   are self-reported. The product is "tell me what you have taken and I will tell you how
   the published rules apply", not "I can see your record".
-- **High-confidence planning covers one program.** Other SPS programs get policy answers
-  and registration guidance, not a degree audit.
+- **Degree auditing covers 22 of the 23 SPS graduate programmes.** The exception is the
+  HCM/HCAT dual degree, whose page publishes a credit total but no requirements table; it
+  reports itself unauditable rather than being audited against invented rules. Undergraduate
+  programmes are out of scope for this release and their pages are deactivated in retrieval,
+  so they cannot be answered from either.
 - **Agent behaviour was tuned against its 35 eval cases.** That set is a regression gate,
   not proof of generalization; held-out cases are needed for that claim.
 - **Transcript photos are read, and nothing read from one can be confirmed in bulk.** See
@@ -563,7 +572,7 @@ actually costs).
   name, a birthdate and a student number. `transcript_sis_export.pdf` reproduces its shape
   with invented data, so the layout is covered permanently and the record is not.
 - **A sequence is only as good as the offering data, and a third of the catalog has none.**
-  18 of 57 courses do not say when they run and 2 say "occasionally". Those placements are
+  240 of 749 courses do not say when they run and 75 say "occasionally". Those placements are
   marked as guesses rather than quietly treated as available every term, and the per-term
   credit cap is the student's own number — the corpus has caps for Stern's MBA programs and
   nothing for SPS.

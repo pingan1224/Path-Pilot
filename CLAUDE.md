@@ -18,7 +18,7 @@ numbers the proposal promised**. The eval harness is the point, not an afterthou
 | Backend | FastAPI (Python 3.13) | `api/`. All business logic and AI lives here |
 | Database | Postgres + pgvector | Business data and embeddings in the same database |
 | ORM | SQLAlchemy 2.x | Typed `Mapped[]` style, not legacy declarative |
-| LLM | Anthropic Claude API | Added in P3 |
+| LLM | Moonshot Kimi, via the OpenAI SDK | Added in P3. See the P3 facts at the end — the `.cn` endpoint, and never send `temperature` |
 | Deploy | Vercel (web) + Render (api) | |
 
 Do **not** add LangChain, LlamaIndex, or any RAG framework. Retrieval, chunking, and
@@ -171,15 +171,20 @@ a keyword fallback that had never once executed successfully; M10 added OCR, whe
 went into what it is *not* allowed to do — no row read from an image can ever reach
 `matched`. The server then took over deciding what the chat renders, retiring the card
 inference the frontend used to do from `tool_trace`; the trace is back to being an audit
-record, which is all it was ever meant to be. The product is student-only.**
+record, which is all it was ever meant to be. The product is student-only. The corpus then
+grew from one degree to the whole school: every SPS graduate course catalogue ingested, and
+**22 of the 23 graduate degrees hand-encoded** — the 23rd is a boundary, not a backlog item
+(see Data layers).**
 
-**Nothing is deployed.** Every number in this repo was measured on a laptop against a dev
-database, which means the production shape — Vercel rewriting `/api/*`, the session cookie
-surviving that, whether the proxy buffers SSE — is assumption rather than evidence. Open
-gaps, in the order they block a real user: deployment and the M12 beta hardening around it
-(rate limits, a per-user cost ceiling, real secrets in place of the dev defaults), the
-tool-event stream (PRD FR-13 — the frontend still shows a timed waiting message rather than
-what the agent is actually doing), and M11's multi-turn context budgeting.
+**Deployed: Render for the API, Vercel for the web app**, with the public Vercel aliases
+deliberately disabled while the project is not being shared externally. **But every number
+in this repo was still measured on a laptop against a dev database**, so the production
+shape — Vercel rewriting `/api/*`, the session cookie surviving that, whether the proxy
+buffers SSE — remains thinly evidenced. Open gaps, in the order they block a real user: the
+M12 beta hardening (rate limits, a per-user cost ceiling, real secrets in place of the dev
+defaults), the tool-event stream (PRD FR-13 — the frontend still shows a timed waiting
+message rather than what the agent is actually doing), and M11's multi-turn context
+budgeting.
 
 ## Agent-first shell (`web/src/views/ChatHome.jsx`, M7-A)
 
@@ -315,10 +320,13 @@ portfolio demo. Consequences that shape every decision from here:
   not share a door with real ones.
 - **Disclaimers live where the advice is**, not only in a footer — the assistant panel
   carries one, because that is the text a student screenshots and acts on.
-- **The error decoder is the entry point.** Every other student view needs a record entered
-  before it can say anything, which is a wall in front of someone who is stuck at the
-  registration screen right now. A student with an empty profile lands on the decoder; one
-  with courses entered lands on the planner.
+- **The chat is the entry point; the decoder is the fastest thing it can reach.** Every
+  *other* student view needs a record entered before it can say anything, which is a wall in
+  front of someone stuck at the registration screen right now — the decoder is the one that
+  answers with nothing on file. Until M7-A this was literal routing (empty profile → decoder,
+  courses entered → planner); the shell replaced it, and every student now lands on
+  ChatHome, whose empty-profile greeting leads its suggestion chips with a decoder question
+  (`"What does ERR_PREREQ mean?"`, `ChatHome.jsx`). The reasoning survived the routing.
 
 ## The decoder (`app/decoder/`, M4)
 
@@ -391,11 +399,12 @@ a library returns UNSAT and UNSAT is not something you can tell a student.
   diagnosis would be wrong exactly when the schedule is complicated enough to need help.
   Cheap only because the search is cheap. If no single relaxation helps, say that rather
   than blaming one.
-- **Silence about offerings is not availability.** 18 of the 57 catalog courses have no
-  `typically_offered` text and 2 say "occasionally". Those are searched as any-term and
+- **Silence about offerings is not availability.** 240 of the 749 catalog courses have no
+  `typically_offered` text and 75 say "occasionally". Those are searched as any-term and
   reported as `unstated` / `irregular`, and every placement resting on one is marked
   individually — not with one caveat under the grid, which tells the student nothing about
-  *which* two courses to go and check.
+  *which* courses to go and check. That is 42% of the catalogue, not the handful it was when
+  the corpus was MASY alone, so the per-placement marking is now carrying real weight.
 - **The per-term credit cap is the student's number, not a rule.** The ingested corpus has
   caps for Stern's MBA programs only; quoting one at an SPS student would be the mistake the
   home-school retrieval boost exists to prevent, and worse here because it would be buried
@@ -548,28 +557,49 @@ can express general education, minors, level-distribution credits and a GPA thre
 
 ## Data layers
 
-- `documents` / `document_chunks` — 57 ingested bulletin pages (55 active, 4 undergraduate
-  deactivated), 1,461 chunks on the `heading` strategy
-- 23 SPS graduate programs in `programs` where `source='catalog'`, each citing its own
-  bulletin page; exactly one has encoded requirements (`ENCODED_PROGRAMS`)
-- `courses` where `source='catalog'` — 57 real MASY1-GC courses, 21 prerequisite edges
-- `requirements` where the program is `source='catalog'` — 5 encoded degree rules with
-  `rule` in (all_of, credits, one_track) and 4 concentration tracks
+Counts below were read off the dev database on 2026-08-13, not estimated.
+
+- `documents` / `document_chunks` — 59 ingested bulletin pages (55 active, 4 undergraduate
+  deactivated), 1,465 chunks on the `heading` strategy. The other two strategies are also
+  stored and embedded (`section` 1,429, `fixed` 1,252); retrieval reads `heading`.
+- **23 SPS graduate programs in `programs` where `source='catalog'` — one row per degree.**
+  22 have encoded requirements (`ENCODED_PROGRAMS`). The 23rd, the HCM/HCAT dual degree, is
+  a **boundary rather than a backlog item**: the bulletin publishes 45 credits against two
+  30-credit degrees and never says what the missing 15 share or waive, so encoding it would
+  mean inventing the overlap. It reads to a student as "this tool cannot audit your
+  programme", which is true.
+- `courses` where `source='catalog'` — 749 real courses across every SPS graduate
+  catalogue, 282 prerequisite edges
+- `requirements` where the program is `source='catalog'` — 27 encoded degree rules
+  (16 `all_of`, 6 `credits`, 5 `one_track`) and 18 concentration tracks
 - everything `source='demo'` — the seeded scenarios the eval and screenshots depend on
+
+**One degree gets one row, and that is enforced in `ingest.requirements`, not assumed.** The
+two stages that write `programs` derive the code differently on purpose — `ingest.programs`
+from the name (`FP-MS`), `ingest.requirements` from the spec (`MSFP-MS-REAL`) — so matching
+on code alone silently produced two rows per degree, and `catalog.list_programs` orders by
+name without deduplicating. Twenty-one of twenty-three degrees were doubled, identically
+named, one of each pair unauditable. Both stages now match by **name**; see
+`tests/test_programme_row_identity.py`.
 
 **`ingest.load` without `--embed` leaves the corpus unsearchable.** It replaces the chunk
 rows and the replacements have no vectors, so dense retrieval silently falls through to
 whatever still has one. Walked into twice, both times while reloading for an unrelated
 reason; the loader now counts unembedded chunks and says so loudly at the end.
 
-P4 facts: golden set in api/eval/golden.py (15 retrieval + 35 behavior cases) plus
-api/eval/decoder_cases.py (32 error messages); runner is scripts/run_eval.py (--gate for
-thresholds, --only for subsets, --only-decoder for the model-free part, --reseed to restore
-the demo db). Official run 2026-08-11 (SPS program corpus, 1,461 heading chunks): 34/35,
-high-stakes recall 1.0, leakage 0, over-escalation 0.0714, tool calls/run 2.37,
-forbidden 0, gate PASS. The one failure is B20 flipping to escalate on a borderline call —
-1 of 3 on re-run, the same shape as B05 before it. Previous baseline, 2026-08-07 on the
-pre-program corpus: 34/35, recall 1.0, leakage 0, calls/run 2.34.
+P4 facts: the labelled sets are **35 behavior cases in api/eval/golden.py, 50 retrieval
+queries in api/eval/retrieval_cases.py, 32 error messages in api/eval/decoder_cases.py**,
+and the intake layouts in api/eval/intake_cases.py. (`golden.RETRIEVAL_CASES` is an older
+15-case list that `run_eval` no longer imports — dead, and not the set any number below
+came from.) Runner is scripts/run_eval.py (--gate for thresholds, --only for subsets,
+--only-decoder for the model-free part, --reseed to restore the demo db).
+
+**Latest complete run, 2026-08-12** (35 cases × 3 attempts = 105 runs,
+`kimi-k2.7-code-highspeed`), gate PASS: 34/35 passing every attempt, 1 disagreeing across
+attempts, high-stakes escalation recall 0.963, over-escalation 0.0, citation coverage
+0.9855, intent accuracy 1.0, leakage 0, runs where the assistant was never reached 0,
+latency p50/p95 6,227/15,740 ms, iterations mean 2.78. Retrieval on the same corpus:
+recall@5 0.91, MRR 0.825, 3 misses (R24, R40, R42).
 
 **Every failure this suite has produced was intermittent**, and until 2026-08-11 it could
 not say so: one attempt per case, a model that rejects any temperature but 1, and a coin
@@ -588,10 +618,15 @@ the direction of the first is the point:
   failed, and is reported with its decision sequence rather than gated — flakiness is a
   property of the system, and failing the build for it leaves the gate permanently red.
 
-At `--repeat 3` on 2026-08-11: 34/35 passing every attempt, **1 flaky** (B20, 2/3,
-`escalated, answered, answered`), 0 failing all three. A subset run (`--only`) now reports
-`gate: n/a` instead of grading thresholds against a sample nobody chose.
-Decoder run 2026-08-06: 28/32, coverage 0.8333, accuracy 1.00, 0 confidently wrong. The
+At `--repeat 3` on 2026-08-12: 34/35 passing every attempt, **1 flaky — B17**, which the
+run's own comparison against the previous baseline flagged as `pass → flaky, destabilised`;
+0 failing all three. B20 held that slot on 2026-08-11 and B05 before it, which is the
+pattern: it is one borderline answer-vs-escalate case at a time, not the same case.
+A subset run (`--only`) now reports `gate: n/a` instead of grading thresholds against a
+sample nobody chose.
+Decoder run 2026-08-13: 28/32, coverage 0.8333, accuracy 1.00, 0 confidently wrong,
+0 hold offices invented. Intake, same run: 9/9 layouts, row recall 1.0, 0 silently wrong,
+OCR field errors 1 (reported, deliberately not gated). The
 decoder set's `held_out` family is written to fail — its misses are the table's backlog, and
 adding those exact phrasings to the table is the one way of moving coverage that means
 nothing.

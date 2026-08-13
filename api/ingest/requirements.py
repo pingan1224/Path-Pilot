@@ -654,6 +654,304 @@ GLOBAL_AFFAIRS: list[RequirementSpec] = [
 ]
 
 
+# Every listed course is required; the page's three headings group them rather than offer
+# a choice. Two of the eleven major courses are 1.5 credits — Sports Finance I and II are a
+# split course — which is what makes the major 30 rather than 33.
+GLOBAL_SPORT: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Major Requirements", kind=RequirementKind.core, rule="all_of", min_credits=30,
+        courses=[
+            "GLSP1-GC 1000", "GLSP1-GC 1005", "TCSB1-GC 2085", "GLSP1-GC 1010",
+            "GLSP1-GC 1015", "GLSP1-GC 1020", "GLSP1-GC 1025", "TCSB1-GC 1040",
+            "GLSP1-GC 1030", "GLSP1-GC 1035", "GLSP1-GC 1040",
+        ],
+    ),
+    RequirementSpec(
+        name="Seminar", kind=RequirementKind.core, rule="all_of", min_credits=3,
+        courses=["GLSP1-GC 1045"],  # Seminar in Sports Leadership
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="all_of", min_credits=3,
+        courses=["GLSP1-GC 3000"],  # Capstone in Global Sport
+    ),
+]
+
+
+PROJECT_MANAGEMENT: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Requirements", kind=RequirementKind.core, rule="all_of", min_credits=18,
+        courses=[
+            "MSPM1-GC 1000", "MSPM1-GC 1005", "MSPM1-GC 1010",
+            "MSPM1-GC 1015", "MSPM1-GC 1020", "MSPM1-GC 1025",
+        ],
+    ),
+    RequirementSpec(
+        name="Specialization Courses", kind=RequirementKind.elective, rule="credits",
+        min_credits=15, min_courses=5,
+        courses=[
+            "MSPM1-GC 2000", "MSPM1-GC 2010", "MSPM1-GC 2020", "MSPM1-GC 2030",
+            "MSPM1-GC 2040", "MSPM1-GC 3000", "MSPM1-GC 3910",
+        ],
+        # Seven listed and five required, but the footnote opens the set beyond the page, so
+        # this is a credit pool rather than a track: naming five would close a set the
+        # bulletin deliberately leaves open.
+        caveat=(
+            "Select five of the listed courses, including the Internship if you wish. With "
+            "departmental approval you may instead take a course from another graduate "
+            "program in the Division of Programs in Business, or the Real World Course "
+            "(RWLD1-GC 3050) — those are outside this catalog and cannot be checked here. "
+            "The Internship (MSPM1-GC 3910) additionally requires 18 completed credits and "
+            "a minimum GPA of 3.0 to be eligible to apply."
+        ),
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="all_of", min_credits=3,
+        courses=["MSPM1-GC 4000"],  # Enterprise Project Management
+    ),
+]
+
+
+# "Select six of the following: 9" reads as a contradiction until you check the catalogue:
+# every course in this pool is 1.5 credits, so six of them is nine. The core mixes 3s and
+# 1.5s for the same reason.
+HUMAN_CAPITAL_ANALYTICS: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Requirements", kind=RequirementKind.core, rule="all_of", min_credits=18,
+        courses=[
+            "HCAT1-GC 1000", "HCAT1-GC 1005", "HCAT1-GC 1010", "HCAT1-GC 1015",
+            "HCAT1-GC 1020", "HCAT1-GC 1025", "HRCM1-GC 1210",
+        ],
+    ),
+    RequirementSpec(
+        name="Electives", kind=RequirementKind.elective, rule="credits",
+        min_credits=9, min_courses=6,
+        courses=[
+            "HCAT1-GC 2000", "HCAT1-GC 2005", "HCAT1-GC 2010",
+            "HCAT1-GC 2015", "HCAT1-GC 2020", "HCAT1-GC 2025", "HCAT1-GC 2030",
+        ],
+        caveat=(
+            "Select six of the seven listed courses. The Internship (HCAT1-GC 2030) "
+            "additionally requires 18 completed credits and a minimum GPA of 3.0 to be "
+            "eligible to apply."
+        ),
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="all_of", min_credits=3,
+        courses=["HCAT1-GC 3000"],  # Capstone Project
+    ),
+]
+
+
+PROFESSIONAL_WRITING: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Requirements", kind=RequirementKind.core, rule="all_of", min_credits=18,
+        courses=[
+            "PWRT1-GC 1000", "PWRT1-GC 1005", "PWRT1-GC 1010",
+            "PWRT1-GC 1015", "PWRT1-GC 1020", "PWRT1-GC 1025",
+        ],
+    ),
+    RequirementSpec(
+        name="Electives", kind=RequirementKind.elective, rule="credits",
+        min_credits=12, min_courses=4,
+        courses=[
+            "PWRT1-GC 3000", "PWRT1-GC 3005", "PWRT1-GC 3010", "PWRT1-GC 3015",
+            "PWRT1-GC 3020", "PWRT1-GC 3025", "PWRT1-GC 3030", "PWRT1-GC 1011",
+            "PWRT1-GC 1021", "PWRT1-GC 3035", "PWRT1-GC 3040",
+        ],
+        caveat="Select four of the listed courses.",
+    ),
+    # The page files both of these under one "Additional Major Requirements" heading. They
+    # are separated here because they are different rules: the portfolio is fixed and is the
+    # degree's capstone, the other is a choice between two courses.
+    RequirementSpec(
+        name="Portfolio/Thesis", kind=RequirementKind.capstone, rule="all_of", min_credits=3,
+        courses=["PWRT1-GC 3900"],  # Portfolio/Thesis Requirement
+    ),
+    RequirementSpec(
+        name="Internship or Directed Study", kind=RequirementKind.core, rule="one_track",
+        min_credits=3,
+        tracks=[
+            TrackSpec("Internship", ["PWRT1-GC 3905"]),
+            TrackSpec("Directed Study", ["PWRT1-GC 3910"]),
+        ],
+        caveat=(
+            "Complete either a professional internship or a mock-freelance directed study."
+        ),
+    ),
+]
+
+
+HUMAN_CAPITAL_MANAGEMENT: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Requirements", kind=RequirementKind.core, rule="all_of", min_credits=21,
+        courses=[
+            "HRCM1-GC 1300", "HRCM1-GC 1210", "HRCM1-GC 1240", "HRCM1-GC 1310",
+            "HRCM1-GC 1320", "HRCM1-GC 1330", "HRCM1-GC 2025", "HRCM1-GC 2015",
+            "HRCM1-GC 2200",
+        ],
+    ),
+    RequirementSpec(
+        name="Electives", kind=RequirementKind.elective, rule="credits", min_credits=6,
+        # No `min_courses`. This pool mixes 1.5- and 3-credit courses, so six credits is two
+        # courses or four depending on which; stating a count would be inventing one.
+        courses=[
+            "HRCM1-GC 1220", "HRCM1-GC 1900", "HRCM1-GC 2210", "HRCM1-GC 2220",
+            "HRCM1-GC 2230", "HRCM1-GC 2240", "HRCM1-GC 2310", "HRCM1-GC 2340",
+            "HRCM1-GC 2350", "HRCM1-GC 2400", "HRCM1-GC 3021", "HRCM1-GC 3022",
+            "HRCM1-GC 3207", "HRCM1-GC 3500", "HRCM1-GC 3510", "HRCM1-GC 3550",
+            "HCAT1-GC 2010", "HCAT1-GC 2025",
+        ],
+        # A dependency between two requirements, which nothing in the rule vocabulary can
+        # express: the elective you must take is decided by the capstone you pick.
+        caveat=(
+            "Select 6 credits from the listed courses. These range from 1.5 to 3 credits "
+            "each, so how many courses that is depends on which you choose. Students who "
+            "choose the Thesis capstone (HRCM1-GC 1901) must take Research Process & "
+            "Methodology (HRCM1-GC 1900) as one of these electives — a link between the two "
+            "requirements that this tool does not check."
+        ),
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="one_track", min_credits=3,
+        tracks=[
+            TrackSpec("Research Project: Thesis", ["HRCM1-GC 1901"]),
+            TrackSpec("Special Project: Applied Human Resource Strategies", ["HRCM1-GC 4000"]),
+            TrackSpec("Capstone Applied Project", ["HRCM1-GC 5000"]),
+        ],
+        caveat="The bulletin offers these as alternatives; complete one.",
+    ),
+]
+
+
+TRANSLATION_INTERPRETING: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Courses", kind=RequirementKind.core, rule="all_of", min_credits=18,
+        courses=[
+            "TRAN1-GC 1000", "TRAN1-GC 1010", "TRAN1-GC 1020",
+            "TRAN1-GC 3015", "TRAN1-GC 3045", "TRAN1-GC 3356",
+        ],
+    ),
+    RequirementSpec(
+        name="Electives", kind=RequirementKind.elective, rule="credits",
+        min_credits=15, min_courses=5,
+        courses=[
+            "TRAN1-GC 3010", "TRAN1-GC 3025", "TRAN1-GC 3035", "TRAN1-GC 3195",
+            "TRAN1-GC 3390", "TRAN1-GC 3401", "TRAN1-GC 3403", "TRAN1-GC 3406",
+            "TRAN1-GC 3510", "TRAN1-GC 3520", "TRAN1-GC 3525", "TRAN1-GC 3530",
+            "TRAN1-GC 3535", "TRAN1-GC 3540", "TRAN1-GC 3550", "TRAN1-GC 3900",
+            "TRAN1-GC 4010", "TRAN1-GC 1115",
+        ],
+        caveat="Select five of the listed courses.",
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="all_of", min_credits=3,
+        courses=["TRAN1-GC 4000"],  # Thesis Project
+    ),
+]
+
+
+SPORTS_BUSINESS: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Requirements", kind=RequirementKind.core, rule="all_of", min_credits=18,
+        courses=[
+            "TCSB1-GC 1040", "TCSB1-GC 1050", "TCSB1-GC 1060",
+            "TCSB1-GC 1080", "TCSB1-GC 2085", "TCSB1-GC 2160",
+        ],
+    ),
+    RequirementSpec(
+        name="Electives", kind=RequirementKind.elective, rule="credits",
+        min_credits=15, min_courses=5,
+        courses=[
+            "TCSB1-GC 1010", "TCSB1-GC 2010", "TCSB1-GC 2015", "TCSB1-GC 2025",
+            "TCSB1-GC 2040", "TCSB1-GC 2045", "TCSB1-GC 2055", "TCSB1-GC 2090",
+            "TCSB1-GC 2975", "TCSB1-GC 2050", "TCSB1-GC 2070", "TCSB1-GC 2130",
+            "TCSB1-GC 2095", "TCSB1-GC 2140", "TCSB1-GC 2150", "TCSB1-GC 3045",
+            "TCSB1-GC 2190", "TCSB1-GC 2195", "TCSB1-GC 2180", "TCSB1-GC 1090",
+            "RWLD1-GC 3050", "TCSB1-GC 2005", "TCSB1-GC 2170", "TCSB1-GC 3900",
+        ],
+        caveat=(
+            "Select 15 credits from the listed courses, or from other NYU SPS graduate "
+            "programs with adviser approval — courses outside this list cannot be checked "
+            "here."
+        ),
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="all_of", min_credits=3,
+        courses=["TCSB1-GC 3000"],  # Sports Business Capstone
+    ),
+]
+
+
+# Travel and Tourism and Global Hospitality are sibling degrees from the same department and
+# have the same shape: a 16.5-credit core that already contains the internship, 18 credits of
+# electives, and a 1.5-credit Leadership course the page files under "Capstone". Both elective
+# pools mix 1.5 and 3 credit courses and each contains one course published with no fixed
+# credit value at all, so neither can state a course count.
+TRAVEL_TOURISM: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Requirements", kind=RequirementKind.core, rule="all_of", min_credits=16.5,
+        courses=[
+            "TCTM1-GC 3350", "TCTM1-GC 3650", "TCTM1-GC 3560", "TCTM1-GC 3705",
+            "TCTM1-GC 3340", "TCTM1-GC 3520", "TCTM1-GC 3920",
+        ],
+    ),
+    RequirementSpec(
+        name="Electives", kind=RequirementKind.elective, rule="credits", min_credits=18,
+        courses=[
+            "TCTM1-GC 1040", "TCTM1-GC 3245", "TCTM1-GC 3205", "TCTM1-GC 3250",
+            "TCTM1-GC 3260", "TCTM1-GC 3265", "TCTM1-GC 3605", "TCTM1-GC 3120",
+            "TCTM1-GC 3545", "TCTM1-GC 3370", "TCTM1-GC 3105", "TCTM1-GC 3115",
+            "TCTM1-GC 1060", "TCTM1-GC 3320", "TCTM1-GC 3345", "TCTM1-GC 3925",
+            "TCTM1-GC 4000", "TCTM1-GC 3900",
+        ],
+        caveat=(
+            "Select 18 credits from the listed courses. They range from 1.5 to 3 credits "
+            "each, so how many courses that is depends on which you choose, and Special "
+            "Topics (TCTM1-GC 3925) is published without a fixed credit value — how much it "
+            "contributes cannot be read from the catalog."
+        ),
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="all_of", min_credits=1.5,
+        courses=["TCTM1-GC 1015"],  # Leadership
+    ),
+]
+
+
+GLOBAL_HOSPITALITY: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Requirements", kind=RequirementKind.core, rule="all_of", min_credits=16.5,
+        courses=[
+            "TCHS1-GC 1005", "TCHS1-GC 1015", "TCHS1-GC 1020", "TCHS1-GC 1035",
+            "TCHS1-GC 1045", "TCHS1-GC 1055", "TCHS1-GC 3930",
+        ],
+    ),
+    RequirementSpec(
+        name="Electives", kind=RequirementKind.elective, rule="credits", min_credits=18,
+        courses=[
+            "TCHS1-GC 1320", "TCHS1-GC 3020", "TCHS1-GC 3010", "TCHS1-GC 3430",
+            "TCHS1-GC 3400", "TCHS1-GC 2045", "TCHS1-GC 3455", "TCHS1-GC 1025",
+            "TCHS1-GC 3255", "TCHS1-GC 3025", "TCHS1-GC 3060", "TCHS1-GC 3035",
+            "TCHS1-GC 3045", "TCHS1-GC 3055", "TCHS1-GC 3065", "TCHS1-GC 3070",
+            "TCHS1-GC 2060", "TCHS1-GC 3235", "TCHS1-GC 2080", "TCHS1-GC 2090",
+            "TCHS1-GC 3420", "TCHS1-GC 3105", "TCHS1-GC 3115", "TCHS1-GC 3130",
+            "TCHS1-GC 3135", "TCHS1-GC 3280", "TCHS1-GC 3305", "TCHS1-GC 3075",
+            "TCHS1-GC 3905", "TCHS1-GC 3925", "TCHS1-GC 3920",
+        ],
+        caveat=(
+            "Select 18 credits from the listed courses. They range from 1.5 to 3 credits "
+            "each, so how many courses that is depends on which you choose, and Special "
+            "Topics in Hospitality (TCHS1-GC 3905) is published without a fixed credit "
+            "value — how much it contributes cannot be read from the catalog."
+        ),
+    ),
+    RequirementSpec(
+        name="Capstone", kind=RequirementKind.capstone, rule="all_of", min_credits=1.5,
+        courses=["TCHS1-GC 1930"],  # Leadership
+    ),
+]
+
+
 PROGRAMS: list[ProgramSpec] = [
     ProgramSpec(
         page_slug="graduate__professional-studies__programs__management-analytics-ms",
@@ -719,6 +1017,74 @@ PROGRAMS: list[ProgramSpec] = [
         name="Global Affairs",
         total_credits=42,
         requirements=GLOBAL_AFFAIRS,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__global-sport-ms",
+        code="GLSP-MS-REAL",
+        name="Global Sport",
+        total_credits=36,
+        requirements=GLOBAL_SPORT,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__project-management-ms",
+        code="MSPM-MS-REAL",
+        name="Project Management",
+        total_credits=36,
+        requirements=PROJECT_MANAGEMENT,
+    ),
+    ProgramSpec(
+        page_slug=(
+            "graduate__professional-studies__programs__"
+            "human-capital-analytics-technology-ms"
+        ),
+        code="HCAT-MS-REAL",
+        name="Human Capital Analytics and Technology",
+        total_credits=30,
+        requirements=HUMAN_CAPITAL_ANALYTICS,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__professional-writing-ms",
+        code="PWRT-MS-REAL",
+        name="Professional Writing",
+        total_credits=36,
+        requirements=PROFESSIONAL_WRITING,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__human-capital-management-ms",
+        code="HRCM-MS-REAL",
+        name="Human Capital Management",
+        total_credits=30,
+        requirements=HUMAN_CAPITAL_MANAGEMENT,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__translation-interpreting-ms",
+        code="TRAN-MS-REAL",
+        name="Translation and Interpreting",
+        total_credits=36,
+        requirements=TRANSLATION_INTERPRETING,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__sports-business-ms",
+        code="TCSB-MS-REAL",
+        name="Sports Business",
+        total_credits=36,
+        requirements=SPORTS_BUSINESS,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__travel-tourism-management-ms",
+        code="TCTM-MS-REAL",
+        name="Travel and Tourism Management",
+        total_credits=36,
+        requirements=TRAVEL_TOURISM,
+    ),
+    ProgramSpec(
+        page_slug=(
+            "graduate__professional-studies__programs__global-hospitality-management-ms"
+        ),
+        code="TCHS-MS-REAL",
+        name="Global Hospitality Management",
+        total_credits=36,
+        requirements=GLOBAL_HOSPITALITY,
     ),
 ]
 

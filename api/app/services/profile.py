@@ -24,7 +24,9 @@ from app.services.retrieval import SCHOOL_TO_CORPUS_SLUG, RetrievalScope
 ENCODED_PROGRAMS: frozenset[str] = frozenset({
     "MASY-MS-REAL", "MSFP-MS-REAL", "GSCC-MS-REAL",
     "ENTR-MS-REAL", "MSEM-MS-REAL", "ECOC-MS-REAL", "EMSC-MS-REAL",
-    "GLOB-MS-REAL",
+    "GLOB-MS-REAL", "GLSP-MS-REAL", "MSPM-MS-REAL", "HCAT-MS-REAL",
+    "PWRT-MS-REAL", "HRCM-MS-REAL", "TRAN-MS-REAL", "TCSB-MS-REAL",
+    "TCTM-MS-REAL", "TCHS-MS-REAL",
 })
 
 # How old a self-reported record gets before the UI nudges. Not a staleness claim about

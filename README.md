@@ -9,12 +9,16 @@ from a graduate coursework RFP response into a running, measured system.
 
 ## 30-second overview
 
-**Problem.** Students need a trustworthy answer to “am I ready to register, and can I still
-graduate on time?” without pretending a prototype can see their real university record.
+**Problem.** Students need a trustworthy answer to “what should I take next semester, and
+does that keep me graduating on time?” — without pretending a prototype can see their real
+university record.
 
-**What I built.** A student-facing planning workspace that combines authenticated readiness
-checks, a registration-error decoder, transcript review, course planning, constraint-based term
-sequencing, and a tool-using assistant that cites and qualifies its claims.
+**What I built.** An AI course-planning agent for NYU SPS graduate students. It reads a
+self-reported record (typed, or lifted off an uploaded transcript), applies the published
+requirements for **22 of the school's 23 graduate degrees**, and proposes a term's courses
+with the reason for each — while a constraint solver says what the choice costs in
+graduation time. Around it: a registration-error decoder, permission-scoped agent tools, and
+an evaluation harness that gates the whole thing.
 
 **My role.** I designed and implemented the end-to-end system: the React experience, FastAPI
 and Postgres backend, permission-scoped agent tools, retrieval/evaluation harnesses, and the
@@ -62,7 +66,16 @@ catching real defects, several of them in code that had already shipped.
 
 ## What it does
 
-One question, for one person: **am I ready to register, and will I graduate on time?**
+One question, for one person: **what should I take next semester, and does that keep me
+graduating on time?**
+
+That question was rewritten in August 2026, and the rewrite is the point. It used to be
+"am I ready to register?" — a status, answered yes or no. It now asks for a deliverable: a
+set of courses for one term. Graduating on time was not dropped; it moved from the headline
+to the justification, so it arrives attached to individual courses — *this set holds your
+finish date, dropping that one pushes it a term, here is the alternative and what it costs*.
+A binary verdict is wrong all at once. "Dropping this pushes you a term" is something a
+student can check even when the tool is wrong.
 
 It shipped with four. An advisor triage queue, a registrar pressure board, and a finance
 case list each landed on their own question, scoped so that finance saw no advising context
@@ -548,8 +561,16 @@ actually costs).
 ## Honest limitations
 
 - **No Albert integration, by design and by necessity.** A real user's completed courses
-  are self-reported. The product is "tell me what you have taken and I will tell you how
-  the published rules apply", not "I can see your record".
+  are self-reported. The product is "tell me what you have taken and I will tell you what to
+  take next", not "I can see your record".
+- **Hold status was cut, and cutting it was the point.** The original proposal treated holds
+  as a core scenario. Without Albert, a hold this product displayed could only ever come from
+  a fixture I invented — the one place it stated a fabricated fact about a student's official
+  record with the same confidence as a computed one. Two honest shapes survive and no third:
+  a static "check Albert for holds before your window opens", which asserts nothing about
+  this student, and the student's own pasted error text run through the decoder, which is
+  self-reported input exactly like a transcript. **The product never says "you have a hold."**
+  It says what a hold does and who to ask. Escalation for hold questions is unchanged.
 - **Degree auditing covers 22 of the 23 SPS graduate programmes.** The exception is the
   HCM/HCAT dual degree, whose page publishes a credit total but no requirements table; it
   reports itself unauditable rather than being audited against invented rules. Undergraduate

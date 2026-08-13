@@ -90,7 +90,9 @@ These come from the source RFP. Violating one breaks the project's whole premise
 5. **Uncertainty escalates to a human.** When evidence is missing, conflicting, stale, or
    the intent is high-stakes (graduation timing, substitutions, appeals, holds, financial
    posting, academic standing), the bot does not guess. It states what it can and cannot
-   verify, then routes to the responsible office with a case number.
+   verify, then routes to the responsible office with a case number. *Holds stay on this
+   list, but as of 2026-08-13 the product no longer reads hold status at all — see Persona
+   and the product question for why that is a scope decision and what replaced it.*
 
 6. **No silent failures.** Every external dependency has a defined degradation path, and
    degraded mode is visible to the user. Embedding service down → keyword fallback with a
@@ -105,11 +107,57 @@ These come from the source RFP. Violating one breaks the project's whole premise
    summaries. It cannot clear holds, waive prerequisites, approve exceptions, or change
    enrollment.
 
-## Persona
+## Persona and the product question
 
-One: the student. "Am I ready to register, and will I graduate on time?"
+One persona: the student. One question, restated 2026-08-13:
 
-There were four. `advisor`, `registrar`, and `finance` each had a dashboard landing on its
+> **What should I take next semester, and does that keep me graduating on time?**
+
+It used to be "am I ready to register, and will I graduate on time?" — a *status* question,
+answered yes or no. The new one asks for a *deliverable*: a set of courses for one term.
+Three things follow, and they are the reason for the change rather than decoration:
+
+- **Graduating on time stops being a promise and becomes a constraint and a consequence.**
+  Nothing about it is deleted — degree progress and the sequence solver are what make a
+  course the right one to take now. They move from the headline to the justification: does
+  this term's set hold the finish date, which course delays it if dropped, what else could
+  be taken instead and at what risk. A binary verdict is wrong all at once; "dropping this
+  pushes you a term" is checkable by the student even when the tool is off.
+- **The planner is the product, so an unencoded programme is a dead end rather than a
+  degraded one.** Under the old question a student whose degree was not encoded still got
+  policy answers and error decoding. Under this one they get nothing that matters. That is
+  why encoding all 23 degrees stopped being backlog (see Data layers), and why the 23rd is
+  declared unauditable in plain words.
+- **"Time preference" means course load and which terms you sit out — not time of day.** The
+  catalogue publishes a term pattern (`typically_offered`) and no meeting times or sections
+  at all. Nothing in this product can honour "evenings only", and it must not imply it can.
+
+### Holds: what changed, and why it is a scope decision (2026-08-13)
+
+The product **no longer reads hold status**. `get_holds` and the seeded `Hold` rows are
+being removed, and this is a deliberate retreat from something the source RFP asked for, so
+the reasoning is recorded rather than left as an omission:
+
+There is no Albert integration and never will be, so a hold shown by this product could only
+ever come from fixtures we invented. Everywhere else the product's honesty rule is "no
+access is no access, not an empty result" — holds were the one place it displayed a
+fabricated fact about a student's official record with the same confidence as a computed
+one. Under a course planner they are also off the critical path: a hold blocks the
+registration click, not the choice of what to register for.
+
+**Rule 5 does not change.** A hold question is still high-stakes and still escalates. What
+changes is where the claim comes from — two honest shapes survive, and no third:
+
+- a **static pre-registration reminder** ("check Albert for holds before your window opens"),
+  which asserts nothing about this student;
+- a **student-declared** blocker — they say they have one, or they paste the error text and
+  `decode_registration_error` reads it. That is self-reported input, exactly like a
+  transcript, and needs no Albert access. The decoder's refusal to map a hold code to an
+  office stands: it never had the university's hold table and still does not.
+
+The product must never say "you have a hold." It may say what a hold does and who to ask.
+
+There were four personas. `advisor`, `registrar`, and `finance` each had a dashboard landing on its
 own question, and each was scoped so that finance saw no advising context and the registrar
 saw no individual financial detail. Those three product surfaces were removed on
 2026-08-08. Read this as a scope decision, not as a claim that the scoping was wrong: the
@@ -136,9 +184,10 @@ other. That is checked from both sides, with two signable students.
 
 From the RFP's UI/UX section. Applies to every screen.
 
-- **One question, not a menu.** The product opens on where registration stands, not on a
-  list of things it can do. (This was "role-first, not feature-first" when there were four
-  roles; the principle survived the roles.)
+- **One question, not a menu.** The product opens on what to take next term and where that
+  leaves the finish date, not on a list of things it can do. (This was "role-first, not
+  feature-first" when there were four roles, then "where registration stands" when the
+  question was readiness; the principle has now outlived two of its own phrasings.)
 - **Status hierarchy before detail.** Critical blockers render above general information.
 - **Plain language with provenance.** Every status shows what it means, where it came from,
   when it was last verified, and the next action.
@@ -307,9 +356,9 @@ portfolio demo. Consequences that shape every decision from here:
 
 - **There is no Albert integration and there will not be one.** A real user's completed
   courses are self-reported. The product promise is "tell me what you have taken and I will
-  tell you how the published rules apply" — never "I can see your record". Tools that read
-  holds or registration attempts exist for demo fixtures only; for real users those
-  questions become policy answers plus an Albert self-check list.
+  tell you what to take next" — never "I can see your record". Hold status is not read at
+  all any more (see Persona); a hold question becomes a policy answer plus an Albert
+  self-check, or the student's own pasted error text run through the decoder.
 - **Planning verdicts are computed by a deterministic rule engine, never by the model.**
   The LLM narrates results and cites sources. A rule engine that is wrong can be fixed and
   regression-tested at one point; a model that miscalculates is wrong probabilistically,

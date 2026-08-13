@@ -171,7 +171,7 @@ def test_unencoded_program_is_not_silently_added_to_the_gate():
     """A guard on the gate itself: growing ENCODED_PROGRAMS is hand work that follows
     encoding and validating a program's requirements (see ingest/requirements.py on why a
     parser is not acceptable). A name appearing here without that work is the bug."""
-    assert ENCODED_PROGRAMS == frozenset({"MASY-MS-REAL", "MSFP-MS-REAL"}), (
+    assert ENCODED_PROGRAMS == frozenset({"MASY-MS-REAL", "MSFP-MS-REAL", "GSCC-MS-REAL"}), (
         "ENCODED_PROGRAMS changed. Confirm the new program's requirements are actually "
         "encoded and validated, then update this assertion."
     )

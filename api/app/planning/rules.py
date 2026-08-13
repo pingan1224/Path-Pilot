@@ -304,7 +304,7 @@ def evaluate_requirement(
                 verdict=Verdict.satisfied,
                 key=rkey,
                 summary=f"{spec.name} complete: {complete[0].name}",
-                detail=f"You have completed the {complete[0].name} concentration.",
+                detail=f"You have completed {complete[0].name}.",
                 citations=(citation,),
             )
 
@@ -316,14 +316,18 @@ def evaluate_requirement(
                 key=rkey,
                 summary=f"{spec.name}: courses spread across tracks",
                 detail=(
-                    f"You have courses in more than one concentration ({names}). "
-                    f"{spec.caveat or 'One concentration must be completed in full.'} "
-                    "Credits from a concentration you do not finish do not satisfy this "
+                    f"You have courses under more than one option ({names}). "
+                    f"{spec.caveat or 'One must be completed in full.'} "
+                    "Credits from an option you do not finish do not satisfy this "
                     "requirement."
                 ),
                 citations=(citation,),
+                # Named after the requirement rather than called a concentration. The rule
+                # models any "pick one path and finish it" choice, and Global Security uses
+                # it for a capstone that is a thesis or a practicum — telling that student to
+                # pick a concentration would describe a decision their degree does not have.
                 next_step=(
-                    "Pick one concentration and complete it: "
+                    f"Pick one {spec.name} option and complete it: "
                     + "; ".join(
                         f"{t.name} needs {t.required_count}" for t, _ in progress
                     )
@@ -389,9 +393,9 @@ def evaluate_requirement(
             verdict=Verdict.not_satisfied,
             key=rkey,
             summary=f"{spec.name} not started",
-            detail=f"Choose one concentration: {options}.",
+            detail=f"Choose one: {options}.",
             citations=(citation,),
-            next_step="Choose a concentration with your advisor.",
+            next_step=f"Choose a {spec.name} option with your advisor.",
         )
 
     # rule == "credits"

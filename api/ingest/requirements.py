@@ -215,6 +215,71 @@ FINANCIAL_PLANNING: list[RequirementSpec] = [
 ]
 
 
+# The third programme, and the one that showed which shapes do *not* need new machinery.
+#
+# Its electives are five courses drawn from thirty-eight. That is a closed list, but naming
+# five of thirty-eight would be the tool choosing a degree plan rather than reporting one, so
+# it stays a `credits` requirement: the audit counts what the student has actually taken from
+# the list, and the sequence carries the credits as a placeholder. The pool machinery added
+# for Financial Planning is deliberately not used here — a surplus of two is a description,
+# a surplus of thirty-three is a recommendation nobody asked for.
+#
+# Its capstone is "thesis or practicum", which is `one_track` with one course per track. No
+# new rule; the existing "pick one path and finish it" already says exactly that.
+GLOBAL_SECURITY: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Curriculum",
+        kind=RequirementKind.core,
+        rule="all_of",
+        min_credits=18,
+        courses=[
+            "GLOB1-GC 2510",  # Cyberspace: Technical, Operational, and Strategic Perspectives
+            "GSCC1-GC 1005",  # Cyber Law
+            "GSCC1-GC 1010",  # National & International Cyber Organizations
+            "GSCC1-GC 1015",  # Cyberpower & Global Security
+            "GSCC1-GC 1020",  # Infrastructure Security & Resilience
+            "GSCC1-GC 1030",  # Mission Assurance or Continuity of Operations
+        ],
+    ),
+    RequirementSpec(
+        name="Electives",
+        kind=RequirementKind.elective,
+        rule="credits",
+        min_credits=15,
+        min_courses=5,
+        courses=[
+            "GSCC1-GC 1007", "GSCC1-GC 1031", "GSCC1-GC 2010", "GSCC1-GC 2020",
+            "GSCC1-GC 2025", "GSCC1-GC 2030", "GSCC1-GC 2035", "GSCC1-GC 2220",
+            "GSCC1-GC 2225", "GSCC1-GC 2235", "GSCC1-GC 2245", "GSCC1-GC 2500",
+            "GSCC1-GC 2530", "GSCC1-GC 2900", "GLOB1-GC 1000", "GLOB1-GC 2000",
+            "GLOB1-GC 2047", "GLOB1-GC 2051", "GLOB1-GC 2055", "GLOB1-GC 2065",
+            "GLOB1-GC 2070", "GLOB1-GC 2080", "GLOB1-GC 2151", "GLOB1-GC 2425",
+            "GLOB1-GC 2493", "GLOB1-GC 2515", "GLOB1-GC 2516", "GLOB1-GC 2518",
+            "GLOB1-GC 2520", "GLOB1-GC 2600", "GLOB1-GC 2630", "GLOB1-GC 2645",
+            "GLOB1-GC 2650", "GLOB1-GC 3035", "GLOB1-GC 3060", "GLOB1-GC 3064",
+            "GLOB1-GC 3905", "GLOB1-GC 3915",
+        ],
+        caveat=(
+            "Select five of the listed courses. Internship (GLOB1-GC 3905) and Independent "
+            "Study (GLOB1-GC 3915) are published without a fixed credit value, so how much "
+            "they contribute toward the 15 cannot be read from the catalog — confirm with "
+            "your advisor and in Albert."
+        ),
+    ),
+    RequirementSpec(
+        name="Capstone, Thesis, or Practicum",
+        kind=RequirementKind.capstone,
+        rule="one_track",
+        min_credits=3,
+        tracks=[
+            TrackSpec("Graduate Thesis or Capstone Project", ["GSCC1-GC 3900"]),
+            TrackSpec("Cyber Practicum", ["GSCC1-GC 3000"]),
+        ],
+        caveat="The bulletin offers these as alternatives; complete one.",
+    ),
+]
+
+
 PROGRAMS: list[ProgramSpec] = [
     ProgramSpec(
         page_slug="graduate__professional-studies__programs__management-analytics-ms",
@@ -229,6 +294,16 @@ PROGRAMS: list[ProgramSpec] = [
         name="Financial Planning",
         total_credits=30,
         requirements=FINANCIAL_PLANNING,
+    ),
+    ProgramSpec(
+        page_slug=(
+            "graduate__professional-studies__programs__"
+            "global-security-conflict-cyber-crime-ms"
+        ),
+        code="GSCC-MS-REAL",
+        name="Global Security, Conflict, and Cyber Crime",
+        total_credits=36,
+        requirements=GLOBAL_SECURITY,
     ),
 ]
 

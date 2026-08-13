@@ -167,7 +167,7 @@ def test_one_track_rejects_credits_spread_across_tracks():
     )
     finding = evaluate_requirement(spec, stated(("A1", "completed"), ("R1", "completed")), {})
     assert finding.verdict is Verdict.not_satisfied
-    assert "more than one concentration" in finding.detail
+    assert "more than one option" in finding.detail
 
 
 def test_one_track_satisfied_when_a_track_is_complete():

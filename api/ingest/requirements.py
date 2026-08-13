@@ -26,7 +26,15 @@ from pathlib import Path
 from sqlalchemy import select
 
 from app.db.session import get_sessionmaker
-from app.models import Course, Program, Requirement, RequirementKind, RequirementTrack
+from app.models import (
+    Course,
+    Program,
+    Requirement,
+    RequirementKind,
+    RequirementTrack,
+    Student,
+    User,
+)
 
 SECTIONS_DIR = Path(__file__).resolve().parent.parent / "data" / "sections"
 
@@ -1519,15 +1527,71 @@ def validate(session, program: ProgramSpec) -> list[str]:
     return problems
 
 
+def _row_for(session, spec_program: ProgramSpec) -> Program:
+    """The one row this degree belongs in, with any duplicate of it merged away.
+
+    Matching is by **name**, not by the code alone. `ingest.programs` lists every degree
+    from its own bulletin page under a code it derives from the name (`FP-MS`), and this
+    stage writes the encoded degree under the code its spec names (`MSFP-MS-REAL`).
+    Looking only for our own code never finds the listing row, so encoding a degree that
+    had already been listed wrote a *second* row for one real degree — and
+    `routers.catalog.list_programs` orders by name without deduplicating, so the student
+    saw their degree twice, identically named, one of the two carrying no requirements and
+    reporting itself unauditable. Choosing wrong silently switched the planner off.
+
+    `ingest.programs.write` matches by name for exactly this reason and its docstring
+    predicts this failure from the other direction. This is the same guard on this side.
+    Name is the only key the two stages share: the code is ours, and the two stages derive
+    it differently on purpose.
+    """
+    same_name = [
+        row
+        for row in session.scalars(select(Program).where(Program.source == "catalog"))
+        if row.name.strip().lower() == spec_program.name.strip().lower()
+    ]
+
+    keep = next((r for r in same_name if r.code == spec_program.code), None)
+    if keep is None and same_name:
+        # The listing row. Adopt it rather than adding a sibling: it is the row a student
+        # may already have selected, and its id is what their profile points at.
+        keep = same_name[0]
+        keep.code = spec_program.code
+    if keep is None:
+        # First time this degree is written at all, so there is nothing to merge. It is
+        # deliberately not flushed here: `name` is NOT NULL and the caller sets it.
+        keep = Program(code=spec_program.code)
+        session.add(keep)
+        return keep
+
+    duplicates = [row for row in same_name if row is not keep]
+    if not duplicates:
+        return keep
+
+    # Anything else under this name is a duplicate an earlier run of this stage created.
+    # Repoint whoever selected it before deleting it — a student who picked the twin chose
+    # this degree, and dropping the row without moving them would either fail on the
+    # foreign key or lose the one thing they told us about themselves.
+    session.flush()
+    for duplicate in duplicates:
+        for model in (User, Student):
+            for row in session.scalars(
+                select(model).where(model.program_id == duplicate.id)
+            ):
+                row.program_id = keep.id
+        for stale in session.scalars(
+            select(Requirement).where(Requirement.program_id == duplicate.id)
+        ):
+            session.delete(stale)
+        session.flush()
+        session.delete(duplicate)
+    session.flush()
+    return keep
+
+
 def write(session, spec_program: ProgramSpec) -> tuple[int, int]:
     url, verified_at = page_provenance(spec_program.page_slug)
 
-    program = session.scalars(
-        select(Program).where(Program.code == spec_program.code)
-    ).first()
-    if program is None:
-        program = Program(code=spec_program.code)
-        session.add(program)
+    program = _row_for(session, spec_program)
     program.name = spec_program.name
     program.degree = "MS"
     program.school = "School of Professional Studies"

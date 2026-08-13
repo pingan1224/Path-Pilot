@@ -69,7 +69,6 @@ def main() -> None:
     # --- unauthenticated
     for path in (
         f"/api/v1/students/{alex_id}/readiness",
-        f"/api/v1/students/{alex_id}/blockers",
         "/api/v1/cases",
     ):
         r = anon.get(path)
@@ -110,7 +109,11 @@ def main() -> None:
         f"got {r.status_code}",
     )
 
-    r = other.get(f"/api/v1/students/{alex_id}/blockers")
+    # Diego against Alex. This used to hit `/blockers`, which was deleted with hold-reading
+    # on 2026-08-13 — but the property it proves is the *direction*, not the endpoint, and
+    # a 404 from a removed route would have passed a `!= 200` check while proving nothing.
+    # Repointed at the surviving endpoint rather than dropped.
+    r = other.get(f"/api/v1/students/{alex_id}/readiness")
     check(
         "the same refusal holds in the other direction",
         r.status_code == 403,

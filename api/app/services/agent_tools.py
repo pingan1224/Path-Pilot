@@ -23,8 +23,6 @@ from app import faults
 from app.models import (
     Course,
     CoursePrerequisite,
-    Hold,
-    RegistrationAttempt,
     Section,
     Student,
     Term,
@@ -33,7 +31,6 @@ from app.models import (
 )
 from app.services.freshness import FreshnessPolicies, humanize_age
 from app.services.profile import program_page_slug
-from app.services.readiness import compute_readiness
 from app.services.retrieval import (
     SCHOOL_TO_CORPUS_SLUG,
     RetrievalScope,
@@ -41,7 +38,6 @@ from app.services.retrieval import (
 )
 
 MAX_SECTIONS = 6
-MAX_ATTEMPTS = 5
 
 
 @dataclass
@@ -64,16 +60,16 @@ class ToolContext:
     # MAX_POLICY_SEARCHES.
     policy_queries: list[str] = field(default_factory=list)
 
-    # Which world this conversation lives in.
+    # Which world this conversation lives in. **This no longer changes what the model can
+    # see** — since 2026-08-13 there is one tool surface, and it is the one that never
+    # claims to read Albert (see TOOL_IMPLS). `demo` is a seeded fixture student, `live` a
+    # real signed-in user, and in both cases coursework is self-reported and hold status is
+    # unreachable.
     #
-    # `demo` — a seeded fixture student. Holds, registration attempts, and enrollments are
-    #   invented but internally consistent, so the record tools answer meaningfully.
-    # `live` — a real signed-in user. Path Pilot has no Albert access, so there is no hold data,
-    #   no registration history, and no official transcript. The record tools do not
-    #   degrade gracefully here; they answer *emptily*, which is worse. "You have no
-    #   holds" is a claim about the registrar's system that this product is in no position
-    #   to make, and a student who believes it may skip the one check that mattered.
-    #   In live mode those tools are withdrawn and replaced by ones that say where to look.
+    # What it still decides is whether an escalation opens a `Case` with a quotable number.
+    # A demo scenario has a seeded advisor and a case queue to point at; a real user has
+    # neither, and handing them a case number would promise a staff workflow that does not
+    # exist behind this product.
     mode: str = "demo"
 
     @property
@@ -322,125 +318,6 @@ def _require_subject(ctx: ToolContext) -> int:
             "Policy questions can still be answered."
         )
     return ctx.subject_student_id
-
-
-def tool_get_holds(ctx: ToolContext) -> dict[str, Any]:
-    student_id = _require_subject(ctx)
-    policies = FreshnessPolicies.load(ctx.session)
-
-    holds = ctx.session.scalars(
-        select(Hold).where(Hold.student_id == student_id, Hold.cleared_at.is_(None))
-    ).all()
-
-    # The query result itself is a citable fact, independent of the rows in it. Without
-    # this, "you have no active holds" is an assertion with no source_id — and a model
-    # correctly following the cite-everything rule can only escalate it. Found via eval
-    # case B07: absence needs provenance too.
-    student = ctx.session.get(Student, student_id)
-    collection_id = f"record:holds:{student_id}"
-    ctx.seen_source_ids.add(collection_id)
-    collection_provenance = policies.build(student.source_key, student.verified_at)
-
-    out = []
-    for hold in holds:
-        source_id = f"record:hold:{hold.id}"
-        ctx.seen_source_ids.add(source_id)
-        provenance = policies.build(hold.source_key, hold.verified_at)
-        out.append(
-            {
-                "source_id": source_id,
-                "type": hold.hold_type.value,
-                "office": hold.office.value,
-                "title": hold.title,
-                "explanation": hold.explanation,
-                "required_action": hold.required_action,
-                "blocks_registration": hold.blocks_registration,
-                "deadline": hold.deadline_at.isoformat() if hold.deadline_at else None,
-                "verified_at": provenance.verified_at.isoformat(),
-                "data_age": humanize_age(provenance.age_seconds),
-                "is_stale": provenance.is_stale,
-                "stale_note": provenance.disclosure,
-            }
-        )
-    return {
-        "source_id": collection_id,
-        "active_holds": out,
-        "count": len(out),
-        "verified_at": collection_provenance.verified_at.isoformat(),
-        "data_age": humanize_age(collection_provenance.age_seconds),
-        "note": (
-            "A count of 0 is a verified empty result from the registrar mirror as of the "
-            "timestamp above — cite this source_id for it. It is not missing data."
-            if not out
-            else None
-        ),
-    }
-
-
-def tool_get_degree_progress(ctx: ToolContext) -> dict[str, Any]:
-    student_id = _require_subject(ctx)
-    readiness = compute_readiness(ctx.session, student_id)
-
-    source_id = f"record:progress:{student_id}"
-    ctx.seen_source_ids.add(source_id)
-    return {
-        "source_id": source_id,
-        "status": readiness.status.value,
-        "status_reason": readiness.status_reason,
-        "credits_applied": readiness.credits_applied,
-        "credits_earned_raw": readiness.credits_earned_raw,
-        "credits_unapplied": readiness.credits_unapplied,
-        "credits_required": readiness.credits_required,
-        "terms_required_for_remaining_work": readiness.terms_required,
-        "terms_until_expected_graduation": readiness.terms_remaining,
-        "can_finish_on_time": readiness.can_finish_on_time,
-        "requirements": [
-            {
-                "name": r.name,
-                "applied": r.applied_credits,
-                "required": r.required_credits,
-                "remaining": r.remaining_credits,
-                "over_cap_not_counted": r.unapplied_credits,
-            }
-            for r in readiness.requirements
-        ],
-        "verified_at": readiness.provenance.verified_at.isoformat(),
-        "is_stale": readiness.provenance.is_stale,
-        "stale_note": readiness.provenance.disclosure,
-    }
-
-
-def tool_get_registration_attempts(ctx: ToolContext) -> dict[str, Any]:
-    student_id = _require_subject(ctx)
-    attempts = ctx.session.scalars(
-        select(RegistrationAttempt)
-        .where(RegistrationAttempt.student_id == student_id)
-        .options(
-            selectinload(RegistrationAttempt.section).selectinload(Section.course),
-            selectinload(RegistrationAttempt.blocking_hold),
-        )
-        .order_by(RegistrationAttempt.attempted_at.desc())
-        .limit(MAX_ATTEMPTS)
-    ).all()
-
-    out = []
-    for attempt in attempts:
-        source_id = f"record:attempt:{attempt.id}"
-        ctx.seen_source_ids.add(source_id)
-        out.append(
-            {
-                "source_id": source_id,
-                "course": attempt.section.course.code,
-                "attempted_at": attempt.attempted_at.isoformat(),
-                "outcome": attempt.outcome.value,
-                "failure_reason": attempt.failure_reason.value if attempt.failure_reason else None,
-                "system_error_verbatim": attempt.raw_error,
-                "linked_hold_source_id": (
-                    f"record:hold:{attempt.blocking_hold_id}" if attempt.blocking_hold_id else None
-                ),
-            }
-        )
-    return {"recent_attempts": out}
 
 
 def tool_get_course_info(ctx: ToolContext, course_code: str) -> dict[str, Any]:
@@ -1091,20 +968,22 @@ def tool_get_course_sequence(
     return payload
 
 
-DEMO_TOOL_IMPLS = {
-    "search_policy": tool_search_policy,
-    "decode_registration_error": tool_decode_registration_error,
-    "get_mission_state": tool_get_mission_state,
-    "start_mission": tool_start_mission,
-    "propose_mission_candidates": tool_propose_mission_candidates,
-    "get_course_sequence": tool_get_course_sequence,
-    "get_holds": tool_get_holds,
-    "get_degree_progress": tool_get_degree_progress,
-    "get_registration_attempts": tool_get_registration_attempts,
-    "get_course_info": tool_get_course_info,
-}
-
-LIVE_TOOL_IMPLS = {
+# One tool surface, demo and live alike (2026-08-13).
+#
+# There used to be two. The demo world could read `get_holds`, `get_degree_progress` and
+# `get_registration_attempts` — three tools backed by seeded fixtures — while live mode
+# withdrew them and offered `get_my_plan` and `albert_checklist` instead, on the principle
+# stated here at the time: *a tool the model cannot call is a claim the model cannot make.*
+#
+# The split was the bug. It meant the demo — the thing anyone judging this project actually
+# opens — was a **more capable product than the real one**, and the extra capability was
+# entirely invented data presented with the confidence of a computed result. The honest
+# surface already existed and was already tested; this deletes the other one.
+#
+# What survives the deletion is not nothing: coursework comes from what the student entered
+# (`get_my_plan`), and everything only Albert knows is answered by `albert_checklist`, which
+# returns *where to look* and is forbidden from implying any record is clear.
+TOOL_IMPLS = {
     "search_policy": tool_search_policy,
     "decode_registration_error": tool_decode_registration_error,
     "get_mission_state": tool_get_mission_state,
@@ -1116,12 +995,9 @@ LIVE_TOOL_IMPLS = {
     "albert_checklist": tool_albert_checklist,
 }
 
-# Kept for callers that predate the split; demo remains the default world.
-TOOL_IMPLS = DEMO_TOOL_IMPLS
-
 
 def tools_for(ctx: ToolContext) -> dict[str, Any]:
-    return LIVE_TOOL_IMPLS if ctx.is_live else DEMO_TOOL_IMPLS
+    return TOOL_IMPLS
 
 LIVE_ONLY_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -1310,33 +1186,6 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
-            "name": "get_holds",
-            "description": "Active holds on the current student's record, with deadlines and required actions.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_degree_progress",
-            "description": (
-                "The current student's degree progress: credits applied vs required per "
-                "requirement, whether the expected graduation term is achievable."
-            ),
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_registration_attempts",
-            "description": "The current student's recent registration attempts with exact failure reasons.",
-            "parameters": {"type": "object", "properties": {}},
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "get_course_info",
             "description": "Catalog facts for one course: prerequisites, sections this term, seat availability.",
             "parameters": {
@@ -1350,14 +1199,10 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
     },
 ]
 
-# Live mode withdraws the record tools entirely rather than letting them return empty.
-# A tool the model cannot call is a claim the model cannot make.
-_DEMO_ONLY = {"get_holds", "get_degree_progress", "get_registration_attempts"}
-
-LIVE_TOOL_SCHEMAS: list[dict[str, Any]] = [
-    schema for schema in TOOL_SCHEMAS if schema["function"]["name"] not in _DEMO_ONLY
-] + LIVE_ONLY_SCHEMAS
+TOOL_SCHEMAS += LIVE_ONLY_SCHEMAS
 
 
 def schemas_for(ctx: ToolContext) -> list[dict[str, Any]]:
-    return LIVE_TOOL_SCHEMAS if ctx.is_live else TOOL_SCHEMAS
+    """One surface. `ctx` is kept in the signature because every caller passes it and the
+    next thing that varies by context will want it back."""
+    return TOOL_SCHEMAS

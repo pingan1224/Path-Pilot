@@ -17,7 +17,6 @@ from app.models import (
     Course,
     Enrollment,
     EnrollmentStatus,
-    Hold,
     ReadinessStatus,
     Requirement,
     RequirementKind,
@@ -28,8 +27,19 @@ from app.models import (
 from app.schemas import ReadinessResponse, RequirementProgress, StudentSummary
 from app.services.freshness import FreshnessPolicies
 
-# A full-time graduate load. Used to estimate how many terms the remaining work needs.
-MAX_CREDITS_PER_TERM = 12
+# How many terms the remaining work needs, at the same assumed per-term load the sequence
+# planner uses.
+#
+# **These were two different numbers until 2026-08-13** — 12 here, 9 in `sequence.plan` —
+# so the same student could be told two different finish dates depending on which surface
+# they asked. That was survivable while readiness was a status badge; it is not now that
+# the graduation date is the constraint the whole plan is justified against.
+#
+# The sequence planner's number wins because it is the one carrying its reasoning: the
+# ingested corpus publishes a per-term cap for Stern's MBA programmes and nothing for SPS,
+# so 9 is a conservative assumption, is the student's to change, and is disclosed as
+# assumed every time it is used. 12 was "a full-time graduate load" with nothing behind it.
+from app.sequence.plan import ASSUMED_CREDIT_CAP as MAX_CREDITS_PER_TERM
 
 # Capstone courses are 3 credits each and must be taken in consecutive terms, so remaining
 # capstone work sets a floor on the number of terms no amount of overloading can beat.
@@ -143,17 +153,14 @@ def compute_readiness(session: Session, student_id: int) -> ReadinessResponse:
 
     can_finish = terms_remaining is None or terms_required <= terms_remaining
 
-    # --- Blockers.
-    active_holds = session.scalars(
-        select(Hold).where(Hold.student_id == student_id, Hold.cleared_at.is_(None))
-    ).all()
-    blocking = [hold for hold in active_holds if hold.blocks_registration]
-
+    # Readiness used to count active holds here and fold them into the status. It cannot
+    # any more, and must not pretend to: hold status lives in Albert, which this product
+    # does not read. What is computed below is a claim about *degree progress only*, and
+    # every sentence it produces is worded to stay inside that.
     status, reason = _classify(
         can_finish=can_finish,
         terms_required=terms_required,
         terms_remaining=terms_remaining,
-        blocking_count=len(blocking),
         capstone_remaining=capstone_remaining,
         credits_remaining=credits_remaining,
     )
@@ -190,8 +197,6 @@ def compute_readiness(session: Session, student_id: int) -> ReadinessResponse:
         terms_required=terms_required,
         can_finish_on_time=can_finish,
         requirements=progress,
-        active_blockers=len(active_holds),
-        blocking_registration=len(blocking),
         provenance=policies.build(student.source_key, student.verified_at),
     )
 
@@ -201,15 +206,18 @@ def _classify(
     can_finish: bool,
     terms_required: int,
     terms_remaining: int | None,
-    blocking_count: int,
     capstone_remaining: int,
     credits_remaining: int,
 ) -> tuple[ReadinessStatus, str]:
     """Pick a status and say why in one sentence.
 
-    Order matters. An unreachable graduation term outranks a hold, because clearing the
-    hold would not change the outcome — telling a student to go pay a bill when their real
-    problem is that the plan does not fit would be the more damaging answer.
+    **Every sentence here is about degree progress and nothing else.** Until 2026-08-13
+    this function also read hold status, and its healthiest verdict ended "and nothing is
+    currently blocking registration" — a claim about the registrar's system, made by a
+    product with no access to it, on the strength of a fixture. Removing the hold data
+    without removing that sentence would have been the worse half of the change: the
+    reassurance is what a student acts on, and acting on it means skipping the one check
+    that mattered.
     """
     if not can_finish and terms_remaining is not None:
         detail = f"{credits_remaining} applicable credits remain"
@@ -225,21 +233,16 @@ def _classify(
             "your expected graduation term.",
         )
 
-    if blocking_count:
-        return (
-            ReadinessStatus.watchlist,
-            f"Degree progress is on pace, but {blocking_count} active hold"
-            f"{'s' if blocking_count != 1 else ''} will block registration until resolved.",
-        )
-
     if terms_remaining is not None and terms_required == terms_remaining:
         return (
             ReadinessStatus.watchlist,
-            f"Remaining work fits your timeline exactly, with no spare term. A dropped or "
-            f"failed course would move your graduation term.",
+            "Remaining work fits your timeline exactly, with no spare term. A dropped or "
+            "failed course would move your graduation term.",
         )
 
     return (
         ReadinessStatus.on_track,
-        "Degree progress is on pace and nothing is currently blocking registration.",
+        "Degree progress is on pace, based on the courses you have entered. Whether "
+        "anything else blocks registration — a hold, your enrollment appointment — is only "
+        "visible in Albert.",
     )

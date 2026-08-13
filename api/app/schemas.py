@@ -8,8 +8,6 @@ from app.models.enums import (
     CaseCategory,
     CasePriority,
     CaseStatus,
-    HoldType,
-    Office,
     ReadinessStatus,
     RequirementKind,
 )
@@ -69,26 +67,6 @@ class RequirementProgress(BaseModel):
     satisfied: bool
 
 
-class BlockerOut(BaseModel):
-    id: int
-    hold_type: HoldType
-    office: Office
-    title: str
-    explanation: str
-    required_action: str
-    amount_cents: int | None
-    blocks_registration: bool
-    placed_at: datetime
-    deadline_at: datetime | None
-    days_until_deadline: int | None
-    # "critical" when the deadline lands on or after the registration window opens — the
-    # student can clear it on time and still lose their window.
-    urgency: str
-    urgency_label: str
-    resolution_url: str | None
-    provenance: Provenance
-
-
 class ReadinessResponse(BaseModel):
     student: StudentSummary
     status: ReadinessStatus
@@ -110,8 +88,6 @@ class ReadinessResponse(BaseModel):
     can_finish_on_time: bool
 
     requirements: list[RequirementProgress]
-    active_blockers: int
-    blocking_registration: int
     provenance: Provenance
 
 

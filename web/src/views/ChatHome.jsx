@@ -33,9 +33,6 @@ import { describeDegradations } from "@/lib/degradations"
 
 const TOOL_LABEL = {
   search_policy: "policy search",
-  get_holds: "your holds",
-  get_degree_progress: "degree progress",
-  get_registration_attempts: "registration history",
   get_course_info: "course catalog",
   get_my_plan: "your plan",
   albert_checklist: "where to look in Albert",
@@ -151,7 +148,10 @@ function LandingHero({ notes, railVisible }) {
         <MarkGlyph className="size-6" />
       </div>
 
-      <h1 className="nx-statement text-display">What&rsquo;s in your way?</h1>
+      {/* Was "What's in your way?" — the readiness question, when the product answered
+          whether you were blocked. It plans a term now, so the front door asks the question
+          the product can actually finish. */}
+      <h1 className="nx-statement text-display">What should you take next?</h1>
 
       <p className="max-w-[54ch] text-lead leading-relaxed text-muted-foreground">
         I read NYU&rsquo;s published rules and the courses you have entered — nothing else.
@@ -209,7 +209,7 @@ function greetingFor(missions, profileCount) {
         `your ${openMission.term} mission is ` +
         `${openMission.steps.filter((s) => s.state === "done").length} of ${openMission.steps.length} steps done.` +
         (active?.what_now ? ` Next: ${active.what_now}` : ""),
-      chips: ["Where am I in my registration prep?", "Suggest courses for my mission"],
+      chips: ["What should I take next term?", "Suggest courses for my mission"],
     }
   }
   if (profileCount > 0) {
@@ -217,7 +217,7 @@ function greetingFor(missions, profileCount) {
       status:
         `you have ${profileCount} course${profileCount === 1 ? "" : "s"} on record ` +
         "and no term being prepared.",
-      chips: ["Plan my next semester", "Am I on track to graduate?"],
+      chips: ["Plan my next semester", "Which course would delay me if I skipped it?"],
     }
   }
   return {
@@ -591,7 +591,7 @@ export default function ChatHome({
                   className="min-w-0 flex-1 bg-transparent py-1.5 text-lead outline-none placeholder:text-subtle"
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="Ask about holds, enrollment errors, courses, or your degree…"
+                  placeholder="Ask what to take next term, paste an enrollment error, or check your degree…"
                   disabled={busy}
                 />
                 <Button type="submit" variant="outline" disabled={busy || !question.trim()}>

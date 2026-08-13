@@ -6,8 +6,15 @@ import { api } from "../api";
  *
  * One click signs in as a seeded student. The password is printed because every account
  * here is fictional and the whole point is that a visitor can walk in and see the product
- * on a record that already has something wrong with it — an aid hold, or credits that do
- * not count — rather than an empty account.
+ * on a record with a real planning problem in it — a course from another school's catalogue
+ * that may not count, or a degree with everything still ahead of it — rather than an empty
+ * account.
+ *
+ * Both hints are read off the actual seeded records rather than written to sound good. They
+ * were rewritten on 2026-08-13, when hold-reading was removed: Alex's situation used to be
+ * an aid hold, which this product can no longer see, and Diego's "27 earned, 21 count" was
+ * true of the *demo* programme's elective cap and stopped being true when he moved onto the
+ * real Management and Analytics rules.
  *
  * Two students rather than one because the interesting behaviour is the difference: the
  * same screens have to say two different true things, and neither can see the other's
@@ -24,16 +31,16 @@ const DEMO_PASSWORD = "path-pilot-demo-2026";
 // differs between these two doors.
 const ACCOUNTS = [
   {
-    situation: "Blocked",
+    situation: "Nearly done",
     name: "Alex Chen",
     email: "alex.chen@pathpilot.example.edu",
-    hint: "An aid hold is blocking registration, and its deadline lands before the window opens.",
+    hint: "27 of 36 credits, three courses left — and one he is counting on is another school's.",
   },
   {
-    situation: "Off track",
+    situation: "Wide open",
     name: "Diego Morales",
     email: "diego.morales@pathpilot.example.edu",
-    hint: "27 credits earned, but only 21 count toward the degree.",
+    hint: "15 of 36 credits, seven courses to go, and nothing planned yet.",
   },
 ];
 
@@ -65,9 +72,10 @@ export default function DemoLogin() {
         </div>
 
         <p className="login__pitch">
-          Every student, hold, and case below is invented. Policy text is quoted from
-          public NYU bulletins with source links. Pick a student — each one walks in with
-          a different problem, and neither can reach the other&rsquo;s record.
+          Every student and case below is invented; the degree rules and policy text are
+          quoted from public NYU bulletins with source links. Nothing here can see Albert —
+          not for these two either. Pick a student: each walks in with a different planning
+          problem, and neither can reach the other&rsquo;s record.
         </p>
 
         {error ? (

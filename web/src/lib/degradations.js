@@ -1,6 +1,6 @@
 // What a degraded turn looked like, said in words a student can act on.
 //
-// `degraded_modes` are audit keys — `keyword_fallback`, `tool_error:get_holds` — and
+// `degraded_modes` are audit keys — `keyword_fallback`, `tool_error:get_my_plan` — and
 // printing them raw put strings like "retrieval_budget_exhausted" in front of students,
 // which reads as an internal error rather than as the honest disclosure it is. The keys
 // stay exactly as they are in the audit row; only the rendering changes.

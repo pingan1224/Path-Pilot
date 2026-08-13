@@ -52,7 +52,6 @@ export const api = {
   me: () => request("/auth/me"),
   // data — always the signed-in student's own record, scoped server-side by the session
   readiness: (id) => request(`/students/${id}/readiness`),
-  blockers: (id) => request(`/students/${id}/blockers`),
   // `history` is prior conversation text only — never tool results. Replaying a stale seat
   // count or hold status would put it in context looking as authoritative as this turn's
   // lookup; the server re-establishes every fact through tools scoped by the session.

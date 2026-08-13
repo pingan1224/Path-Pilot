@@ -134,9 +134,10 @@ Three things follow, and they are the reason for the change rather than decorati
 
 ### Holds: what changed, and why it is a scope decision (2026-08-13)
 
-The product **no longer reads hold status**. `get_holds` and the seeded `Hold` rows are
-being removed, and this is a deliberate retreat from something the source RFP asked for, so
-the reasoning is recorded rather than left as an omission:
+The product **no longer reads hold status**. `get_holds`, `get_registration_attempts`,
+`get_degree_progress`, the `Hold` and `RegistrationAttempt` tables and their seed rows are
+gone, and this is a deliberate retreat from something the source RFP asked for, so the
+reasoning is recorded rather than left as an omission:
 
 There is no Albert integration and never will be, so a hold shown by this product could only
 ever come from fixtures we invented. Everywhere else the product's honesty rule is "no
@@ -144,6 +145,21 @@ access is no access, not an empty result" — holds were the one place it displa
 fabricated fact about a student's official record with the same confidence as a computed
 one. Under a course planner they are also off the critical path: a hold blocks the
 registration click, not the choice of what to register for.
+
+**The qualifier that only surfaced during implementation, and it changes the shape of the
+finding.** The sentence above was true of the *demo* alone. There were two tool surfaces:
+live mode had already withdrawn all three record tools — on the principle written in that
+code, *a tool the model cannot call is a claim the model cannot make* — and offered
+`get_my_plan` and `albert_checklist` in their place. Real users never saw a fixture-backed
+hold.
+
+That does not make it smaller, it relocates it. **The demo is what anyone judging this
+project opens**, and it was a more capable product than the real one, with the extra
+capability made entirely of invented data. So the change was not "design an honest fallback"
+— one existed and was already serving real users — but **delete the other path**, leaving
+one surface of nine tools for demo and live alike. The parallel to the one-persona cut is
+exact: a second surface costs a second place to be wrong, and this one was wrong by
+construction.
 
 **Rule 5 does not change.** A hold question is still high-stakes and still escalates. What
 changes is where the claim comes from — two honest shapes survive, and no third:

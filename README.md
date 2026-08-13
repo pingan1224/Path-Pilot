@@ -563,14 +563,22 @@ actually costs).
 - **No Albert integration, by design and by necessity.** A real user's completed courses
   are self-reported. The product is "tell me what you have taken and I will tell you what to
   take next", not "I can see your record".
-- **Hold status was cut, and cutting it was the point.** The original proposal treated holds
-  as a core scenario. Without Albert, a hold this product displayed could only ever come from
-  a fixture I invented — the one place it stated a fabricated fact about a student's official
-  record with the same confidence as a computed one. Two honest shapes survive and no third:
-  a static "check Albert for holds before your window opens", which asserts nothing about
-  this student, and the student's own pasted error text run through the decoder, which is
-  self-reported input exactly like a transcript. **The product never says "you have a hold."**
-  It says what a hold does and who to ask. Escalation for hold questions is unchanged.
+- **Hold status was cut, and what I found while cutting it is the better story.** The
+  original proposal treated holds as a core scenario, and without Albert a hold this product
+  displayed could only come from a fixture I invented. What I discovered on the way to
+  deleting it: the honest design was already there. The code carried *two* tool surfaces —
+  live mode had withdrawn the record tools long before, on a principle written in the source,
+  *a tool the model cannot call is a claim the model cannot make*, and offered a "here is
+  where to look in Albert" tool instead. The fixture-backed tools were demo-only.
+
+  That is not a smaller problem, just a differently-placed one. **The demo is what anyone
+  judging this project opens**, and it was a more capable product than the real one, with the
+  extra capability made of invented data delivered at the confidence of a computed result. So
+  the fix was not to design a fallback — one existed and was already running — but to delete
+  the other path, leaving one surface for demo and real users alike. **The product never says
+  "you have a hold."** It says what a hold does and who to ask, and the student's own pasted
+  error text still runs through the decoder, which is self-reported input exactly like a
+  transcript. Escalation for hold questions is unchanged.
 - **Degree auditing covers 22 of the 23 SPS graduate programmes.** The exception is the
   HCM/HCAT dual degree, whose page publishes a credit total but no requirements table; it
   reports itself unauditable rather than being audited against invented rules. Undergraduate

@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
-import { api, formatDate, formatMoney } from "../api";
-import { Empty, ErrorState, Loading, Meter, ProvenanceTag, StatusPill } from "../components";
+import { api } from "../api";
+import { ErrorState, Loading, Meter, ProvenanceTag, StatusPill } from "../components";
 
 const STATUS_TONE = { on_track: "good", watchlist: "warn", at_risk: "danger" };
-const URGENCY_TONE = { critical: "danger", high: "danger", normal: "warn", low: "neutral" };
 
 export default function StudentView({ studentId }) {
   const [data, setData] = useState(null);
-  const [blockers, setBlockers] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -15,12 +13,7 @@ export default function StudentView({ studentId }) {
     setLoading(true);
     setError(null);
     try {
-      const [readiness, holds] = await Promise.all([
-        api.readiness(studentId),
-        api.blockers(studentId),
-      ]);
-      setData(readiness);
-      setBlockers(holds);
+      setData(await api.readiness(studentId));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -37,42 +30,21 @@ export default function StudentView({ studentId }) {
   if (error) return <ErrorState message={error} onRetry={load} />;
   if (!data) return null;
 
-  const critical = blockers.filter((b) => b.urgency === "critical");
-
   return (
     <div className="stack">
-      {/* Zone 1: critical alerts, above everything else. A student cannot act on degree
-          planning while registration is blocked, so blockers outrank the hero card. */}
-      {critical.map((blocker) => (
-        <div key={blocker.id} className="alert" role="alert">
-          <div className="alert__head">
-            <strong>Registration blocker</strong>
-            <span className="alert__flag">{blocker.urgency_label}</span>
-          </div>
-          <p className="alert__title">{blocker.title}</p>
-          <p className="alert__body">{blocker.required_action}</p>
-          <p className="alert__meta">
-            {blocker.deadline_at ? (
-              <>
-                Due {formatDate(blocker.deadline_at)}
-                {blocker.days_until_deadline != null
-                  ? ` · ${blocker.days_until_deadline} days left`
-                  : ""}
-                {data.student.days_until_registration != null
-                  ? ` · your registration opens in ${data.student.days_until_registration} days`
-                  : ""}
-              </>
-            ) : (
-              "No deadline on file"
-            )}
-          </p>
-          {blocker.resolution_url ? (
-            <a className="btn btn--primary" href={blocker.resolution_url} target="_blank" rel="noreferrer">
-              Resolve with {blocker.office.replace(/_/g, " ")}
-            </a>
-          ) : null}
+      {/* Zone 1 used to be a critical-blocker banner fed by the holds table. Both are gone
+          (2026-08-13): this product cannot see a hold, and a banner is the loudest possible
+          place to assert one. What replaces it claims nothing about this student. */}
+      <div className="alert" role="note">
+        <div className="alert__head">
+          <strong>Before you register</strong>
         </div>
-      ))}
+        <p className="alert__body">
+          Path Pilot cannot see holds, your enrollment appointment, or seat availability —
+          those live in Albert and only Albert. Check there before your window opens. What
+          is below is your degree progress, from the courses you entered.
+        </p>
+      </div>
 
       {/* Zone 2: the headline question — will I graduate on time? */}
       <section className="card card--hero" aria-labelledby="readiness-heading">
@@ -148,34 +120,6 @@ export default function StudentView({ studentId }) {
         </ul>
       </section>
 
-      {/* Remaining blockers, including anything not critical enough for the banner. */}
-      <section className="card" aria-labelledby="blockers-heading">
-        <h3 id="blockers-heading">Blockers and holds</h3>
-        {blockers.length === 0 ? (
-          <Empty>Nothing is currently blocking your registration.</Empty>
-        ) : (
-          <ul className="blockers">
-            {blockers.map((blocker) => (
-              <li key={blocker.id} className={`blocker blocker--${URGENCY_TONE[blocker.urgency]}`}>
-                <div className="blocker__head">
-                  <span className="blocker__title">{blocker.title}</span>
-                  <StatusPill tone={URGENCY_TONE[blocker.urgency]} label={blocker.urgency_label} />
-                </div>
-                <p>{blocker.explanation}</p>
-                <p className="blocker__action">
-                  <strong>Next step:</strong> {blocker.required_action}
-                </p>
-                <p className="blocker__meta">
-                  {blocker.office.replace(/_/g, " ")}
-                  {blocker.amount_cents != null ? ` · ${formatMoney(blocker.amount_cents)}` : ""}
-                  {blocker.deadline_at ? ` · due ${formatDate(blocker.deadline_at)}` : ""}
-                </p>
-                <ProvenanceTag provenance={blocker.provenance} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </div>
   );
 }

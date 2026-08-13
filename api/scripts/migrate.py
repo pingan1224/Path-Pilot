@@ -212,6 +212,13 @@ STATEMENTS = [
     # fractions the parser had been discarding.
     "ALTER TABLE courses ALTER COLUMN credits TYPE double precision",
     "ALTER TABLE requirements ALTER COLUMN min_credits TYPE double precision",
+    # A track can name courses it requires outright alongside the pool it draws the rest
+    # from — Global Affairs states each concentration as one named course plus five chosen.
+    """CREATE TABLE IF NOT EXISTS requirement_track_required_courses (
+           track_id INTEGER NOT NULL REFERENCES requirement_tracks(id) ON DELETE CASCADE,
+           course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+           PRIMARY KEY (track_id, course_id)
+       )""",
 ]
 
 

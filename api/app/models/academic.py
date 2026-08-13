@@ -41,6 +41,18 @@ requirement_track_courses = Table(
     Column("course_id", ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True),
 )
 
+# Courses a track requires by name, as against the pool it draws the rest from. Global
+# Affairs states every concentration as one named course plus five chosen from thirty-odd;
+# folding the named one into the pool would let a student satisfy the concentration while
+# skipping the course it is built around. A separate table rather than a flag on the one
+# above, so the existing relationship keeps meaning exactly what it did.
+requirement_track_required_courses = Table(
+    "requirement_track_required_courses",
+    Base.metadata,
+    Column("track_id", ForeignKey("requirement_tracks.id", ondelete="CASCADE"), primary_key=True),
+    Column("course_id", ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True),
+)
+
 
 class RequirementRule(str, enum.Enum):
     """How a requirement is satisfied.
@@ -80,11 +92,15 @@ class RequirementTrack(Base):
 
     requirement: Mapped["Requirement"] = relationship(back_populates="tracks")
     courses: Mapped[list["Course"]] = relationship(secondary=requirement_track_courses)
+    # Named courses the track requires outright, separate from the pool above.
+    required_courses: Mapped[list["Course"]] = relationship(
+        secondary=requirement_track_required_courses
+    )
 
     @property
     def required_course_count(self) -> int:
-        """The number of courses that complete this track."""
-        return self.min_courses or len(self.courses)
+        """How many courses complete this track: the named ones plus the pool draw."""
+        return len(self.required_courses) + (self.min_courses or len(self.courses))
 
 
 class Term(Base, TimestampMixin):

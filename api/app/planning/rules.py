@@ -65,15 +65,34 @@ class TrackRule:
     # concentrations that way. Financial Planning lists five and asks for three, so the
     # courses are a pool and this is how many to draw from it.
     min_courses: int | None = None
+    # Courses the track requires by name, on top of the pool draw. Global Affairs states
+    # each concentration as one named course plus five chosen from thirty-odd; folding the
+    # named one into the pool would let a student complete the concentration without it.
+    required_codes: tuple[str, ...] = ()
+
+    @property
+    def pool_count(self) -> int:
+        """How many of `course_codes` are needed."""
+        return self.min_courses or len(self.course_codes)
 
     @property
     def required_count(self) -> int:
-        return self.min_courses or len(self.course_codes)
+        return len(self.required_codes) + self.pool_count
 
     @property
     def is_pool(self) -> bool:
         """True when the track offers more courses than it requires."""
-        return self.required_count < len(self.course_codes)
+        return self.pool_count < len(self.course_codes)
+
+    def missing(self, held) -> tuple[list[str], int]:
+        """(named courses still owed, how many more pool courses are needed)."""
+        owed = [c for c in self.required_codes if c not in held]
+        short = self.pool_count - sum(1 for c in self.course_codes if c in held)
+        return owed, max(short, 0)
+
+    def is_complete(self, held) -> bool:
+        owed, short = self.missing(held)
+        return not owed and short == 0
 
 
 @dataclass(frozen=True)
@@ -298,7 +317,7 @@ def evaluate_requirement(
         progress = [
             (track, [c for c in track.course_codes if c in held]) for track in spec.tracks
         ]
-        complete = [t for t, done in progress if len(done) >= t.required_count]
+        complete = [t for t, done in progress if t.is_complete(held)]
         if complete:
             return Finding(
                 verdict=Verdict.satisfied,
@@ -337,7 +356,21 @@ def evaluate_requirement(
         if started:
             track, done = started[0]
             remaining = [c for c in track.course_codes if c not in done]
-            short = track.required_count - len(done)
+            owed, short = track.missing(held)
+            if owed:
+                # A named course the track is built around. Saying "choose N more" while
+                # this is outstanding would describe the requirement as a free choice.
+                return Finding(
+                    verdict=Verdict.not_satisfied,
+                    key=rkey,
+                    summary=f"{spec.name}: {track.name} in progress",
+                    detail=(
+                        f"{track.name} requires {', '.join(owed)}"
+                        + (f", and {short} more from its listed courses." if short else ".")
+                    ),
+                    citations=(citation,),
+                    next_step=f"Plan {', '.join(owed)}.",
+                )
             if track.is_pool:
                 # Naming every untaken course would overstate the requirement by the size of
                 # the pool: five are listed and three complete it, so "remaining: <five

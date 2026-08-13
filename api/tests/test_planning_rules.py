@@ -446,3 +446,54 @@ def test_a_full_track_still_requires_every_course():
     finding = evaluate_requirement(spec, stated(("R1", "completed")), {})
     assert finding.verdict is Verdict.not_satisfied
     assert "R2" in finding.detail
+
+
+# --- A track that names a required course and draws the rest from a pool.
+#
+# Global Affairs states every concentration as one named course plus five chosen from
+# thirty-odd. Folding the named one into the pool would let a student complete the
+# concentration while skipping the course it is built around — a wrong pass, which is the
+# direction of error this engine exists to prevent.
+
+
+def _named_plus_pool():
+    return RequirementRuleSpec(
+        "Concentration", "one_track", 18,
+        tracks=(
+            TrackRule(
+                "Peacebuilding",
+                ("E1", "E2", "E3", "E4", "E5", "E6", "E7"),
+                min_courses=5,
+                required_codes=("R1",),
+            ),
+        ),
+    )
+
+
+def test_the_named_course_is_not_optional():
+    """Five pool courses is the right count and still not the requirement."""
+    finding = evaluate_requirement(
+        _named_plus_pool(),
+        stated(*[(c, "completed") for c in ("E1", "E2", "E3", "E4", "E5")]),
+        {},
+    )
+    assert finding.verdict is Verdict.not_satisfied
+    assert "R1" in finding.detail
+
+
+def test_the_track_completes_with_the_named_course_and_the_pool_draw():
+    finding = evaluate_requirement(
+        _named_plus_pool(),
+        stated(*[(c, "completed") for c in ("R1", "E1", "E2", "E3", "E4", "E5")]),
+        {},
+    )
+    assert finding.verdict is Verdict.satisfied, finding.detail
+
+
+def test_an_outstanding_named_course_is_reported_before_the_pool_shortfall():
+    """"Choose 2 more" would describe a free choice while a fixed course is owed."""
+    finding = evaluate_requirement(
+        _named_plus_pool(), stated(("E1", "completed"), ("E2", "completed"), ("E3", "completed")), {}
+    )
+    assert "R1" in finding.detail
+    assert "R1" in finding.next_step

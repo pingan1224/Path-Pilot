@@ -39,10 +39,16 @@ class TrackSpec:
     # Analytics states each concentration as two courses and requires both. Financial
     # Planning lists five and asks for three, so its courses are a pool.
     min_courses: int | None = None
+    # Courses the track requires by name, on top of the pool draw.
+    required: list[str] = field(default_factory=list)
+
+    @property
+    def pool_count(self) -> int:
+        return self.min_courses or len(self.courses)
 
     @property
     def required_count(self) -> int:
-        return self.min_courses or len(self.courses)
+        return len(self.required) + self.pool_count
 
 
 @dataclass
@@ -482,6 +488,7 @@ def validate(session, program: ProgramSpec) -> list[str]:
 
     codes = {c for spec in requirements for c in spec.courses}
     codes |= {c for spec in requirements for t in spec.tracks for c in t.courses}
+    codes |= {c for spec in requirements for t in spec.tracks for c in t.required}
     known = {
         row.code
         for row in session.scalars(
@@ -501,7 +508,7 @@ def validate(session, program: ProgramSpec) -> list[str]:
                 # would fail a correct transcription. What has to reconcile is the credits
                 # of the number actually required. Mixed-credit pools would make that
                 # ambiguous; asserting they are uniform is what keeps this check meaningful.
-                per_course = {credits_of(c) for c in track.courses}
+                per_course = {credits_of(c) for c in track.courses + track.required}
                 if len(per_course) > 1:
                     problems.append(
                         f"{spec.name}/{track.name}: pool mixes credit values {sorted(per_course)}, "
@@ -589,6 +596,7 @@ def write(session, spec_program: ProgramSpec) -> tuple[int, int]:
             session.add(row)
             session.flush()
             row.courses = [by_code[c] for c in track.courses if c in by_code]
+            row.required_courses = [by_code[c] for c in track.required if c in by_code]
             tracks_written += 1
 
     session.commit()

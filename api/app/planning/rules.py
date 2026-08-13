@@ -40,7 +40,7 @@ class CourseRule:
 
     code: str
     title: str
-    credits: int
+    credits: float
     # Each inner tuple is one OR-group; every group must be satisfied.
     prerequisite_groups: tuple[tuple[str, ...], ...] = ()
     min_grades: tuple[tuple[str, str], ...] = ()  # (prereq_code, min_grade)

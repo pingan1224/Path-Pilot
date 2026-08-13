@@ -30,7 +30,7 @@ student_only = require_roles(UserRole.student)
 class PlacementOut(BaseModel):
     course_code: str
     title: str
-    credits: int
+    credits: float
     requirement: str | None
     term: str
     # "published" | "irregular" | "unstated" — what the term choice was based on.
@@ -42,7 +42,7 @@ class PlacementOut(BaseModel):
 
 class TermOut(BaseModel):
     term: str
-    credits: int
+    credits: float
     courses: list[PlacementOut]
 
 

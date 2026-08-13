@@ -41,7 +41,7 @@ class RowOut(BaseModel):
     course_code: str | None
     status: str
     term: str | None
-    credits: int | None
+    credits: float | None
     grade: str | None
     state: str
     reasons: list[str]

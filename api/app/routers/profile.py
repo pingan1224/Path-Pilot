@@ -50,7 +50,7 @@ class CourseOut(BaseModel):
     term: str | None
     grade: str | None
     title: str | None
-    credits: int | None
+    credits: float | None
     # False for courses this program's catalog does not contain — a real possibility for
     # electives, and something the UI must show rather than hide.
     in_catalog: bool

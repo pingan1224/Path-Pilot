@@ -10,6 +10,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     Enum as SAEnum,
+    Float,
     ForeignKey,
     Integer,
     Numeric,
@@ -172,7 +173,12 @@ class Course(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(String(24), unique=True, index=True, nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
-    credits: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Half credits are real: 62 of the ingested courses are worth 1.5, and several degrees
+    # are built almost entirely from them. Stored as an integer they truncated to 1, so a
+    # 30-credit programme reconciled to 28 and a student was told they owed credits they had
+    # already earned. Floating point is exact for halves, which is the only fraction the
+    # bulletin uses, so there is no rounding to reason about here.
+    credits: Mapped[float] = mapped_column(Float, nullable=False)
     department: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
 

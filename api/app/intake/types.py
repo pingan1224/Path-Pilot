@@ -46,7 +46,7 @@ class ExtractedRow:
     # Everything below is best-effort; each may be absent without invalidating the row.
     title: str | None = None
     term: str | None = None
-    credits: int | None = None
+    credits: float | None = None
     grade: str | None = None
     # What the reader believes the student's relationship to this course is. Never derived
     # from a missing grade alone without saying so in `reasons`.

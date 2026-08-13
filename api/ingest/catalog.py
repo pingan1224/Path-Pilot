@@ -57,7 +57,7 @@ AND_SPLIT = re.compile(r"\s+(?:AND|and)\s+|\s*,\s*|\s*;\s*|\s*&\s*")
 class ParsedCourse:
     code: str
     title: str
-    credits: int
+    credits: float
     description: str
     typically_offered: str | None
     # Each inner list is one OR-group; all groups must be satisfied.
@@ -115,7 +115,7 @@ def parse_course_section(section: dict) -> ParsedCourse | None:
     text = section["text"]
 
     credits_match = CREDITS.search(text)
-    credits = int(float(credits_match.group(1))) if credits_match else 0
+    credits = float(credits_match.group(1)) if credits_match else 0.0
 
     description_lines: list[str] = []
     prerequisite_raw: str | None = None

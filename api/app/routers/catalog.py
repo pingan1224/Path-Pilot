@@ -65,7 +65,7 @@ def list_programs(
 class CatalogCourse(BaseModel):
     code: str
     title: str
-    credits: int
+    credits: float
     typically_offered: str | None
     # Rendered as the bulletin wrote it, so the student sees the requirement they will
     # actually be held to.

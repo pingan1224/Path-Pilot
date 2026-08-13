@@ -100,3 +100,24 @@ def test_prerequisite_edges_survive_the_wider_pattern(parsed):
     assert len(masy) == 57
     with_prereqs = [c for c in masy if c.prerequisite_groups]
     assert with_prereqs, "MASY1-GC lost every prerequisite edge"
+
+
+def test_half_credits_survive_parsing(parsed):
+    """1.5 is a real credit value, and truncating it under-counts a degree.
+
+    `int(float(...))` stored 1, so a programme built from 1.5-credit courses reconciled two
+    credits short and a student was told they owed coursework they had already done. 129 of
+    the ingested courses carry halves, so this is not an edge case in this catalogue.
+    """
+    courses, _ = parsed
+    halves = [c for c, _ in courses if c.credits % 1 != 0]
+    assert halves, "no fractional-credit courses parsed — the truncation is probably back"
+    assert all(c.credits % 0.5 == 0 for c in halves), "credits should be whole or half"
+
+
+def test_the_marketing_capstone_keeps_its_half_credits(parsed):
+    """A named pair, so the assertion fails loudly rather than thinning to a property."""
+    courses, _ = parsed
+    by_code = {c.code: c for c, _ in courses}
+    assert by_code["ENTR1-GC 3100"].credits == 1.5
+    assert by_code["ENTR1-GC 3200"].credits == 1.5

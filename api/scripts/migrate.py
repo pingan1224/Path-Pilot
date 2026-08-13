@@ -207,6 +207,10 @@ STATEMENTS = [
     # all of them — which is correct for Management & Analytics, where each concentration is
     # two courses and both are required. Financial Planning lists five and asks for three.
     "ALTER TABLE requirement_tracks ADD COLUMN IF NOT EXISTS min_courses INTEGER",
+    # 1.5-credit courses truncated to 1 under the old integer column. See the note on
+    # Course.credits; the cast is safe in this direction and the re-ingest restores the
+    # fractions the parser had been discarding.
+    "ALTER TABLE courses ALTER COLUMN credits TYPE double precision",
 ]
 
 

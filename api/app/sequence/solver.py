@@ -119,12 +119,22 @@ def solve(
     max_credits_per_term: int = 9,
     deadline: Term | None = None,
     enforce: frozenset[Constraint] = ALL_CONSTRAINTS,
+    not_before: dict[str, Term] | None = None,
 ) -> tuple[Placement, ...] | None:
     """The earliest-finishing assignment of needs to terms, or None if there is none.
 
     `enforce` exists for relaxation testing: dropping one constraint and re-solving is how
     infeasibility gets attributed to a cause rather than reported as a dead end.
+
+    `not_before` holds a course out of the terms before the one given. It exists for the
+    same reason `enforce` does — asking a counterfactual by re-running the real search
+    rather than reasoning about it — but the question is the student's rather than the
+    diagnostician's: *what does it cost me to not take this next term?* Pushing one course
+    and re-solving prices that in the only unit that matters, which is terms. It is
+    deliberately not a filter applied to the answer afterwards: deferring a course can
+    change which term everything downstream lands in, and only the search knows that.
     """
+    not_before = not_before or {}
     if not needs:
         return ()
 
@@ -147,6 +157,9 @@ def solve(
             return True
         need = ordered[index]
         for term in allowed_terms:
+            floor = not_before.get(need.code)
+            if floor is not None and term < floor:
+                continue
             if Constraint.offering in enforce and not need.offering.allows(term.season):
                 continue
             if (

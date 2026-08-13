@@ -194,7 +194,16 @@ def build_sequence(
     max_credits_per_term: int = ASSUMED_CREDIT_CAP,
     horizon: int = DEFAULT_HORIZON,
     credit_cap_was_assumed: bool = True,
+    defer: str | None = None,
 ) -> SequencePlan:
+    """`defer` holds one course out of `start_term` and re-plans around it.
+
+    This is the counterfactual behind "what does skipping this next term cost you?", and it
+    re-runs the whole thing — including the choice between concentrations — rather than
+    editing the answer. Deferring a course can make a different track finish sooner, and a
+    cheaper implementation that only shifted one row would report a delay the student could
+    have avoided by switching. See `sequence.delay`.
+    """
     # In-progress coursework counts as held: it finishes before any term this plan touches.
     held = frozenset(
         c.code
@@ -257,6 +266,7 @@ def build_sequence(
             )
 
         needs_tuple = tuple(needs)
+        held_back = {defer: start_term.next()} if defer else None
         try:
             placements = solve(
                 needs_tuple,
@@ -264,6 +274,7 @@ def build_sequence(
                 already_held=held,
                 max_credits_per_term=max_credits_per_term,
                 deadline=deadline,
+                not_before=held_back,
             )
         except DependencyCycleError as exc:
             attempts.append(

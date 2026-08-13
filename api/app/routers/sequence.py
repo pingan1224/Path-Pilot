@@ -59,6 +59,24 @@ class InfeasibilityOut(BaseModel):
     remedies: list[str]
 
 
+class DelayCostOut(BaseModel):
+    """One of next term's courses, priced in terms if it waits.
+
+    `terms_lost` is null exactly when `breaks_plan` is true — "there is no later plan" is a
+    different statement from "it costs N terms", and flattening it to a large number would
+    invite a client to render it as one.
+    """
+
+    code: str
+    title: str
+    requirement: str | None
+    terms_lost: int | None
+    breaks_plan: bool
+    # The sentence the student reads, written server-side so the card, the chat answer and
+    # the advisor handoff cannot drift into three different phrasings of one fact.
+    explanation: str
+
+
 class SequenceOut(BaseModel):
     feasible: bool
     program_name: str
@@ -75,6 +93,8 @@ class SequenceOut(BaseModel):
     assumptions: list[AssumptionOut]
     infeasibility: InfeasibilityOut | None
     unplaceable: list[str]
+    # Empty whenever there is no feasible plan: a delay cost is a comparison against one.
+    delay_costs: list[DelayCostOut] = []
     disclaimer: str = (
         "An order that satisfies the published rules, computed from what you have entered. "
         "It is not a guarantee that a section will run or that a seat will exist — Path Pilot "
@@ -152,6 +172,17 @@ def get_sequence(
             {"track": name, "why": why} for name, why in plan.rejected_tracks
         ],
         terms=terms_out,
+        delay_costs=[
+            DelayCostOut(
+                code=c.code,
+                title=c.title,
+                requirement=c.requirement,
+                terms_lost=c.terms_lost,
+                breaks_plan=c.breaks_plan,
+                explanation=c.describe(),
+            )
+            for c in meta["delay_costs"]
+        ],
         finish_term=str(plan.finish_term) if plan.finish_term else None,
         terms_needed=len(plan.terms_used),
         assumptions=[

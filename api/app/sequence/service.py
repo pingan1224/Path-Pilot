@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.planning.loader import load_program_rules
 from app.planning.types import StatedCourse
+from app.sequence.delay import delay_costs
 from app.sequence.plan import ASSUMED_CREDIT_CAP, DEFAULT_HORIZON, build_sequence
 from app.sequence.terms import Season, Term
 from app.sequence.types import SequencePlan
@@ -74,6 +75,18 @@ def sequence_for_user(
         credit_cap_was_assumed=max_credits_per_term is None,
     )
 
+    # What each of next term's courses costs if it waits. Computed alongside the plan
+    # rather than behind a second endpoint: the reason a course is on the list is not a
+    # detail view of the list, it is the answer.
+    costs = delay_costs(
+        program,
+        stated,
+        start_term=start,
+        deadline=deadline,
+        max_credits_per_term=cap,
+        horizon=horizon,
+    )
+
     meta = {
         "program_name": program.name,
         "program_source_url": program.source_url,
@@ -83,6 +96,7 @@ def sequence_for_user(
         "max_credits_per_term": cap,
         "credit_cap_was_assumed": max_credits_per_term is None,
         "courses_stated": len(stated),
+        "delay_costs": costs,
     }
     return plan, meta
 

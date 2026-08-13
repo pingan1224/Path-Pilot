@@ -54,21 +54,6 @@ class Office(str, enum.Enum):
     international = "international"
 
 
-class HoldType(str, enum.Enum):
-    financial_balance = "financial_balance"
-    aid_document_missing = "aid_document_missing"
-    advising_required = "advising_required"
-    immunization = "immunization"
-    academic_standing = "academic_standing"
-    department_permission = "department_permission"
-
-
-class RegistrationOutcome(str, enum.Enum):
-    succeeded = "succeeded"
-    failed = "failed"
-    waitlisted = "waitlisted"
-
-
 class FailureReason(str, enum.Enum):
     """Why an enrollment attempt failed.
 

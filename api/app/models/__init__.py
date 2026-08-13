@@ -17,7 +17,6 @@ from app.models.academic import (
     requirement_courses,
     requirement_track_courses,
 )
-from app.models.blockers import Hold, RegistrationAttempt
 from app.models.cases import Case, CaseEvent
 from app.models.enums import (
     ActorKind,
@@ -26,12 +25,10 @@ from app.models.enums import (
     CaseStatus,
     EnrollmentStatus,
     FailureReason,
-    HoldType,
     Intent,
     InteractionDecision,
     Office,
     ReadinessStatus,
-    RegistrationOutcome,
     RequirementKind,
     UserRole,
 )
@@ -57,8 +54,6 @@ __all__ = [
     "Enrollment",
     "EnrollmentStatus",
     "FailureReason",
-    "Hold",
-    "HoldType",
     "Intent",
     "InteractionDecision",
     "Mission",
@@ -68,8 +63,6 @@ __all__ = [
     "ProfileCourse",
     "Program",
     "ReadinessStatus",
-    "RegistrationAttempt",
-    "RegistrationOutcome",
     "Requirement",
     "RequirementKind",
     "RequirementRule",

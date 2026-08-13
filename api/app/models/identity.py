@@ -90,9 +90,6 @@ class Student(Base, TimestampMixin, SourcedMixin):
     enrollments: Mapped[list[Enrollment]] = relationship(
         back_populates="student", cascade="all, delete-orphan"
     )
-    holds: Mapped[list[Hold]] = relationship(
-        back_populates="student", cascade="all, delete-orphan"
-    )
     cases: Mapped[list[Case]] = relationship(
         back_populates="student", cascade="all, delete-orphan"
     )
@@ -103,5 +100,4 @@ class Student(Base, TimestampMixin, SourcedMixin):
 
 
 from app.models.academic import Enrollment, Program  # noqa: E402
-from app.models.blockers import Hold  # noqa: E402
 from app.models.cases import Case  # noqa: E402

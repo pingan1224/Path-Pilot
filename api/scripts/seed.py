@@ -41,14 +41,10 @@ from app.models import (
     Enrollment,
     EnrollmentStatus,
     FailureReason,
-    Hold,
-    HoldType,
     Intent,
     InteractionDecision,
     Office,
     Program,
-    RegistrationAttempt,
-    RegistrationOutcome,
     Requirement,
     RequirementKind,
     Section,
@@ -583,120 +579,6 @@ def seed_hero_students(
     return heroes
 
 
-# --------------------------------------------------------------------------------------
-# Holds
-# --------------------------------------------------------------------------------------
-
-
-def seed_holds(session: Session, heroes: dict[str, Student]) -> dict[str, Hold]:
-    holds: dict[str, Hold] = {}
-
-    alex_hold = Hold(
-        student_id=heroes["alex"].id,
-        hold_type=HoldType.aid_document_missing,
-        office=Office.financial_aid,
-        title="Financial aid verification document outstanding",
-        explanation=(
-            "Your 2026-2027 aid package requires a signed Verification Worksheet. "
-            "Financial Aid received your FAFSA but has not received the worksheet, so your "
-            "aid has not been finalized and a registration hold remains on your record."
-        ),
-        required_action=(
-            "Upload the signed Verification Worksheet to the Financial Aid document portal. "
-            "Processing takes up to two business days after upload."
-        ),
-        blocks_registration=True,
-        placed_at=NOW - timedelta(days=14),
-        # Deliberately two days before the registration window opens: the deadline and the
-        # window are in tension, which is the whole point of surfacing both together.
-        deadline_at=NOW + timedelta(days=REGISTRATION_OPENS_IN_DAYS - 2),
-        resolution_url="https://example.edu/financial-aid/documents",
-        source_key="financial_aid",
-        verified_at=NOW - timedelta(hours=19),
-    )
-    session.add(alex_hold)
-    holds["alex_aid"] = alex_hold
-
-    diego_hold = Hold(
-        student_id=heroes["diego"].id,
-        hold_type=HoldType.advising_required,
-        office=Office.advising,
-        title="Advisor meeting required before registration",
-        explanation=(
-            "Your degree audit shows three remaining core courses and no capstone progress, "
-            "which is not compatible with your recorded expected graduation term of Fall 2026. "
-            "Advising placed this hold so your plan can be revised before you register."
-        ),
-        required_action=(
-            "Schedule a planning meeting with Tom Becker. The hold is released at the end of "
-            "the meeting."
-        ),
-        blocks_registration=True,
-        placed_at=NOW - timedelta(days=6),
-        deadline_at=NOW + timedelta(days=9),
-        resolution_url="https://example.edu/advising/appointments",
-        source_key="registrar_student",
-        verified_at=NOW - timedelta(hours=6),
-    )
-    session.add(diego_hold)
-    holds["diego_advising"] = diego_hold
-
-    # A cleared hold, so the UI has a resolved state to render and the assistant has a case
-    # where the correct answer is "this is no longer blocking you".
-    priya_hold = Hold(
-        student_id=heroes["priya"].id,
-        hold_type=HoldType.financial_balance,
-        office=Office.bursar,
-        title="Outstanding balance from Spring 2026",
-        explanation="A balance of $450.00 remained on your Spring 2026 account.",
-        required_action="Pay the outstanding balance or enroll in a payment plan.",
-        amount_cents=45_000,
-        blocks_registration=True,
-        placed_at=NOW - timedelta(days=63),
-        deadline_at=NOW - timedelta(days=19),
-        cleared_at=NOW - timedelta(days=23),
-        source_key="bursar_balance",
-        verified_at=NOW - timedelta(minutes=11),
-    )
-    session.add(priya_hold)
-    holds["priya_cleared"] = priya_hold
-
-    session.flush()
-    return holds
-
-
-# --------------------------------------------------------------------------------------
-# Background population
-# --------------------------------------------------------------------------------------
-
-FIRST_NAMES = [
-    "Amara", "Nikhil", "Sofia", "Wei", "Leila", "Marcus", "Yuki", "Tomas", "Hana", "Idris",
-    "Camila", "Arjun", "Noor", "Elena", "Kwame", "Mei", "Rafael", "Zara", "Oscar", "Ingrid",
-    "Dmitri", "Aisha", "Felipe", "Naomi", "Hugo", "Anya", "Kenji", "Lucia", "Omar", "Freya",
-    "Santiago", "Divya", "Mateo", "Rin", "Ayo", "Clara", "Viktor", "Priyanka", "Andre", "Suki",
-    "Bilal", "Greta", "Nadia", "Emeka", "Isabel",
-]
-
-LAST_NAMES = [
-    "Okonkwo", "Sharma", "Rossi", "Zhang", "Haddad", "Bennett", "Tanaka", "Silva", "Kim",
-    "Abdi", "Torres", "Menon", "Rahman", "Petrova", "Mensah", "Chen", "Duarte", "Malik",
-    "Lindqvist", "Novak", "Volkov", "Diallo", "Costa", "Watanabe", "Muller", "Sokolov",
-    "Ito", "Ramirez", "Farah", "Olsen", "Vega", "Iyer", "Guzman", "Sato", "Adeyemi",
-    "Fischer", "Popov", "Nair", "Laurent", "Park", "Yilmaz", "Berg", "Hassan", "Eze", "Moreau",
-]
-
-
-# How far along a background student is, and which graduation terms that makes plausible.
-# The spread is deliberate rather than uniform: a population that is all at one level would
-# fill every section in the same term and leave the others empty, and seat pressure is the
-# thing these records exist to make real.
-PROGRESS_LEVELS = {
-    1: (3, ["2027SP", "2027FA"]),  # 9 credits
-    2: (6, ["2027SP", "2027FA"]),  # 18 credits
-    3: (8, ["2026FA", "2027SP", "2027FA"]),  # 24 credits
-}
-
-
 def seed_background_students(
     session: Session,
     program: Program,
@@ -801,161 +683,6 @@ RAW_ERRORS = {
     FailureReason.max_credits_exceeded: "ERR_MAXUNT: Maximum term unit load exceeded",
     FailureReason.duplicate_enrollment: "ERR_DUPL: Duplicate enrollment for this course",
 }
-
-
-def seed_registration_attempts(
-    session: Session,
-    heroes: dict[str, Student],
-    holds: dict[str, Hold],
-    background: list[tuple[Student, int]],
-    sections: dict[str, Section],
-    terms: dict[str, Term],
-) -> None:
-    fall = terms["2026FA"]
-
-    # --- Hero attempts. These are the ones the demo narrates.
-    session.add(
-        RegistrationAttempt(
-            student_id=heroes["alex"].id,
-            section_id=sections["2026FA:MASY-GC 2400"].id,
-            term_id=fall.id,
-            attempted_at=NOW - timedelta(days=1, hours=3),
-            outcome=RegistrationOutcome.failed,
-            failure_reason=FailureReason.financial_hold,
-            raw_error=RAW_ERRORS[FailureReason.financial_hold],
-            blocking_hold_id=holds["alex_aid"].id,
-        )
-    )
-    session.add(
-        RegistrationAttempt(
-            student_id=heroes["priya"].id,
-            section_id=sections["2026FA:MASY-GC 2200"].id,
-            term_id=fall.id,
-            attempted_at=NOW - timedelta(hours=5),
-            outcome=RegistrationOutcome.failed,
-            failure_reason=FailureReason.prerequisite_not_met,
-            raw_error=RAW_ERRORS[FailureReason.prerequisite_not_met],
-        )
-    )
-    session.add(
-        RegistrationAttempt(
-            student_id=heroes["diego"].id,
-            section_id=sections["2026FA:MASY-GC 3100"].id,
-            term_id=fall.id,
-            attempted_at=NOW - timedelta(days=2, hours=1),
-            outcome=RegistrationOutcome.failed,
-            failure_reason=FailureReason.permission_required,
-            raw_error=RAW_ERRORS[FailureReason.permission_required],
-        )
-    )
-    session.add(
-        RegistrationAttempt(
-            student_id=heroes["diego"].id,
-            section_id=sections["2026FA:MASY-GC 1800"].id,
-            term_id=fall.id,
-            attempted_at=NOW - timedelta(days=2, hours=1, minutes=4),
-            outcome=RegistrationOutcome.failed,
-            failure_reason=FailureReason.section_full,
-            raw_error=RAW_ERRORS[FailureReason.section_full],
-        )
-    )
-
-    # --- Background volume, so the failure-reason mix is a distribution and not an anecdote.
-    reasons = [r for r, _ in FAILURE_WEIGHTS]
-    weights = [w for _, w in FAILURE_WEIGHTS]
-    fall_section_keys = [k for k in sections if k.startswith("2026FA:")]
-
-    for student, _level in background:
-        for _ in range(RNG.randint(1, 5)):
-            key = RNG.choice(fall_section_keys)
-            succeeded = RNG.random() < 0.55
-            attempted = NOW - timedelta(
-                days=RNG.randint(0, 13), hours=RNG.randint(0, 23), minutes=RNG.randint(0, 59)
-            )
-            if succeeded:
-                session.add(
-                    RegistrationAttempt(
-                        student_id=student.id,
-                        section_id=sections[key].id,
-                        term_id=fall.id,
-                        attempted_at=attempted,
-                        outcome=RegistrationOutcome.succeeded,
-                    )
-                )
-            else:
-                reason = RNG.choices(reasons, weights=weights, k=1)[0]
-                session.add(
-                    RegistrationAttempt(
-                        student_id=student.id,
-                        section_id=sections[key].id,
-                        term_id=fall.id,
-                        attempted_at=attempted,
-                        outcome=RegistrationOutcome.failed,
-                        failure_reason=reason,
-                        raw_error=RAW_ERRORS[reason],
-                    )
-                )
-
-    session.flush()
-
-
-def seed_background_holds(session: Session, background: list[tuple[Student, int]]) -> None:
-    """Give roughly a third of the background population an active hold."""
-    templates = [
-        (
-            HoldType.financial_balance, Office.bursar, "Outstanding balance",
-            "An unpaid balance remains on your student account.",
-            "Pay the balance or enroll in a payment plan.", "bursar_balance",
-        ),
-        (
-            HoldType.aid_document_missing, Office.financial_aid, "Aid document outstanding",
-            "Financial Aid is waiting on a required document.",
-            "Upload the requested document to the Financial Aid portal.", "financial_aid",
-        ),
-        (
-            HoldType.immunization, Office.registrar, "Immunization record incomplete",
-            "Student Health has not received a complete immunization record.",
-            "Submit your immunization record to Student Health.", "registrar_student",
-        ),
-        (
-            HoldType.advising_required, Office.advising, "Advisor meeting required",
-            "Your advisor has requested a planning meeting before registration.",
-            "Schedule a meeting with your advisor.", "registrar_student",
-        ),
-    ]
-
-    for i, (student, _level) in enumerate(background):
-        if i % 3 != 0:
-            continue
-        hold_type, office, title, explanation, action, source = templates[i % len(templates)]
-        # Age the row against its own source's tolerance rather than uniformly, so the
-        # freshness audit shows a realistic mix instead of marking every balance stale.
-        if source == "bursar_balance":
-            verified_at = NOW - timedelta(minutes=RNG.choice([3, 7, 11, 22, 40, 95]))
-        else:
-            verified_at = NOW - timedelta(hours=RNG.randint(1, 30))
-        session.add(
-            Hold(
-                student_id=student.id,
-                hold_type=hold_type,
-                office=office,
-                title=title,
-                explanation=explanation,
-                required_action=action,
-                amount_cents=RNG.choice([None, 25_000, 45_000, 120_000]),
-                blocks_registration=True,
-                placed_at=NOW - timedelta(days=RNG.randint(5, 45)),
-                deadline_at=NOW + timedelta(days=RNG.randint(2, 20)),
-                source_key=source,
-                verified_at=verified_at,
-            )
-        )
-    session.flush()
-
-
-# --------------------------------------------------------------------------------------
-# Cases
-# --------------------------------------------------------------------------------------
 
 
 def seed_cases(
@@ -1266,8 +993,8 @@ def seed_documents(session: Session) -> None:
 # --------------------------------------------------------------------------------------
 
 TABLES_IN_DELETE_ORDER = [
-    "case_events", "ai_interactions", "cases", "registration_attempts", "enrollments",
-    "holds", "sections", "requirement_courses", "course_prerequisites", "requirements",
+    "case_events", "ai_interactions", "cases", "enrollments",
+    "sections", "requirement_courses", "course_prerequisites", "requirements",
     "students", "users", "courses", "programs", "terms",
     "source_freshness_policy",
 ]
@@ -1320,11 +1047,8 @@ def main() -> None:
         sections = seed_sections(session, courses, terms)
         advisors = seed_advisors(session)
         heroes = seed_hero_students(session, program, advisors, terms, sections)
-        holds = seed_holds(session, heroes)
         background = seed_background_students(session, program, advisors, terms)
         seed_background_enrollments(session, background, sections)
-        seed_background_holds(session, background)
-        seed_registration_attempts(session, heroes, holds, background, sections, terms)
         seed_cases(session, heroes, advisors)
         seed_interactions(session, heroes)
         seed_documents(session)

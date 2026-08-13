@@ -1,7 +1,7 @@
 # Encoding a degree programme
 
 How to add a programme to `ingest/requirements.py`, and the traps that have already cost
-time. Seven of twenty-three SPS graduate degrees are encoded; the rest are the same work
+time. Eight of twenty-three SPS graduate degrees are encoded; the rest are the same work
 repeated, which is why this is written down.
 
 Encoding is hand work on purpose. The requirements table is prose and layout — an area
@@ -56,6 +56,25 @@ order a cohort's residencies rather than offering a choice, and Entrepreneurship
 named specialisations are optional groupings of elective courses. Neither is a requirement,
 and encoding them as tracks would invent a rule the bulletin does not state.
 
+**Where the capstone lives.** Global Affairs lists its thesis inside the core table. It is
+still encoded as its own `capstone` requirement, because that kind is what tells the
+sequence planner a capstone needs a term to itself. The requirement kinds describe the
+degree, not the page's layout.
+
+## When two requirements share a pool
+
+Global Affairs' electives are "additional credits from any of the concentrations" — the same
+courses the concentration requirement is built from. Encode the union anyway; that is what
+the bulletin says. The engine, not the encoding, is what keeps a course from being spent
+twice: requirements are evaluated in the bulletin's order, each one takes the courses it
+needs, and a `credits` pool counts only what is left (`planning.rules.courses_applied`).
+Rules that name their courses are untouched by this — nothing can take a named course away
+from the requirement that names it.
+
+The failure this prevents is worth stating, because it looks like a pass: before it, a
+student who had finished the core and a concentration — thirty of forty-two credits — was
+told that only the thesis remained, and the sequence gave them a finish date a term early.
+
 ## Traps that have already bitten
 
 **Course numbers are 1–4 digits.** `EMSC1-GC 10` through `300` are real codes. A four-digit
@@ -85,11 +104,18 @@ several catalogues.
 ## What is left
 
 Encoded: Management and Analytics, Financial Planning, Global Security, Entrepreneurship and
-Management, Event Management, Executive Coaching, Marketing and Strategic Communications.
+Management, Event Management, Executive Coaching, Marketing and Strategic Communications,
+Global Affairs.
 
-Not yet encoded: Global Affairs (its structure is now supported — one named course plus five
-from a pool — it simply has not been transcribed), Global Hospitality, Global Sport, Human
-Capital Management, Human Capital Analytics and Technology, the HCM/HCAT dual degree,
-Integrated Marketing, Professional Writing, Project Management, Public Relations and
-Corporate Communication, Publishing, Real Estate, Real Estate Development, Sports Business,
-Translation and Interpreting, Travel and Tourism Management.
+Not yet encoded: Global Hospitality, Global Sport, Human Capital Management, Human Capital
+Analytics and Technology, the HCM/HCAT dual degree, Integrated Marketing, Professional
+Writing, Project Management, Public Relations and Corporate Communication, Publishing, Real
+Estate, Real Estate Development, Sports Business, Translation and Interpreting, Travel and
+Tourism Management.
+
+Overlapping options also cost the rule engine a distinction it did not have. Global Affairs'
+eight concentrations share most of their courses, so one course "starts" six of them. That
+now reads as "which option is not yet clear" rather than "courses spread across tracks",
+which is reserved for a record no single option can account for. The verdict is the same
+either way; the difference is whether a student is told they have done something they have
+not.

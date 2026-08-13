@@ -414,6 +414,246 @@ EXECUTIVE_MARKETING: list[RequirementSpec] = [
 ]
 
 
+# The eighth programme, and the one the `required` field on a track was added for. Each of
+# its eight concentrations is one named course plus five drawn from thirty-odd; folding the
+# named course into the pool would let a student complete a concentration without the course
+# it is built around.
+#
+# Two departures from the page's own layout, both deliberate:
+#
+# The bulletin lists the thesis inside the core table. It is carried here as a separate
+# `capstone` requirement because that kind is what tells the sequence planner a capstone
+# needs a term of its own; leaving it in the core would have the planner schedule a thesis
+# alongside a full load.
+#
+# The elective pool is the union of all eight concentrations, which is what "additional
+# credits from any of the concentrations" names. It therefore overlaps the concentration
+# lists completely — see the caveat.
+GLOBAL_AFFAIRS: list[RequirementSpec] = [
+    RequirementSpec(
+        name="Core Requirements",
+        kind=RequirementKind.core,
+        rule="all_of",
+        min_credits=12,
+        courses=[
+            "GLOB1-GC 1000",  # International Relations in The Post-Cold War Era
+            "GLOB1-GC 1030",  # International Political Economy
+            "GLOB1-GC 1040",  # International Law
+            "GLOB1-GC 3035",  # Analytic Skills for Global Affairs
+        ],
+    ),
+    RequirementSpec(
+        name="Concentration",
+        kind=RequirementKind.elective,
+        rule="one_track",
+        min_credits=18,
+        tracks=[
+            TrackSpec(
+                "International Relations/Global Futures",
+                [
+                    "GLOB1-GC 1010", "GLOB1-GC 1020", "GLOB1-GC 1075", "GLOB1-GC 2000",
+                    "GLOB1-GC 2010", "GLOB1-GC 2030", "GLOB1-GC 2040", "GLOB1-GC 2046",
+                    "GLOB1-GC 2047", "GLOB1-GC 2051", "GLOB1-GC 2055", "GLOB1-GC 2065",
+                    "GLOB1-GC 2070", "GLOB1-GC 2080", "GLOB1-GC 2245", "GLOB1-GC 2340",
+                    "GLOB1-GC 2345", "GLOB1-GC 2385", "GLOB1-GC 2390", "GLOB1-GC 2405",
+                    "GLOB1-GC 2410", "GLOB1-GC 2470", "GLOB1-GC 2494", "GLOB1-GC 2500",
+                    "GLOB1-GC 2515", "GLOB1-GC 2516", "GLOB1-GC 2518", "GLOB1-GC 2610",
+                    "GLOB1-GC 2620", "GLOB1-GC 2625", "GLOB1-GC 2630", "GLOB1-GC 2645",
+                    "GLOB1-GC 2650", "GLOB1-GC 2670", "GLOB1-GC 3060", "GLOB1-GC 3061",
+                    "GLOB1-GC 3075", "GLOB1-GC 3920",
+                ],
+                min_courses=5,
+                required=["GLOB1-GC 2045"],
+            ),
+            TrackSpec(
+                "Transnational Security",
+                [
+                    "GLOB1-GC 1010", "GLOB1-GC 1075", "GLOB1-GC 2005", "GLOB1-GC 2010",
+                    "GLOB1-GC 2030", "GLOB1-GC 2040", "GLOB1-GC 2047", "GLOB1-GC 2051",
+                    "GLOB1-GC 2055", "GLOB1-GC 2065", "GLOB1-GC 2070", "GLOB1-GC 2075",
+                    "GLOB1-GC 2080", "GLOB1-GC 2115", "GLOB1-GC 2151", "GLOB1-GC 2205",
+                    "GLOB1-GC 2215", "GLOB1-GC 2226", "GLOB1-GC 2245", "GLOB1-GC 2247",
+                    "GLOB1-GC 2281", "GLOB1-GC 2293", "GLOB1-GC 2320", "GLOB1-GC 2330",
+                    "GLOB1-GC 2405", "GLOB1-GC 2410", "GLOB1-GC 2470", "GLOB1-GC 2494",
+                    "GLOB1-GC 2515", "GLOB1-GC 2516", "GLOB1-GC 2518", "GLOB1-GC 2520",
+                    "GLOB1-GC 2525", "GLOB1-GC 2546", "GLOB1-GC 2590", "GLOB1-GC 2600",
+                    "GLOB1-GC 2620", "GLOB1-GC 2625", "GLOB1-GC 2630", "GLOB1-GC 2645",
+                    "GLOB1-GC 2650", "GLOB1-GC 3045", "GLOB1-GC 3064", "GLOB1-GC 3075",
+                    "GLOB1-GC 3920", "GSCC1-GC 1015", "GSCC1-GC 1020", "GSCC1-GC 2020",
+                    "GSCC1-GC 2225", "GSCC1-GC 2510", "GSCC1-GC 2530",
+                ],
+                min_courses=5,
+                required=["GLOB1-GC 2000"],
+            ),
+            TrackSpec(
+                "Global Economy",
+                [
+                    "GLOB1-GC 1020", "GLOB1-GC 2125", "GLOB1-GC 2130", "GLOB1-GC 2146",
+                    "GLOB1-GC 2147", "GLOB1-GC 2151", "GLOB1-GC 2158", "GLOB1-GC 2180",
+                    "GLOB1-GC 2226", "GLOB1-GC 2281", "GLOB1-GC 2292", "GLOB1-GC 2410",
+                    "GLOB1-GC 2420", "GLOB1-GC 2425", "GLOB1-GC 2485", "GLOB1-GC 2490",
+                    "GLOB1-GC 2494", "GLOB1-GC 2515", "GLOB1-GC 2516", "GLOB1-GC 2530",
+                    "GLOB1-GC 2600", "GLOB1-GC 2610", "GLOB1-GC 2615", "GLOB1-GC 2620",
+                    "GLOB1-GC 2625", "GLOB1-GC 2630", "GLOB1-GC 2645", "GLOB1-GC 2660",
+                    "GLOB1-GC 3060", "GLOB1-GC 3061", "GLOB1-GC 3065", "GLOB1-GC 3920",
+                    "GSCC1-GC 2030",
+                ],
+                min_courses=5,
+                # The page states this one as "GLOB1-GC 2295 or GLOB1-GC 2130". A track can
+                # name a required course but not an alternative between two, and inventing
+                # the machinery for a single programme's single row is not worth it — 2130
+                # is in the pool either way, so the caveat carries the choice.
+                required=["GLOB1-GC 2295"],
+            ),
+            TrackSpec(
+                "Human Rights and International Law",
+                [
+                    "GLOB1-GC 1010", "GLOB1-GC 2005", "GLOB1-GC 2035", "GLOB1-GC 2115",
+                    "GLOB1-GC 2151", "GLOB1-GC 2205", "GLOB1-GC 2215", "GLOB1-GC 2275",
+                    "GLOB1-GC 2320", "GLOB1-GC 2322", "GLOB1-GC 2340", "GLOB1-GC 2345",
+                    "GLOB1-GC 2360", "GLOB1-GC 2385", "GLOB1-GC 2386", "GLOB1-GC 2390",
+                    "GLOB1-GC 2425", "GLOB1-GC 2494", "GLOB1-GC 2510", "GLOB1-GC 2515",
+                    "GLOB1-GC 2516", "GLOB1-GC 2535", "GLOB1-GC 2540", "GLOB1-GC 2545",
+                    "GLOB1-GC 2590", "GLOB1-GC 2625", "GLOB1-GC 2630", "GLOB1-GC 2645",
+                    "GLOB1-GC 2670", "GLOB1-GC 3045", "GLOB1-GC 3075", "GLOB1-GC 3920",
+                ],
+                min_courses=5,
+                required=["GLOB1-GC 2240"],
+            ),
+            TrackSpec(
+                "International Development and Humanitarian Assistance",
+                [
+                    "GLOB1-GC 1010", "GLOB1-GC 2035", "GLOB1-GC 2125", "GLOB1-GC 2146",
+                    "GLOB1-GC 2151", "GLOB1-GC 2205", "GLOB1-GC 2215", "GLOB1-GC 2226",
+                    "GLOB1-GC 2240", "GLOB1-GC 2251", "GLOB1-GC 2261", "GLOB1-GC 2275",
+                    "GLOB1-GC 2281", "GLOB1-GC 2282", "GLOB1-GC 2292", "GLOB1-GC 2320",
+                    "GLOB1-GC 2322", "GLOB1-GC 2330", "GLOB1-GC 2340", "GLOB1-GC 2345",
+                    "GLOB1-GC 2350", "GLOB1-GC 2360", "GLOB1-GC 2385", "GLOB1-GC 2386",
+                    "GLOB1-GC 2390", "GLOB1-GC 2425", "GLOB1-GC 2440", "GLOB1-GC 2470",
+                    "GLOB1-GC 2494", "GLOB1-GC 2515", "GLOB1-GC 2516", "GLOB1-GC 2518",
+                    "GLOB1-GC 2525", "GLOB1-GC 2540", "GLOB1-GC 2545", "GLOB1-GC 2546",
+                    "GLOB1-GC 2550", "GLOB1-GC 2610", "GLOB1-GC 2620", "GLOB1-GC 2625",
+                    "GLOB1-GC 2630", "GLOB1-GC 2645", "GLOB1-GC 2660", "GLOB1-GC 3045",
+                    "GLOB1-GC 3064", "GLOB1-GC 3065", "GLOB1-GC 3075", "GLOB1-GC 3920",
+                    "GSCC1-GC 2530",
+                ],
+                min_courses=5,
+                required=["GLOB1-GC 1020"],
+            ),
+            TrackSpec(
+                "Environment and Energy Policy",
+                [
+                    "GLOB1-GC 1075", "GLOB1-GC 2125", "GLOB1-GC 2130", "GLOB1-GC 2151",
+                    "GLOB1-GC 2281", "GLOB1-GC 2292", "GLOB1-GC 2410", "GLOB1-GC 2412",
+                    "GLOB1-GC 2420", "GLOB1-GC 2425", "GLOB1-GC 2440", "GLOB1-GC 2445",
+                    "GLOB1-GC 2485", "GLOB1-GC 2490", "GLOB1-GC 2491", "GLOB1-GC 2494",
+                    "GLOB1-GC 2515", "GLOB1-GC 2516", "GLOB1-GC 2518", "GLOB1-GC 2525",
+                    "GLOB1-GC 2540", "GLOB1-GC 2546", "GLOB1-GC 2555", "GLOB1-GC 2615",
+                    "GLOB1-GC 2620", "GLOB1-GC 2625", "GLOB1-GC 2630", "GLOB1-GC 2645",
+                    "GLOB1-GC 3030", "GLOB1-GC 3060", "GLOB1-GC 3065", "GLOB1-GC 3920",
+                    "GSCC1-GC 2530",
+                ],
+                min_courses=5,
+                required=["GLOB1-GC 2430"],
+            ),
+            TrackSpec(
+                "Peacebuilding",
+                [
+                    "GLOB1-GC 2005", "GLOB1-GC 2151", "GLOB1-GC 2215", "GLOB1-GC 2251",
+                    "GLOB1-GC 2261", "GLOB1-GC 2275", "GLOB1-GC 2320", "GLOB1-GC 2350",
+                    "GLOB1-GC 2380", "GLOB1-GC 2515", "GLOB1-GC 2518", "GLOB1-GC 2560",
+                    "GLOB1-GC 2590", "GLOB1-GC 2595", "GLOB1-GC 2625", "GLOB1-GC 2630",
+                    "GLOB1-GC 2645", "GLOB1-GC 2675", "GLOB1-GC 3045", "GLOB1-GC 3075",
+                ],
+                min_courses=5,
+                required=["GLOB1-GC 1010"],
+            ),
+            TrackSpec(
+                "Global Gender Studies",
+                [
+                    "GLOB1-GC 1010", "GLOB1-GC 1075", "GLOB1-GC 2035", "GLOB1-GC 2130",
+                    "GLOB1-GC 2151", "GLOB1-GC 2240", "GLOB1-GC 2251", "GLOB1-GC 2261",
+                    "GLOB1-GC 2281", "GLOB1-GC 2282", "GLOB1-GC 2322", "GLOB1-GC 2330",
+                    "GLOB1-GC 2360", "GLOB1-GC 2385", "GLOB1-GC 2386", "GLOB1-GC 2390",
+                    "GLOB1-GC 2425", "GLOB1-GC 2430", "GLOB1-GC 2470", "GLOB1-GC 2492",
+                    "GLOB1-GC 2515", "GLOB1-GC 2516", "GLOB1-GC 2518", "GLOB1-GC 2630",
+                    "GLOB1-GC 2645", "GLOB1-GC 2660", "GLOB1-GC 3045", "GLOB1-GC 3075",
+                    "GLOB1-GC 3920", "GSCC1-GC 2025", "GSCC1-GC 2530",
+                ],
+                min_courses=5,
+                required=["GLOB1-GC 2340"],
+            ),
+        ],
+        caveat=(
+            "Select one of the eight concentrations, take its required course, and select "
+            "five of its listed elective courses. Concentration electives are subject to "
+            "change and not all are offered every semester. The Global Economy "
+            "concentration's required course may be satisfied by either Fundamentals of "
+            "Corporate Finance (GLOB1-GC 2295) or The Integration of Profit & Purpose "
+            "(GLOB1-GC 2130); only the first is checked here, so if you are taking 2130 in "
+            "its place, confirm with your advisor. Many courses appear under several "
+            "concentrations, so holding one does not by itself indicate which concentration "
+            "you are pursuing."
+        ),
+    ),
+    RequirementSpec(
+        name="Electives",
+        kind=RequirementKind.elective,
+        rule="credits",
+        min_credits=9,
+        min_courses=3,
+        # "From any of the concentrations" — so the pool is their union, which is also why
+        # every course here appears in the concentration requirement above.
+        courses=[
+            "GLOB1-GC 1010", "GLOB1-GC 1020", "GLOB1-GC 1075", "GLOB1-GC 2000",
+            "GLOB1-GC 2005", "GLOB1-GC 2010", "GLOB1-GC 2030", "GLOB1-GC 2035",
+            "GLOB1-GC 2040", "GLOB1-GC 2045", "GLOB1-GC 2046", "GLOB1-GC 2047",
+            "GLOB1-GC 2051", "GLOB1-GC 2055", "GLOB1-GC 2065", "GLOB1-GC 2070",
+            "GLOB1-GC 2075", "GLOB1-GC 2080", "GLOB1-GC 2115", "GLOB1-GC 2125",
+            "GLOB1-GC 2130", "GLOB1-GC 2146", "GLOB1-GC 2147", "GLOB1-GC 2151",
+            "GLOB1-GC 2158", "GLOB1-GC 2180", "GLOB1-GC 2205", "GLOB1-GC 2215",
+            "GLOB1-GC 2226", "GLOB1-GC 2240", "GLOB1-GC 2245", "GLOB1-GC 2247",
+            "GLOB1-GC 2251", "GLOB1-GC 2261", "GLOB1-GC 2275", "GLOB1-GC 2281",
+            "GLOB1-GC 2282", "GLOB1-GC 2292", "GLOB1-GC 2293", "GLOB1-GC 2295",
+            "GLOB1-GC 2320", "GLOB1-GC 2322", "GLOB1-GC 2330", "GLOB1-GC 2340",
+            "GLOB1-GC 2345", "GLOB1-GC 2350", "GLOB1-GC 2360", "GLOB1-GC 2380",
+            "GLOB1-GC 2385", "GLOB1-GC 2386", "GLOB1-GC 2390", "GLOB1-GC 2405",
+            "GLOB1-GC 2410", "GLOB1-GC 2412", "GLOB1-GC 2420", "GLOB1-GC 2425",
+            "GLOB1-GC 2430", "GLOB1-GC 2440", "GLOB1-GC 2445", "GLOB1-GC 2470",
+            "GLOB1-GC 2485", "GLOB1-GC 2490", "GLOB1-GC 2491", "GLOB1-GC 2492",
+            "GLOB1-GC 2494", "GLOB1-GC 2500", "GLOB1-GC 2510", "GLOB1-GC 2515",
+            "GLOB1-GC 2516", "GLOB1-GC 2518", "GLOB1-GC 2520", "GLOB1-GC 2525",
+            "GLOB1-GC 2530", "GLOB1-GC 2535", "GLOB1-GC 2540", "GLOB1-GC 2545",
+            "GLOB1-GC 2546", "GLOB1-GC 2550", "GLOB1-GC 2555", "GLOB1-GC 2560",
+            "GLOB1-GC 2590", "GLOB1-GC 2595", "GLOB1-GC 2600", "GLOB1-GC 2610",
+            "GLOB1-GC 2615", "GLOB1-GC 2620", "GLOB1-GC 2625", "GLOB1-GC 2630",
+            "GLOB1-GC 2645", "GLOB1-GC 2650", "GLOB1-GC 2660", "GLOB1-GC 2670",
+            "GLOB1-GC 2675", "GLOB1-GC 3030", "GLOB1-GC 3045", "GLOB1-GC 3060",
+            "GLOB1-GC 3061", "GLOB1-GC 3064", "GLOB1-GC 3065", "GLOB1-GC 3075",
+            "GLOB1-GC 3920", "GSCC1-GC 1015", "GSCC1-GC 1020", "GSCC1-GC 2020",
+            "GSCC1-GC 2025", "GSCC1-GC 2030", "GSCC1-GC 2225", "GSCC1-GC 2510",
+            "GSCC1-GC 2530",
+        ],
+        caveat=(
+            "Select up to 9 additional credits from any of the concentrations. These are "
+            "courses beyond the six that make up your concentration; because the same "
+            "courses appear in both lists, which of them count here rather than toward the "
+            "concentration is a question for your advisor. With the approval of your faculty "
+            "advisor or the program director you may instead take a maximum of two courses "
+            "from NYU's Wagner Graduate School of Public Service or elsewhere within NYU — "
+            "those are outside this catalog and cannot be checked here."
+        ),
+    ),
+    RequirementSpec(
+        name="Capstone",
+        kind=RequirementKind.capstone,
+        rule="all_of",
+        min_credits=3,
+        courses=["GLOB1-GC 3900"],  # Graduate Thesis or Capstone Project
+    ),
+]
+
+
 PROGRAMS: list[ProgramSpec] = [
     ProgramSpec(
         page_slug="graduate__professional-studies__programs__management-analytics-ms",
@@ -472,6 +712,13 @@ PROGRAMS: list[ProgramSpec] = [
         name="Marketing and Strategic Communications, Executive",
         total_credits=30,
         requirements=EXECUTIVE_MARKETING,
+    ),
+    ProgramSpec(
+        page_slug="graduate__professional-studies__programs__global-affairs-ms",
+        code="GLOB-MS-REAL",
+        name="Global Affairs",
+        total_credits=42,
+        requirements=GLOBAL_AFFAIRS,
     ),
 ]
 

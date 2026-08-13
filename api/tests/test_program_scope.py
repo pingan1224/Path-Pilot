@@ -174,6 +174,7 @@ def test_unencoded_program_is_not_silently_added_to_the_gate():
     assert ENCODED_PROGRAMS == frozenset({
     "MASY-MS-REAL", "MSFP-MS-REAL", "GSCC-MS-REAL",
     "ENTR-MS-REAL", "MSEM-MS-REAL", "ECOC-MS-REAL", "EMSC-MS-REAL",
+    "GLOB-MS-REAL",
 }), (
         "ENCODED_PROGRAMS changed. Confirm the new program's requirements are actually "
         "encoded and validated, then update this assertion."

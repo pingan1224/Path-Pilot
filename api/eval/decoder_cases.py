@@ -67,12 +67,20 @@ CASES: list[DecoderCase] = [
         "D03", "code", "ERR_CONFLICT: Time conflict with class 11987",
         "identified", expected=R.time_conflict, expect_class_numbers=("11987",),
         expect_no_policy=True,
-        note="The bulletin has no page on time conflicts; the decoder must say so.",
+        note=(
+            "No bulletin page covers time conflicts and none ever will — an overlap is a "
+            "fact about a schedule, not a rule a university publishes. Saying so is the "
+            "pass condition; ingesting more pages cannot change it."
+        ),
     ),
     DecoderCase(
         "D04", "code", "ERR_RESERVE: Reserved capacity requirement not met",
         "identified", expected=R.reserved_seat_restriction, expect_no_policy=True,
-        note="Same gap as D03. Two of nine causes are genuinely uncovered by the corpus.",
+        note=(
+            "Same shape as D03: which seats are held for which cohort is scheduling data, "
+            "answerable only from the live system this product deliberately does not have. "
+            "These two are a scope boundary, not a corpus backlog."
+        ),
     ),
     DecoderCase(
         "D05", "code", "ERR_APPT: Enrollment appointment has not begun",

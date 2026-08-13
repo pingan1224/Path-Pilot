@@ -415,12 +415,20 @@ Two ablations, both reported as measured rather than as hoped:
   pattern for. Adding that case's wording to the table would have moved the same number
   without meaning anything, which is why coverage and accuracy are reported separately.
 
-Two of the nine causes — reserved-seat restrictions and time conflicts — have **no policy
-source in the ingested corpus at all**. Retrieval cannot return nothing, so it hands back
-plausible registration prose that never mentions them; the decoder verifies each passage
-actually mentions the cause and, when none does, says there is no source rather than citing
-the nearest neighbours. An unsourced explanation labelled unsourced is usable. The same
-explanation propped up by three unrelated links is not.
+Two of the nine causes — reserved-seat restrictions and time conflicts — carry **no policy
+source, and never will**. That reads like a corpus gap and is not one: the university does
+not publish a rule about your two classes overlapping, because an overlap is not a rule. It
+is a mechanical fact about a schedule, and which seats are held back for which cohort is
+scheduling data. Both are answerable only from the live system, which is the one thing this
+product is built not to have. No amount of ingestion closes them.
+
+So the decoder names the cause, explains it, and says plainly that there is no published
+rule to quote — and that is the finished behaviour, not a placeholder. What makes it work is
+that retrieval cannot return nothing: ask about a time conflict and it hands back plausible
+registration prose that never mentions one. The decoder verifies each passage actually
+mentions the cause and, when none does, reports the absence rather than citing the nearest
+neighbours. An unsourced explanation labelled unsourced is usable. The same explanation
+propped up by three unrelated links is not.
 
 ## Data
 

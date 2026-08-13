@@ -335,8 +335,15 @@ Three rules, and they are the same rules as everywhere else in a new shape:
   pay a balance while an advising hold keeps blocking them.
 - **A retrieved passage is not a source until it mentions the cause.** Retrieval always
   returns its top k, so `must_mention` stems verify each passage and the absence gets
-  reported (`no_policy_note`). Two of the nine causes have no coverage in the corpus at all;
-  citing the nearest neighbours instead would put a fetch date under an unfounded claim.
+  reported (`no_policy_note`). Citing the nearest neighbours instead would put a fetch date
+  under an unfounded claim.
+- **Two causes will never have a source, and that is the finished state.** `time_conflict`
+  and `reserved_seat_restriction` report `no_policy_note` permanently. This is not a corpus
+  gap waiting on an ingest run: the university publishes no rule about two classes
+  overlapping, because an overlap is not a rule but a mechanical fact about a schedule, and
+  which seats are held for which cohort is scheduling data. Both are answerable only from
+  the live system — the one thing this product is built not to have. Naming the cause and
+  saying there is no rule to quote is the complete answer. Do not "fix" it by ingesting more.
 
 Follow-up answers are appended to the message and the whole thing is re-classified. There is
 no decoder session state — the second reading cannot differ except through what the student

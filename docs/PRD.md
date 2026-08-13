@@ -345,6 +345,11 @@ pressure、Finance 的 case list。这三个界面已于 2026-08-08 删除，理
 - ambiguous 时不得突出一个候选为默认答案；
 - 只有实际提及对应原因的政策 passage 才能成为支持来源；
 - 未覆盖原因必须明确标注 no policy source；
+- **区分两种「无来源」**：一种是语料尚未抓到，属于可补齐的缺口；另一种是学校根本没有、
+  也不会有这条规则，属于产品范围边界。`time_conflict` 和 `reserved_seat_restriction`
+  属于后者——课程时间重叠是排课的机械结果，保留座位属于排课数据，两者都只有 SIS 能回答，
+  而不接入 SIS 是本产品的既定前提。对这两类，「识别原因 + 说明无可引用规则」就是完成态，
+  不是待办；
 - Follow-up answer 与原文一起重新分类，不维持隐藏 decoder session state。
 
 ### FR-8 Transcript Intake

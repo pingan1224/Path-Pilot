@@ -98,6 +98,24 @@ def _peer(school: str, path: str, topic: str, office: str) -> Source:
     )
 
 
+# One catalogue page per course prefix used by an SPS graduate degree, read off the
+# programme pages rather than guessed: every code appearing in a "Program Requirements"
+# table was collected, reduced to its prefix, and each resulting URL confirmed to answer 200
+# before being listed here. All 24 exist at the same predictable path.
+#
+# The count is 24 against 23 degrees because the mapping is not one-to-one in either
+# direction. Real Estate and Real Estate Development share DEVE/REAL/CONM between them;
+# Global Affairs and Global Security share GLOB and GSCC; RWLD ("real world") is a small
+# cross-programme prefix appearing in three degrees. A degree's requirements can therefore
+# only be assembled from several of these pages, which is why the prefix — not the degree —
+# is the unit here.
+COURSE_PREFIXES = (
+    "conm1-gc", "deve1-gc", "ecoc1-gc", "emsc1-gc", "entr1-gc", "glob1-gc",
+    "glsp1-gc", "gscc1-gc", "hcat1-gc", "hrcm1-gc", "intg1-gc", "masy1-gc",
+    "msem1-gc", "msfp1-gc", "mspm1-gc", "prcc1-gc", "pubb1-gc", "pwrt1-gc",
+    "real1-gc", "rwld1-gc", "tchs1-gc", "tcsb1-gc", "tctm1-gc", "tran1-gc",
+)
+
 # --- Home school: SPS graduate. This is the program the source RFP was written about,
 #     and MASY-GC is the course prefix used throughout the demo data.
 SPS_GRADUATE = [
@@ -111,7 +129,10 @@ SPS_GRADUATE = [
     _sps("/graduate/professional-studies/cost-attendance/", "financial", "bursar"),
     _sps("/graduate/professional-studies/cost-attendance/tuition-fees/", "financial", "bursar"),
     _sps("/graduate/professional-studies/cost-attendance/financial-aid-scholarships/", "financial", "financial_aid"),
-    _sps("/graduate/professional-studies/courses/masy1-gc/", "courses", "department"),
+    *[
+        _sps(f"/graduate/professional-studies/courses/{prefix}/", "courses", "department")
+        for prefix in COURSE_PREFIXES
+    ],
 ]
 
 # --- One page per SPS graduate degree.

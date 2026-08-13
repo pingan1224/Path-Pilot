@@ -1,0 +1,168 @@
+{
+  "slug": "graduate__professional-studies__courses__gscc1-gc",
+  "url": "https://bulletins.nyu.edu/graduate/professional-studies/courses/gscc1-gc/",
+  "title": "Global Security, Conflict, and Cybercrime (GSCC1-GC)",
+  "school": "professional-studies",
+  "level": "graduate",
+  "topic": "courses",
+  "office": "department",
+  "scope": "home",
+  "fetched_at": "2026-08-13T00:45:58.737983+00:00",
+  "sha256": "3a0c738da769da2193a3a6aaa31f50227b72e5f42667af06e033bfb05bb4815f",
+  "sections": [
+    {
+      "heading": "GSCC1-GC 1005 Cyber Law",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 1005 Cyber Law",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nThis course will focus on the international law applicable to cyber operations. The first part of the course will examine cybercrime, discussing international theories of jurisdiction, unique challenges of investigating transnational cybercrimes, and the core international crimes. The second part of the course will examine peacetime cyber operations. Sovereignty, the prohibition on intervention, the prohibition on the use of force, and the principle of due diligence will be examined, as well as lawful State responses to internationally wrongful cyber acts, such as retorsion, countermeasures, the plea of necessity and self-defense in response to a cyber armed attack. The third part of the course will examine cyber operations that occur during armed conflict. Focus will be made on cyber targeting and international humanitarian law, including the requirement of distinction, proportionality, the prohibition on indiscriminate attacks, and precautions in attack.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 1007 Domestic Legal Aspects of Cyber",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 1007 Domestic Legal Aspects of Cyber",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nThis course surveys U.S. law and policy relating to data security and privacy. Part I begins with essential civil rights principles and their relationship to content moderation, Section 230 of the Communications Decency Act, and the protection of minors online, including efforts to curtail CSAM and to require child-safe design. Part II discusses the rights of privacy and against self-incrimination as they relate to online surveillance by the government and cooperation in such surveillance by private entities. This Part examines how common cyber-investigative techniques relate to individual and mass surveillance and the “going dark” problem. Part III looks at U.S. federal law on “personal” cyber crimes such as harassment and catfishing and “economic” cybercrimes including data exfiltration and ransomware attacks. Part IV covers cyber “infrastructure” as a unique problem in which resources that are mostly privately owned make up the bulk of a major national security and strategic asset. The Part explores how both public law and private law work together in this domain and concludes with a survey of issues relating to the next frontier, in data privacy and security: artificial intelligence.\nTypically offered Fall and Spring\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 1010 National & International Cyber Organizations",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 1010 National & International Cyber Organizations",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nPublic and private cybercrime investigations differ in terms of the crimes that are involved, who conducts the investigation, and how the investigation is conducted. This course provides an in- depth analysis of national and international public and private cybercrime investigations: looking in particular at how they are conducted, formal and informal information sharing mechanisms, and the legal admissibility of digital evidence. The course will demonstrate how offender characteristics, motivation and modus operandi can be identified from the cybercrimes committed and the targets of the cybercrimes. Investigations involving computers, smartphones, gaming consoles and other digital technologies will be covered. In this course, particular emphasis will be placed on the barriers to the effective investigation of cybercriminals and enforcement of cybercrime laws, and the ways to overcome these barriers and deter cybercriminals from engaging in illicit activities.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 1015 Cyberpower & Global Security",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 1015 Cyberpower & Global Security",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nCyberpower is not about cybersecurity. Aside from all the obvious benefits of employing computers and network technology to compute, store, and transmit information, this course focuses on the exploitation of cyber insecurity to enable the attainment of state and non-state actors’ strategic objectives. Although the technical and tactical capabilities required to conduct offensive cyber operations are well understood, less clear are how state and private actors link them to strategic objectives. This course provides students with an understanding of the impact cyber operations have on global security and statecraft.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 1020 Infrastructure Security & Resilience",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 1020 Infrastructure Security & Resilience",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nCritical infrastructures are vital to nations, to such an extent that damage to one sector can have a debilitating impact on the functioning of society. Given the numerous threats facing critical infrastructure, and the dependencies and interdependencies of critical infrastructures, it is imperative that the vulnerabilities of these sectors be examined. This course identifies the threats to and vulnerabilities of critical infrastructure sectors. It also highlights the importance of international critical infrastructure protection and examines lessons learned from national and international cybersecurity incidents targeting critical infrastructures. Furthermore, this course proposes ways to secure critical infrastructure both in the U.S. and abroad.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 1030 Mission Assurance or Continuity of Operations",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 1030 Mission Assurance or Continuity of Operations",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nThis course will focus on what can be done not only to protect operations from cyber disruptions but how businesses and organisations should prepare to continue their operations when they inevitably fall victim to a cyber incident. This course includes modules on what is a mission or operation, how to find an organisations cyber dependencies, cyber lexicon, vulnerabilities, threats, losses, hazards, analytic reduction, systems theory, the basics of cyber-attacks, and what a Primary, Alternate, Contingency and Emergency operations (PACE) plan should include. Successful completion of the course will allow the student to analyse the operations of an organisation, determine the cyber dependencies of the operations, create new resilient operations, determine appropriate controls to increase resiliency of current operations, develop a resilient PACE plan for a business’s operations.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 1031 Cyber Resilience",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 1031 Cyber Resilience",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nIn cybersecurity, the only guarantee is that bad things can, will and do happen, no matter how strong the preventative measures. When an organization cannot stop bad things from happening, it must develop resilience against threat actors and the myriad types of incident that can cause harm to organisations, businesses, governments, and individuals. No professional in any industry sector can avoid cybersecurity and cyber professionals, in particular, must understand and go about building resilience. This course aims to do just that. It provides students with the key concepts and approaches to understand how resilience applies in cybersecurity, the key measures to go about building it, as well as analyzing the advanced measures that market-leading organizations innovate to stay ahead of cyber threat actors.\nThis course aligns with the Cyber Policy and Strategy Planner work role in the National Cyber Workforce Framework (NCWF).\nTypically offered Fall and Spring\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 2010 Connected Communities",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 2010 Connected Communities",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nInternet connected devices are everywhere! The course is modeled around a fictional municipality considering designating public money for a contract to integrate connected technologies into the community. Before doing so, the mayor’s office convened a task force of government, industry, and community organizations to participate in the production of a connected communities strategy that will govern how the money is spent. This strategy will lay out the municipality’s priorities, challenges, principles, and values related to this deployment. The assignments in the course will be cumulative and result in the production of a connected communities strategy for the fictional municipality. The goal of this course is to provide students with hands-on experience in considering the disparate characteristics and challenges of a municipality and of creating a strategy based on differing equities.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 2020 Open Source Intelligence",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 2020 Open Source Intelligence",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nIntelligence is vital to national security, economic security and U.S. foreign policy. Intelligence is also valuable to businesses and is an integral part of their operations. Using a multi-disciplinary approach, this course examines open source intelligence obtained by searching and analyzing publicly available information through data mining, advanced web searches, and other information gathering strategies. It also explores the manner in which important information is identified, collected, analyzed, synthesized, and interpreted from a wide variety of sources. It then considers how this information is used to identify targets and vulnerabilities of targets, and to assess the capabilities of cybercriminals, terrorists, nations, and hostile elements. This course also covers social media forensics, looking in particular at: the type of data collected by social media sites; the type of evidence sought and its use by law enforcement and intelligence agencies for the purpose of data mining, intelligence gathering and investigating criminal activity; and the manner in which data can be gleaned from social media sites\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 2025 Gender Issues in the Cyber Era",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 2025 Gender Issues in the Cyber Era",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nThis course explores the potential of cyber technologies, digital communications, and AI to challenge some of the drivers of gender-based inequality. It also, conversely, examines the gender biases embedded in the production and design of these technologies, and their impacts on the effort to eliminate gender discrimination and injustice. The technologies that have so deeply impacted social interactions, work environments, and security systems are not neutral. Digital systems, algorithms, and AI frameworks often reflect and perpetuate pre-existing societal biases, particularly regarding gender. This course explores how gender biases are manifested in technological systems, including how women, non-binary individuals, and marginalized genders differentially access digital tools and cyber spaces, how they are represented (or misrepresented) in digital spaces, and how these historical and systemic gender prejudices impact their opportunities, safety, and autonomy. From communication technologies like social media platforms, to financial inclusion tools such as blockchain and cryptocurrencies, to advanced AI systems, we will critically examine how gender shapes—and is shaped by—digital systems and AI decision-making. This process is affected by the gender imbalance in the development of these technologies, exemplified by the dominance of men in tech industries. We will also explore the gendered construction and implications of cybersecurity measures, including the deployment of autonomous weapons.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 2030 Cyber Leadership, Risk Oversight and Resilience",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 2030 Cyber Leadership, Risk Oversight and Resilience",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nThis course provides both a big picture strategic overview and an in-depth tactical understanding of what every type of organization – business, nonprofit, government, international agency or university – and their leaders and managers need to do to build internal governance, culture, risk, business continuity and crisis and reputation management for organizational resilience, mission assurance and stakeholder protection and value creation in this era of cyber-uncertainty, insecurity and opportunity. Key interconnected themes examined include the role of governance (the board of directors) in cyber-risk oversight, the role of leadership (the CEO and executive management) in proactive cyber-security management, the roles and responsibilities of key experts (legal, risk, finance, compliance, audit, public relations/communications, strategy, technology, security, human resources) and the criticality of inter-disciplinary and public/private collaboration.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 2035 Cyber Ethics",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 2035 Cyber Ethics",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nCyber ethics is an organized way of thinking about systems, and how ethical principles influence the relationships between people, technology, and data. Students will gain a rich understanding of how systems thinking in engineering, and the Systems Decision Process (SDP), can be applied in tandem with ethics-based analyses to address large-scale multi-disciplinary problems involving advanced technologies. Lectures and discussion will prepare students to discuss analytical and policy responses for addressing elements of these “system-of systems” issues. Students will examine competing philosophical schools of thought on morality, ethics in decision-making and data science, and the four different types of ethical dilemma paradigms: (1) justice versus mercy; (2) short-term versus long-term gains; (3) individual interests versus community interests; and (4) truth versus loyalty. Together, we will focus on defining advanced technologies, and understanding its impact. Additionally, we will untangle what it means to be an ethical leader and identify the ethical considerations that encapsulate every ecosystem.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 2220 Technopolitics",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 2220 Technopolitics",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nThe Technopolitics of Global Affairs is a critical examination of the intersection between technology—defined as the application of scientific knowledge for practical purposes—and politics, or the determination of \"who gets what, when, and how\". This course moves beyond viewing technology simply as a tool, instead investigating it as both a driver and a result of global social interactions. Students will explore the dual nature of technology: its potential to amplify ideas, facilitate commerce, and ensure security, balanced against its role as a means of surveillance, control, and inherent bias. It explores important questions, such as what exactly is being ‘secured’ when we undertake cybersecurity? Through this lens, the course seeks to answer whether technology is our master or our tool, and how it fundamentally reshapes International Relations, Global Security, Conflict, and Cybercrime.\nTypically offered Fall and Spring\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 2225 National Security and Emerging Tech",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 2225 National Security and Emerging Tech",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nConstant cyber warfare, espionage, and theft of intellectual property are central instruments of statecraft for nation-states globally. Every geopolitical era has a central asset or idea that is being competed over and today, we are competing over emerging technology. The most valuable geopolitical assets today are intellectual property, source code, and data. Nations go to war to protect their interests and today national interests surround the development, operation, and economy of emerging technologies. In this course, we will discuss the impacts of artificial intelligence, quantum information science, space, and telecommunications on geopolitical decision making. We will do hands-on exercises on cyber intellectual property theft and hold mock National Security Council meetings to demonstrate how the policies that drive our national priorities are created. Students should expect to learn the policy and national security implications of critical emerging technologies, how those technologies are under threat from non-traditional and espionage collection, and how policy is made to confront those risks.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 2235 Cyber Threat Intelligence Analysis",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 2235 Cyber Threat Intelligence Analysis",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nCyber Threat Intelligence Analysis (CTIA) is a method-driven course that uses a holistic “human centered” approach beginning with the understanding of traditional analytics, ethics, and intelligence lifecycle applied in cyberspace. The course covers concepts from planning and building a threat intelligence project and using kill chain methodologies for discovery of cyber threats to developing CTI requirements and producing a collection plan. CTIA involves practitioner exercises and labs, to include threat modeling and development of a CTI report for dissemination, briefing, and sharing relevant data and information with stakeholders. These concepts are essential to building an effective cyber threat intelligence program and, when used properly, can secure an organization from future threats like espionage, cybercrime, and other disruptive cyber activities to include disinformation campaigns.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 2245 The Economics of Cybersecurity",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 2245 The Economics of Cybersecurity",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nThis elective is designed to examine the economic phenomena we see in the cyber environment today. The course will take an interdisciplinary approach to examine the initial basis for action or inaction with economics providing explanations for market behavior and outcomes. The purpose of this course will be to explain the role economics plays in cybersecurity, supply chains for cyber dependent systems, cryptocurrencies, and the measurement of cyber risk. Students will leave this course with a clearer understanding of various core topics of modern economics to include common market failures and behavioral economics. Insight from these topics can inform strategies to address the myriad of cyber issues plaguing the US today.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 2500 Special Topics",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 2500 Special Topics",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nThe dynamic nature of global affairs means that sometimes events will arise which are unexpected, cross conventional boundaries, do not fit within existing courses or deserve specific and detailed study. This 'special topics' course will explore a particular breaking development or theme relating to the concentration in question. As such, it will only be offered occasionally, when circumstances demand. Students taking a Special Topics course, though, can expect not just to grapple with contemporary events but also to engage actively in conversations both outside as well as within the class and play a role in furthering the common understanding of the world around us.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: Yes"
+    },
+    {
+      "heading": "GSCC1-GC 2510 Cyber: Technical, Operational & Strategic Perspectives",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 2510 Cyber: Technical, Operational & Strategic Perspectives",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nThis course provides a structured approach for students without a technical background to understand technical, operational and strategic elements of cyberspace across a variety of technical ecosystems. In the first part of the course we will develop a foundational knowledge of the technical components of cyberspace, the missions they support, and frameworks used to secure technology from malign actors. Through lectures and readings on current events, students will gain an understanding of how vulnerabilities are exploited by threat actors, and the challenges defenders face in assuring an organization's core mission and processes. Throughout the course, students will work in small groups to analyze case studies of cyber breaches to deconstruct and evaluate specific operational impacts of cybersecurity lapses. Students will be equipped with the lexicon, grammar and logic necessary to analyze the full spectrum of cyber operations within strategic contexts.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 2530 Data Science for Global Affairs",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 2530 Data Science for Global Affairs",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nIn this class, students will learn the fundamentals of data science, and how to apply them in a global affairs context. The course will cover the theoretical background and context of data science and allow students to become familiar with the basics of the data lifecycle, including data collection and storage, descriptive analytics and predictive modeling, project implementation and results reporting. Students will learn the basics of Python, using Google Notebook, and will explore the machine learning Python packages, with a focus on scikit learn for machine learning and matplot lib for visualizations. Assignments will focus on global affairs use cases, such as geopolitical alliances, global risk, humanitarian and conflict modeling. The objective of the course is to provide students with a data science with Python foundation, which they will then be able to apply in various policy contexts. No prior experience in coding or Python is required.\nTypically offered Fall and Spring\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 2900 Greece - Great Power Competition and US Grand Strategy in the Eastern Mediterranean",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 2900 Greece - Great Power Competition and US Grand Strategy in the Eastern Mediterranean",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nGreece is at the epicenter of a region that has seen a staggering array of\nwars, revolutions, and coups since World War II. Greece’s geographic\nposition in the Eastern Mediterranean and Aegean Sea makes it an important\nstrategic ally of the United States both economically and geopolitically.\nThe Eastern Med region contains substantial hydrocarbon reserves, which\ncould transform the economy of countries like Egypt, Cyprus and Israel. But\nit also has a long history of conflict, and is an area of intense\ncompetition between great powers in the region including the US, Russia\nChina as well as regional powers such as Greece and Turkey. Activities of\nthese nation-states have been accompanied by a series of small-scale\nconflicts over control over telecommunications infrastructure, natural\nresources and military basing. As the region re-emerges as a significant\ntheater of global and regional security, the balance of power among\nregional players is being disturbed. Within this context, the GFI Greece\nwill help students better understand the global security, conflict and\ncyber challenges facing the world today.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 3000 Cyber Practicum",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 3000 Cyber Practicum",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nThis practicum provides students the opportunity to design and develop solutions aligned to real-world problems of a selected public or private sector entity. Students will apply their knowledge and skills gained throughout the MSGSCC curriculum to design solutions to mitigate, prevent, respond and recover from significant cyber incidents while assuring continuity of operations. Students will be mentored by members of the faculty and chosen organization, assume various job roles in the sector, and work collectively to solve a simulated cyber crisis. The ultimate goal of the course is for students to design and present, in teams, solutions utilizing industry standard cyber risk and assurance frameworks along with developing essential job transferable competencies in cyber crisis management.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "GSCC1-GC 3900 Graduate Thesis or Capstone Project",
+      "level": 2,
+      "heading_path": "Global Security, Conflict, and Cybercrime (GSCC1-GC) > GSCC1-GC 3900 Graduate Thesis or Capstone Project",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nThe Independent Research Study should focus on an issue of interest to the student that directly relates to the student's area of specialization. In cases where the topic rests or touches on more than one field, a teamwork project may be substituted for the independent study. Members of the team will be required to contribute material on the selected topic from the vantage point of their respective concentrations. Students will have latitude in selecting their topic but all topics, whether for individual study or a team undertaking, will need faculty approval and will be conducted under the stewardship of one faculty person. The study may be a traditional research paper of a case study based on primary research, extensive interviews, and profiles of the protagonists, be they individuals or institutions and should reflect high standards of scholarship.\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: No"
+    }
+  ]
+}

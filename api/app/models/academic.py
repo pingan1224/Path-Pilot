@@ -171,6 +171,13 @@ class Course(Base, TimestampMixin):
     typically_offered: Mapped[str | None] = mapped_column(String(120))
     catalog_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # The published prerequisite clause, kept verbatim when it could not be resolved into
+    # course codes. An empty `prerequisites` list means two very different things — the
+    # bulletin states none, or the parser could not read the ones it states — and only this
+    # column separates them. Anything reading prerequisites must treat a course carrying
+    # this as unverifiable rather than unblocked.
+    prerequisite_unparsed: Mapped[str | None] = mapped_column(Text)
+
     requirements: Mapped[list[Requirement]] = relationship(
         secondary=requirement_courses, back_populates="courses"
     )

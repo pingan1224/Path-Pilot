@@ -191,6 +191,18 @@ STATEMENTS = [
        AND p.source = 'catalog'
        AND p.code = 'MASY-MS-REAL'
     """,
+    # A course whose prerequisite clause the parser could not resolve into codes. Without
+    # this the failure is invisible in the worst possible direction: the row lands with zero
+    # prerequisite edges, which every reader downstream cannot tell from "this course has no
+    # prerequisites", so the planner offers it as available.
+    #
+    # Three capstones in the SPS catalogues state their prerequisites as course *titles*
+    # rather than codes ("Workforce Planning AND Quantitative Methods and Metrics AND …"),
+    # and resolving titles is not safe to automate: a title can match courses under four
+    # different prefixes, the AND separator also occurs inside titles, and the published
+    # text carries truncations. So the clause is stored verbatim and the planner is expected
+    # to say it cannot verify, which is true, instead of staying quiet, which is not.
+    "ALTER TABLE courses ADD COLUMN IF NOT EXISTS prerequisite_unparsed TEXT",
 ]
 
 

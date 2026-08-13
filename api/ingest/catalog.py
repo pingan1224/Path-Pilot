@@ -34,8 +34,16 @@ from app.models import Course, CoursePrerequisite
 SECTIONS_DIR = Path(__file__).resolve().parent.parent / "data" / "sections"
 
 # Course codes as the bulletin writes them, e.g. "MASY1-GC 2100".
-COURSE_CODE = re.compile(r"\b([A-Z]{4}\d?-[A-Z]{2}\s?\d{4})\b")
-HEADING_CODE = re.compile(r"^([A-Z]{4}\d?-[A-Z]{2}\s?\d{4})\s+(.*)$")
+#
+# The number is 1-4 digits, not 4. It was 4 while MASY1-GC was the only catalogue read, and
+# every code there happens to be four digits. Executive Masters in Marketing numbers its
+# courses `EMSC1-GC 10` through `EMSC1-GC 300`, so a four-digit pattern matched none of its
+# seventeen — and matched them to *nothing*, silently: a page that parses to zero courses is
+# indistinguishable from a page with no courses on it. `--strict` could not catch that,
+# because there was no failed parse to report, which is why the empty-page check below
+# exists alongside this.
+COURSE_CODE = re.compile(r"\b([A-Z]{4}\d?-[A-Z]{2}\s?\d{1,4})\b")
+HEADING_CODE = re.compile(r"^([A-Z]{4}\d?-[A-Z]{2}\s?\d{1,4})\s+(.*)$")
 CREDITS = re.compile(r"Credits:\s*\((\d+(?:\.\d+)?)\s*Credits?\)", re.IGNORECASE)
 FIELD_LINE = re.compile(r"^(Prerequisites?|Typically offered|Grading|Repeatability):?\s*(.*)$")
 
@@ -67,6 +75,12 @@ def parse_prerequisites(raw: str) -> tuple[list[list[str]], str | None]:
     """Return (groups, problem). A non-null problem means do not trust the groups."""
     text = raw.strip().rstrip(".").strip()
     if not text:
+        return [], None
+
+    # Several catalogues write the absence of prerequisites out longhand. That is an answer,
+    # not an unreadable clause, and conflating the two would have the planner warn "cannot
+    # verify" on fourteen courses the bulletin says are open to anyone.
+    if text.lower() in {"none", "n/a", "na", "no prerequisites"}:
         return [], None
 
     groups: list[list[str]] = []
@@ -152,6 +166,7 @@ def parse_all() -> tuple[list[tuple[ParsedCourse, dict]], list[str]]:
     parsed: list[tuple[ParsedCourse, dict]] = []
     problems: list[str] = []
     for page in load_catalog_pages():
+        before = len(parsed)
         for section in page["sections"]:
             course = parse_course_section(section)
             if course is None:
@@ -162,6 +177,16 @@ def parse_all() -> tuple[list[tuple[ParsedCourse, dict]], list[str]]:
             if course.parse_problem:
                 problems.append(f"{course.code}: {course.parse_problem}")
             parsed.append((course, page))
+        # A catalogue page that yields nothing is the one failure this module could not
+        # otherwise see. Every check above fires on a course it half-understood; none fires
+        # when the code pattern matches no heading at all, because then there is no course to
+        # attach a complaint to. That is not hypothetical — a four-digit-only code pattern
+        # read all seventeen Executive Masters courses as zero, and reported success.
+        if len(parsed) == before:
+            problems.append(
+                f"{page['slug']}: catalogue page parsed to zero courses — the code pattern "
+                f"matched no heading among {len(page['sections'])} sections"
+            )
     return parsed, problems
 
 
@@ -180,6 +205,14 @@ def write(parsed: list[tuple[ParsedCourse, dict]]) -> tuple[int, int, list[str]]
             row.credits = course.credits
             row.description = course.description or None
             row.typically_offered = course.typically_offered
+            # Carry the unreadable clause into the row. A course that states prerequisites
+            # the parser could not resolve must not be storable as one that has none: the
+            # edge list is empty either way, and only this field tells them apart.
+            row.prerequisite_unparsed = (
+                course.prerequisite_raw
+                if course.parse_problem and not course.prerequisite_groups
+                else None
+            )
             row.source = "catalog"
             row.catalog_url = page["url"]
             row.catalog_verified_at = datetime.fromisoformat(page["fetched_at"])

@@ -1,0 +1,28 @@
+{
+  "slug": "graduate__professional-studies__courses__rwld1-gc",
+  "url": "https://bulletins.nyu.edu/graduate/professional-studies/courses/rwld1-gc/",
+  "title": "Real World Graduate (RWLD1-GC)",
+  "school": "professional-studies",
+  "level": "graduate",
+  "topic": "courses",
+  "office": "department",
+  "scope": "home",
+  "fetched_at": "2026-08-13T00:46:16.347333+00:00",
+  "sha256": "4d9717cb9d8456959318e93556f1ad6f185be4e15f425a1ddb5083a19ebcaac3",
+  "sections": [
+    {
+      "heading": "RWLD1-GC 1000 Internship",
+      "level": 2,
+      "heading_path": "Real World Graduate (RWLD1-GC) > RWLD1-GC 1000 Internship",
+      "anchor": null,
+      "text": "Credits: (0.5-3 Credits)\nNYU has partnered with several industry companies and associations to provide students with real world experience and access to industry thought-leadership. At the conclusion of the internship, students will have acquired professional experience to add a real-world perspective to their studies. The course consists of onsite work. Advisor Approval required.\nGrading: GC SCPS Pass/Fail\nRepeatability: Repeatable for additional credit: No"
+    },
+    {
+      "heading": "RWLD1-GC 3050 SPS Real World",
+      "level": 2,
+      "heading_path": "Real World Graduate (RWLD1-GC) > RWLD1-GC 3050 SPS Real World",
+      "anchor": null,
+      "text": "Credits: (3 Credits)\nNYUSPS is a school committed to offering world-class courses in applied professional studies across multiple disciplines. Real World puts the “applied” notion of student learning to the acid test. In this course, students work for 14-weeks in multidisciplinary teams with an A-list professional organization and their executives to solve a real world problem that organization and those executives face with the intention of the organization implementing right and viable student solutions. Students feel real pressure, experience real competition, receive real feedback, go through a real collaborative problem solving process. Because the experience is real – not a case study, not a simulation.\nTypically offered Fall and Spring\nGrading: GC SCPS Graded\nRepeatability: Repeatable for additional credit: Yes"
+    }
+  ]
+}

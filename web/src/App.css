@@ -1,81 +1,102 @@
 /* ---------------------------------------------------------------------------
-   Tokens — the Nocturne palette, applied to the whole product
+   Tokens — a deep indigo ground and a violet accent, applied to the whole product
    ---------------------------------------------------------------------------
 
-   A cool blue-grey ground, a blurple accent, 8px radii, compact density. It arrived
-   scoped to the assistant surface while only that view had been rebuilt on it; every
-   student view now speaks it, so the scope is gone and these are simply the tokens.
+   These values come from a Figma Make design (Responsive UI Demo for Path Pilot). They
+   replaced the Nocturne palette that preceded them; the density, the 8px radii and the
+   type system are unchanged, because only colour, layout and motion were being taken.
 
-   Nocturne's *values* are mapped onto this project's *token names*, never imported under
-   their own (`--color-bg`, `--color-surface`, …). That is what keeps one vocabulary, and
-   it is what makes shadcn come along for free: tailwind.css aliases
-   `--color-primary: var(--accent)` with `@theme inline`, so a utility re-reads --accent
-   from the cascade at paint time and every shadcn component re-themes with no
+   The import discipline is the one Nocturne arrived under, and it is the reason a whole
+   re-skin costs one block: the design's *values* are mapped onto this project's *token
+   names*, never imported under their own (`--color-canvas`, `--color-ink-2`, …). One
+   vocabulary, so shadcn comes along for free — tailwind.css aliases
+   `--color-primary: var(--accent-fill)` with `@theme inline`, so a utility re-reads the
+   variable from the cascade at paint time and every shadcn component re-themes with no
    per-component work.
 
-   Three departures from Nocturne as shipped, all measured:
+   Everything below was re-solved for contrast rather than copied. The design ships two
+   AA failures of its own, and they are not incidental — they sit under exactly the text
+   this product cannot afford to lose:
 
-   - The system carries no semantic ramp — it is explicitly mono, and its own Albert
-     mockup hardcoded `#7fbfa8/#d8b26a/#e08b8b` in a script to get status colour. This
-     product's status hierarchy is load-bearing, so good/warn/danger below are this
-     project's own and were re-checked against the new grounds: every one clears 4.5:1 on
-     all three surfaces in both themes.
-   - `--ink-3` carries meta text including disclaimers. Nocturne's neutral-500 measured
-     4.38:1 on --surface-2 in light — AA for large text only, and this is not large text.
-     Solved down to 4.64:1 against the worst of the three surfaces.
-   - `--accent` in dark measured 4.38:1 as text on --surface-2 for the same reason, and is
-     lightened to clear 4.63:1.
+   - Its `--color-ink-3` carries the provenance layer: timestamps, "Checked <date>", the
+     assistant disclaimer, nav sub-labels. It measures 2.26–3.09:1 across the four depths
+     in both themes. Re-solved to 4.64:1 worst case.
+   - Its light-theme amber measures 3.86–4.49:1 on three of the four depths, and its
+     light-theme emerald 4.21:1 on the deepest. Both re-solved to 4.64:1.
 
-   `--on-filled` is what goes *on* a filled accent or danger background. It is not white
-   in dark mode: white on the dark accent measures 3.06:1 and on dark danger 2.57:1, both
-   well under AA. This was a real defect on every primary button in dark mode — inherited,
-   not introduced here, and worse before the promotion (2.30:1) than after. */
+   Re-solving moved OKLCH lightness only, holding hue and chroma, so the design's colour
+   identity survives the correction. Every pair the product actually paints was then swept
+   — three ink tones, four semantic tones and the accent against all four depths, each
+   tone against its own soft wash, and each filled-background foreground: 0 failures.
+
+   `--on-filled` is what goes *on* a filled semantic background. It is not white in dark
+   mode: the semantic tones stay light there so they still work as text, which leaves them
+   far too light to carry white (white on dark danger measures 2.77:1).
+
+   `--accent-fill` and `--on-accent` are new, and they are the one place this design could
+   not be expressed in the existing vocabulary. In a dark theme a tone is either light
+   enough to read as text or dark enough to carry white text, never both. The design
+   resolves that with two violets — a deep `#7c3aed` for filled controls, a light `#a78bfa`
+   for emphasis text — and a single `--accent` cannot be both: the deep violet measures
+   2.78:1 as text on --surface-2. So --accent stays the emphasis tone that the 22 existing
+   usages expect, and the filled call-to-action gets its own pair. */
 
 /* Three depths, one story: the rail sits in a --well (recessed — persistent context and
    the way around), work happens on --ground, and the things work produces (cards,
    findings, artifacts) float on --surface.
 
-   The well and --ink-3 were solved together. A first attempt kept ink-3 and took the
-   deepest well that still cleared AA — 1.08:1 against the ground, which vanished in a
-   compressed screenshot, and a zone boundary that does not survive a screenshot is not
-   doing its job. Darkening ink-3 one step bought a well at 1.16:1 separation while
-   *raising* the meta-text contrast everywhere else (4.63 worst case on the well itself,
-   5.06 on surface-2, up from 4.64). */
+   The well is measured in OKLab lightness, not in contrast ratio. The outgoing palette
+   set that bar as 1.16:1 and the number cannot be carried over: contrast ratio compresses
+   badly near black, and this design's ground (#0b0d1a, luminance 0.0043) sits well below
+   the old one (#161826, 0.0086) — recessing it all the way to pure black only reaches
+   1.09:1, so the bar is unreachable rather than missed. Matching the outgoing palette's
+   perceptual step instead (dL 0.023 dark, 0.050 light) reproduces the same *visible* zone
+   boundary at both depths. */
 :root {
-  --ground: #f5f7fe;
-  --well: #e3e6f2;
-  --surface: #fdfdff;
-  --surface-2: #edf0f7;
-  --ink: #1e1e21;
-  --ink-2: #505360;
-  --ink-3: #636573;
-  --line: #dcdee5;
-  --line-soft: #eaedf4;
+  --ground: #f0f2fa;
+  --well: #dde1f2;
+  --surface: #ffffff;
+  --surface-2: #eaecf7;
+  --ink: #0f1324;
+  --ink-2: #4a5280;
+  --ink-3: #596185;
+  --line: #d0d3e2;
+  --line-soft: #e4e7f4;
 
-  --accent: #5e4e9e;
-  --accent-soft: #f0eff7;
+  --accent: #5b21b6;
+  --accent-fill: #6d28d9;
+  --accent-soft: #efe8ff;
   --on-filled: #ffffff;
+  --on-accent: #ffffff;
 
-  --good: #1a6b50;
-  --good-soft: #e6f3ee;
-  --warn: #8a5209;
-  --warn-soft: #fbf0dd;
-  --danger: #a01f2c;
-  --danger-soft: #fbe9ea;
-  --neutral: #5a6373;
-  --neutral-soft: #eef0f3;
+  --good: #007150;
+  --good-soft: #def5ea;
+  --warn: #a54600;
+  --warn-soft: #ffe7d8;
+  --danger: #be123c;
+  --danger-soft: #ffe0e1;
+  --neutral: #4a5280;
+  --neutral-soft: #eaecf7;
 
   --radius: 8px;
   --mono: "Cascadia Code", Consolas, ui-monospace, "SF Mono", Menlo, monospace;
 
-  /* Motion speaks with two durations and one easing. --motion-fast is control feedback
-     (hover, press); --motion-view is anything that arrives or leaves (messages, views,
-     list items). The two long-running exceptions — the 1.5s scan and the 1s settle —
-     stay literal in their own rules because nothing else may reuse them: an indeterminate
-     wait and a server-recompute mark are not paces, they are specific meanings. */
-  --motion-fast: 140ms;
-  --motion-view: 220ms;
-  --ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
+  /* Motion speaks with three durations and two easings, taken from the design's own
+     motion.ts. --motion-fast is control feedback (hover, press); --motion-view is anything
+     that arrives or leaves (messages, views, list items); --motion-stagger is the gap
+     between siblings in a list that resolves in reading order. The two long-running
+     exceptions — the 1.5s scan and the 1s settle — stay literal in their own rules because
+     nothing else may reuse them: an indeterminate wait and a server-recompute mark are not
+     paces, they are specific meanings.
+
+     --ease-spring overshoots, so it is reserved for things that *appear* and want to be
+     noticed once (a badge resolving, a status pill landing). Never for anything that
+     moves on hover — an overshoot that fires on every pointer pass reads as a wobble. */
+  --motion-fast: 160ms;
+  --motion-view: 260ms;
+  --motion-stagger: 50ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* One superfamily, three widths, three jobs — see the type note below. */
   --font-ui: "Archivo Variable", "Segoe UI Variable Text", "Segoe UI", system-ui,
@@ -104,52 +125,56 @@
    winning on a dark-preference OS. Cheaper than repeating the light values a third time. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ground: #161826;
-    --well: #111320;
-    --surface: #232532;
-    --surface-2: #292b31;
-    --ink: #e9e9ed;
-    --ink-2: #b2b6ca;
-    --ink-3: #9397ab;
-    --line: #3f424d;
-    --line-soft: #292b31;
+    --ground: #0b0d1a;
+    --well: #070815;
+    --surface: #141728;
+    --surface-2: #1b2040;
+    --ink: #eef0ff;
+    --ink-2: #8b92b3;
+    --ink-3: #808aaf;
+    --line: #2c304d;
+    --line-soft: #1a1d34;
 
-    --accent: #9589da;
-    --accent-soft: #2b2741;
-    --on-filled: #161826;
+    --accent: #a78bfa;
+    --accent-fill: #7c3aed;
+    --accent-soft: #241f35;
+    --on-filled: #0b0d1a;
+    --on-accent: #ffffff;
 
-    --good: #63c3a0;
-    --good-soft: #16302a;
-    --warn: #e3a75a;
-    --warn-soft: #33270f;
-    --danger: #ef8189;
-    --danger-soft: #37191d;
-    --neutral: #98a1b0;
-    --neutral-soft: #23262d;
+    --good: #10b981;
+    --good-soft: #0f291d;
+    --warn: #f59e0b;
+    --warn-soft: #301f09;
+    --danger: #f87171;
+    --danger-soft: #351a19;
+    --neutral: #8b92b3;
+    --neutral-soft: #1b2040;
   }
 }
 
 :root[data-theme="dark"] {
-  --ground: #161826;
-  --well: #111320;
-  --surface: #232532;
-  --surface-2: #292b31;
-  --ink: #e9e9ed;
-  --ink-2: #b2b6ca;
-  --ink-3: #9397ab;
-  --line: #3f424d;
-  --line-soft: #292b31;
-  --accent: #9589da;
-  --accent-soft: #2b2741;
-  --on-filled: #161826;
-  --good: #63c3a0;
-  --good-soft: #16302a;
-  --warn: #e3a75a;
-  --warn-soft: #33270f;
-  --danger: #ef8189;
-  --danger-soft: #37191d;
-  --neutral: #98a1b0;
-  --neutral-soft: #23262d;
+  --ground: #0b0d1a;
+  --well: #070815;
+  --surface: #141728;
+  --surface-2: #1b2040;
+  --ink: #eef0ff;
+  --ink-2: #8b92b3;
+  --ink-3: #808aaf;
+  --line: #2c304d;
+  --line-soft: #1a1d34;
+  --accent: #a78bfa;
+  --accent-fill: #7c3aed;
+  --accent-soft: #241f35;
+  --on-filled: #0b0d1a;
+  --on-accent: #ffffff;
+  --good: #10b981;
+  --good-soft: #0f291d;
+  --warn: #f59e0b;
+  --warn-soft: #301f09;
+  --danger: #f87171;
+  --danger-soft: #351a19;
+  --neutral: #8b92b3;
+  --neutral-soft: #1b2040;
 }
 
 /* ---------------------------------------------------------------------------
@@ -235,12 +260,27 @@
                                 One movement (fade + 6px rise), one duration, one easing,
                                 wherever anything enters. Lists add per-child delays so
                                 verdicts resolve in reading order (see .findings).
+     nx-pop                     a verdict resolved — the one overshoot in the product,
+                                on --ease-spring, reserved for the small badge that says
+                                what kind of answer this is. Never on hover, never on
+                                anything larger than a label: an overshoot that fires on
+                                every pointer pass or moves a paragraph reads as wobble.
+     nx-cascade                 reading order — the children of one arrival resolve top
+                                to bottom, fade only. The container itself carries the
+                                6px rise (nx-msg); giving the children a second translate
+                                would compound into a 12px lurch, so they only fade. Same
+                                argument as .findings, packaged for any column.
      nx-scan                    work in progress, duration unknown — deliberately
                                 indeterminate; no event stream exists to fill a bar from
      nx-settle                  the server recomputed this row and it changed
 
    The last two keep literal durations because nothing else may reuse them: an
-   indeterminate wait and a recompute mark are specific meanings, not paces. */
+   indeterminate wait and a recompute mark are specific meanings, not paces.
+
+   Considered from the source design and refused, so the next reader does not re-import
+   them: the ambient background blobs, the breathing ring, and the amber pulse are all
+   infinite loops — decoration wearing urgency — and the bouncing typing dots would
+   replace an honest indeterminate sweep with a cuter one that says less. */
 
 @keyframes nx-in {
   from { opacity: 0; transform: translateY(6px); }
@@ -249,6 +289,48 @@
 .nx-msg,
 .nx-view {
   animation: nx-in var(--motion-view) var(--ease-out) both;
+}
+
+@keyframes nx-pop {
+  0% { opacity: 0; transform: scale(0.6) translateY(3px); }
+  62% { transform: scale(1.08) translateY(-1px); }
+  100% { opacity: 1; transform: none; }
+}
+.nx-pop {
+  animation: nx-pop 320ms var(--ease-spring) both;
+  /* After the message's own rise, so the verdict lands on a settled line. */
+  animation-delay: calc(var(--motion-view) * 0.6);
+}
+
+@keyframes nx-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.nx-cascade > * {
+  animation: nx-fade var(--motion-view) var(--ease-out) both;
+}
+.nx-cascade > :nth-child(2) { animation-delay: calc(var(--motion-stagger) * 1); }
+.nx-cascade > :nth-child(3) { animation-delay: calc(var(--motion-stagger) * 2); }
+.nx-cascade > :nth-child(4) { animation-delay: calc(var(--motion-stagger) * 3); }
+.nx-cascade > :nth-child(5) { animation-delay: calc(var(--motion-stagger) * 4); }
+.nx-cascade > :nth-child(6) { animation-delay: calc(var(--motion-stagger) * 5); }
+.nx-cascade > :nth-child(n + 7) { animation-delay: calc(var(--motion-stagger) * 6); }
+
+/* Progressive disclosure on native <details> (the citations list). Chromium-only for
+   now via @supports; elsewhere the toggle stays instant, which is the correct
+   degradation for a disclosure. */
+@supports (interpolate-size: allow-keywords) {
+  :root { interpolate-size: allow-keywords; }
+  details::details-content {
+    block-size: 0;
+    overflow-y: clip;
+    transition:
+      block-size var(--motion-view) var(--ease-out),
+      content-visibility var(--motion-view) allow-discrete;
+  }
+  details[open]::details-content {
+    block-size: auto;
+  }
 }
 
 @keyframes nx-scan {
@@ -277,9 +359,25 @@
 }
 .nx-settle { animation: nx-settle 1s ease-out both; }
 
+/* The nav's shared active marker: one tinted block that travels to the chosen tool
+   instead of each item lighting its own — "you went from here to there", which is a
+   meaning, not a flourish. Position and height are measured in the component (CSS cannot
+   know where the active item sits); only the travel lives here, so the global
+   reduced-motion rule in index.css stops it like everything else. The source design
+   drew this same marker but wired both halves to one ref, so its rounded block never
+   moved — the intent is reproduced here, not the implementation. */
+.nx-nav-slider {
+  transition:
+    transform var(--motion-view) var(--ease-out),
+    height var(--motion-view) var(--ease-out),
+    opacity var(--motion-fast) ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .nx-msg,
   .nx-view,
+  .nx-pop,
+  .nx-cascade > *,
   .nx-settle {
     animation: none;
   }
@@ -301,8 +399,8 @@
   left: -9999px;
   top: 0;
   z-index: 100;
-  background: var(--accent);
-  color: var(--on-filled);
+  background: var(--accent-fill);
+  color: var(--on-accent);
   padding: 0.6rem 1rem;
   border-radius: 0 0 var(--radius) 0;
 }
@@ -545,15 +643,15 @@
   cursor: not-allowed;
 }
 .btn--primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--on-filled);
+  background: var(--accent-fill);
+  border-color: var(--accent-fill);
+  color: var(--on-accent);
   text-decoration: none;
   display: inline-block;
 }
 .btn--primary:hover:not(:disabled) {
   filter: brightness(1.1);
-  color: var(--on-filled);
+  color: var(--on-accent);
 }
 
 .state {
@@ -892,13 +990,13 @@
   animation: nx-in var(--motion-view) var(--ease-out) both;
 }
 .findings > li:nth-child(1) { animation-delay: 0ms; }
-.findings > li:nth-child(2) { animation-delay: 40ms; }
-.findings > li:nth-child(3) { animation-delay: 80ms; }
-.findings > li:nth-child(4) { animation-delay: 120ms; }
-.findings > li:nth-child(5) { animation-delay: 160ms; }
-.findings > li:nth-child(6) { animation-delay: 200ms; }
-.findings > li:nth-child(7) { animation-delay: 240ms; }
-.findings > li:nth-child(n + 8) { animation-delay: 280ms; }
+.findings > li:nth-child(2) { animation-delay: calc(var(--motion-stagger) * 1); }
+.findings > li:nth-child(3) { animation-delay: calc(var(--motion-stagger) * 2); }
+.findings > li:nth-child(4) { animation-delay: calc(var(--motion-stagger) * 3); }
+.findings > li:nth-child(5) { animation-delay: calc(var(--motion-stagger) * 4); }
+.findings > li:nth-child(6) { animation-delay: calc(var(--motion-stagger) * 5); }
+.findings > li:nth-child(7) { animation-delay: calc(var(--motion-stagger) * 6); }
+.findings > li:nth-child(n + 8) { animation-delay: calc(var(--motion-stagger) * 7); }
 
 @media (prefers-reduced-motion: reduce) {
   .findings > li {

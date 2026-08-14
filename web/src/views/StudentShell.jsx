@@ -1,7 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
+import {
+  BarChart2,
+  CalendarRange,
+  CheckSquare,
+  ChevronRight,
+  Compass,
+  FileText,
+  MessageSquare,
+} from "lucide-react"
 import { api } from "@/api"
 import { ProgramNotice } from "@/components/nocturne"
 import { Button } from "@/components/ui/button"
+import { usePrefs } from "@/i18n"
 import ChatHome from "./ChatHome"
 import DecoderView from "./DecoderView"
 import IntakeView from "./IntakeView"
@@ -27,21 +37,30 @@ import StudentView from "./StudentView"
  * same "recompute on read, never store a status" rule the mission engine runs on.
  */
 
-const NAV = [
-  ["chat", "Assistant"],
-  ["intake", "Add from transcript"],
-  ["decoder", "Decode an error"],
-  ["mission", "Registration mission"],
-  ["sequence", "Term sequence"],
-  ["planner", "Degree planner"],
-  ["program", "Your program"],
-]
+// Five slots, in the order a student's question unfolds: ask → where do I stand → get
+// ready → what the record holds → the terms ahead. This was eight; the three that left
+// did not lose their function, they lost a *permanent* slot they were duplicating:
+//   decoder   — the chat is its entry (paste the error text; the empty-record greeting
+//               leads with a decoder question), and /decoder still deep-links for the
+//               read-the-classification-myself path.
+//   program   — the enrolled-program chip above the nav *is* the program surface;
+//               clicking it opens the picker.
+//   dashboard — the pre-shell demo overview; deep-link only.
+// Ids only — labels and live sub-lines come from the dictionary at render time.
+const NAV = ["chat", "planner", "mission", "intake", "sequence"]
 
-const PANES = [
-  ["drawer", "Readiness"],
-  ["focused", "Conversation only"],
-  ["audit", "What was checked"],
-]
+// Icons name the tool's *input or output*, not an abstraction: progress is a bar chart,
+// a transcript is a file, the sequence is a span of terms. The icon never carries the
+// meaning alone — the two-line label next to it does.
+const NAV_ICON = {
+  chat: MessageSquare,
+  planner: BarChart2,
+  mission: CheckSquare,
+  intake: FileText,
+  sequence: CalendarRange,
+}
+
+const PANES = ["drawer", "focused", "audit"]
 
 // A failed read is its own state, never an empty array: the rail renders [] as "nothing
 // in your record", and a dead API dressed up as an empty record is the silent failure
@@ -69,6 +88,7 @@ function viewFromLocation() {
 }
 
 export default function StudentShell({ me, onSignOut }) {
+  const { t } = usePrefs()
   const [view, setViewState] = useState(viewFromLocation)
   const [pane, setPane] = useState("drawer")
 
@@ -91,6 +111,10 @@ export default function StudentShell({ me, onSignOut }) {
   // null means "not stated yet", which is a real answer and not a failure — it is what a
   // new account looks like, and the rail says so rather than showing nothing.
   const [program, setProgram] = useState(null)
+  // Feeds the Degree-progress sub-line ("21 / 36 credits"). null is "no live figure" —
+  // an unset program 409s here, and the nav falls back to the static description rather
+  // than inventing a number.
+  const [plan, setPlan] = useState(null)
 
   const refresh = useCallback(() => {
     api.missions().then(setMissions).catch(() => setMissions(LOAD_FAILED))
@@ -101,6 +125,7 @@ export default function StudentShell({ me, onSignOut }) {
       .catch((err) =>
         setProgram(err.code === "program_not_stated" ? null : LOAD_FAILED),
       )
+    api.plan(false).then(setPlan).catch(() => setPlan(null))
   }, [])
 
   // On mount and on every view change: Intake writes the profile, Mission writes the
@@ -115,18 +140,12 @@ export default function StudentShell({ me, onSignOut }) {
   // chat-reading preference, not app chrome.
   const railVisible = !inChat || pane === "drawer"
 
-  const nav = useMemo(
-    () => (me.student_id ? [...NAV, ["dashboard", "Dashboard (demo)"]] : NAV),
-    [me.student_id],
-  )
-
-  // A deep-linkable page deserves a nameable tab. The chat keeps the product name — it
-  // is the app, not a section of it.
+  // A deep-linkable page deserves a nameable tab whether or not it holds a nav slot —
+  // every view keeps its label key. The chat keeps the product name; it is the app,
+  // not a section of it.
   useEffect(() => {
-    const label = nav.find(([id]) => id === view)?.[1]
-    document.title =
-      view === "chat" || !label ? "Path Pilot" : `${label} · Path Pilot`
-  }, [nav, view])
+    document.title = view === "chat" ? "Path Pilot" : `${t(`nav.${view}`)} · Path Pilot`
+  }, [view, t])
 
   // Unmounting means signed out: the sign-in page must not sit under a tool's title any
   // more than under its path.
@@ -140,13 +159,13 @@ export default function StudentShell({ me, onSignOut }) {
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <a className="skip" href="#main">
-        Skip to content
+        {t("shell.skip")}
       </a>
 
       <header className="flex flex-none flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-4 py-2.5 sm:px-5">
         <div className="flex items-baseline gap-2">
-          <span className="nx-statement text-title">Path Pilot</span>
-          <span className="hidden nx-label sm:inline">Registration readiness</span>
+          <span className="nx-statement text-title">{t("app.name")}</span>
+          <span className="hidden nx-label sm:inline">{t("app.tagline")}</span>
         </div>
 
         <div className="mx-auto">
@@ -154,9 +173,9 @@ export default function StudentShell({ me, onSignOut }) {
             <div
               className="flex gap-1 rounded-[10px] border border-border p-[3px]"
               role="group"
-              aria-label="Side pane"
+              aria-label={t("pane.label")}
             >
-              {PANES.map(([id, label]) => (
+              {PANES.map((id) => (
                 <button
                   key={id}
                   type="button"
@@ -168,18 +187,19 @@ export default function StudentShell({ me, onSignOut }) {
                       : "text-muted-foreground hover:bg-secondary active:bg-secondary/70"
                   }`}
                 >
-                  {label}
+                  {t(`pane.${id}`)}
                 </button>
               ))}
             </div>
           ) : (
             <Button variant="outline" size="sm" onClick={() => setView("chat")}>
-              ← Back to assistant
+              {t("shell.back")}
             </Button>
           )}
         </div>
 
         <div className="flex items-center gap-3">
+          <PrefsControls />
           <div className="text-right">
             <div className="text-body leading-tight">{me.full_name}</div>
             <div className="text-micro text-subtle">
@@ -187,7 +207,7 @@ export default function StudentShell({ me, onSignOut }) {
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={onSignOut}>
-            Sign out
+            {t("shell.signout")}
           </Button>
         </div>
       </header>
@@ -201,10 +221,10 @@ export default function StudentShell({ me, onSignOut }) {
             failed={failed}
             onRetry={refresh}
             view={view}
-            nav={nav}
             onOpenView={setView}
             program={program === LOAD_FAILED ? null : program}
             programUnknown={program === null}
+            plan={plan}
           />
         ) : null}
 
@@ -286,39 +306,75 @@ export default function StudentShell({ me, onSignOut }) {
 /* ---------------------------------------------------------------------------------- */
 
 /**
- * One row of a status list: a dot, what it is, where it came from, and the value. The dot
- * is decoration; the value on the right is the same statement in words, because a 7px
- * circle is exactly the kind of colour-only signal this product does not ship.
+ * Theme and language, as two segmented switches — the control shape the source design
+ * carries in its sidebar footer, relocated to the header because this shell's rail is
+ * hideable ("Conversation only") and a preference control must not vanish with it.
+ *
+ * Theme is three segments, not the design's two: `auto` is the state where the
+ * `prefers-color-scheme` block decides, and dropping it would silently disable the OS
+ * preference — see the note in i18n/index.jsx. Each segment says its name in words;
+ * `aria-pressed` carries the state.
  */
-function StatusRow({ tone = "neutral", label, meta, value }) {
-  return (
-    <div className="flex items-center gap-3 bg-card px-3.5 py-2.5">
-      <span className={`nx-dot nx-dot--${tone}`} aria-hidden="true" />
-      <div className="min-w-0 flex-1">
-        <div className="text-body leading-snug">{label}</div>
-        {meta ? <div className="text-micro text-subtle">{meta}</div> : null}
-      </div>
-      {value ? (
-        <span className="shrink-0 text-right text-xs text-muted-foreground">{value}</span>
-      ) : null}
-    </div>
-  )
-}
+function PrefsControls() {
+  const { locale, setLocale, theme, setTheme, t } = usePrefs()
 
-function RowGroup({ children }) {
+  const segment = (active) =>
+    `rounded-md px-2 py-1 text-micro font-medium transition-colors ${
+      active
+        ? "bg-card text-foreground shadow-xs"
+        : "text-subtle hover:text-muted-foreground"
+    }`
+
   return (
-    /* `flex-none` is load-bearing: the rail is a flex column so its disclaimer can sit at
-       the bottom, and without this a five-row group gets squeezed to the height of one. */
-    <div className="flex flex-none flex-col gap-px overflow-hidden rounded-md bg-border">
-      {children}
+    <div className="hidden items-center gap-1.5 sm:flex">
+      <div
+        className="flex gap-0.5 rounded-lg border border-border bg-secondary p-0.5"
+        role="group"
+        aria-label={t("prefs.theme")}
+      >
+        {["auto", "light", "dark"].map((id) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={theme === id}
+            onClick={() => setTheme(id)}
+            className={segment(theme === id)}
+          >
+            {t(`prefs.theme.${id}`)}
+          </button>
+        ))}
+      </div>
+      <div
+        className="flex gap-0.5 rounded-lg border border-border bg-secondary p-0.5"
+        role="group"
+        aria-label={t("prefs.lang")}
+      >
+        {[
+          ["en", "EN"],
+          ["zh", "中文"],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={locale === id}
+            onClick={() => setLocale(id)}
+            className={segment(locale === id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
 
 /**
- * The left rail: registration readiness first, then the way to every full page, then the
- * one sentence this portfolio project owes every screen. Readiness is re-read from the
- * server on each view change, never held from a previous turn.
+ * The left rail, and the nav *is* the dashboard: five slots whose sub-lines are live
+ * state — credits standing, mission step, record size — recomputed on every read like
+ * everything else. The detail those figures summarise lives one click away in the full
+ * pages; the rail stopped duplicating it. Where registration stands is still answered
+ * at rest, just at nav altitude: the mission slot's sub-line goes red and says
+ * "Blocked · N" the moment it is true.
  */
 function Rail({
   mission,
@@ -327,14 +383,115 @@ function Rail({
   failed,
   onRetry,
   view,
-  nav,
   onOpenView,
   program,
   programUnknown,
+  plan,
 }) {
+  const { t, locale } = usePrefs()
   const done = mission ? mission.steps.filter((s) => s.state === "done").length : 0
   const blockers = mission?.open_blockers ?? []
-  const active = mission?.steps.find((s) => s.state === "active")
+  const activeIndex = mission ? mission.steps.findIndex((s) => s.state === "active") : -1
+
+  /** One slot's live sub-line. A failed or unfinished fetch asserts nothing: every slot
+   *  falls back to its static description, and the failed strip above the nav says why —
+   *  "no access" must never render as "no results". */
+  const subFor = (id) => {
+    if (!ready || failed) return t(`nav.${id}.sub`)
+    switch (id) {
+      case "planner":
+        return plan?.credits_required
+          ? t("nav.planner.sub.live", {
+              done: plan.credits_completed,
+              total: plan.credits_required,
+            })
+          : t("nav.planner.sub")
+      case "mission": {
+        if (!mission) return t("nav.mission.sub")
+        if (blockers.length > 0) return t("nav.mission.sub.blocked", { count: blockers.length })
+        if (mission.complete) return t("nav.mission.sub.ready", { term: mission.term })
+        const step = activeIndex >= 0 ? activeIndex + 1 : Math.min(done + 1, mission.steps.length)
+        return t("nav.mission.sub.step", {
+          step,
+          total: mission.steps.length,
+          term: mission.term,
+        })
+      }
+      case "intake":
+        return t("nav.intake.sub.live", { count: courseCount })
+      case "sequence":
+        return mission
+          ? t("nav.sequence.sub.live", { term: mission.term })
+          : t("nav.sequence.sub")
+      default:
+        return t(`nav.${id}.sub`)
+    }
+  }
+
+  // A slot whose live figure just *changed* settles (the accent edge, 1s) — the
+  // recompute made news, and nx-settle is the vocabulary word for exactly that. Guards,
+  // in order: the first read is arrival, not news; a locale flip rewrites every string
+  // without any fact changing; and a fetch that failed reports nothing. Comparison is
+  // per slot on the rendered string, so a mission moving settles the mission slot and
+  // leaves the other four still.
+  //
+  // The changed set is *state* with a timed clear, not a value computed during render:
+  // a refresh lands as three fetches settling separately, so the render after the one
+  // that spotted the change arrives within milliseconds — a class that lives only for
+  // the spotting render is removed mid-animation and the settle never visibly fires.
+  const subs = NAV.map((id) => subFor(id))
+  const [settled, setSettled] = useState(() => new Set())
+  const prevSubs = useRef(null)
+  const prevLocale = useRef(locale)
+  const settleTimer = useRef(null)
+  useEffect(() => {
+    const fresh =
+      prevSubs.current === null || prevLocale.current !== locale || !ready || failed
+    const changed = fresh
+      ? []
+      : NAV.filter((id, i) => prevSubs.current[i] !== subs[i])
+    prevSubs.current = subs
+    prevLocale.current = locale
+    if (changed.length > 0) {
+      setSettled(new Set(changed))
+      clearTimeout(settleTimer.current)
+      // Past the animation's 1s: removing the class then swaps one settled end state
+      // for another, invisibly. Clearing earlier truncates the mark it exists to make.
+      settleTimer.current = setTimeout(() => setSettled(new Set()), 1100)
+    }
+  })
+  useEffect(() => () => clearTimeout(settleTimer.current), [])
+
+  // The shared nav marker. Measured, not styled per item: one tinted block travels to
+  // the active tool (.nx-nav-slider owns the motion). Re-measured when the locale flips
+  // — labels change length, and with them every item's offset. On a view without a nav
+  // slot (decoder, program, dashboard) the marker fades out rather than squatting on
+  // whichever slot was last active.
+  const itemRefs = useRef(new Map())
+  const sliderRef = useRef(null)
+  const sliderSettled = useRef(false)
+  useLayoutEffect(() => {
+    const slider = sliderRef.current
+    if (!slider) return
+    const el = itemRefs.current.get(view)
+    if (!el) {
+      slider.style.opacity = "0"
+      return
+    }
+    slider.style.opacity = "1"
+    if (!sliderSettled.current) {
+      // First paint lands in place; travel is for changes the student just made.
+      slider.style.transition = "none"
+    }
+    slider.style.transform = `translateY(${el.offsetTop}px)`
+    slider.style.height = `${el.offsetHeight}px`
+    if (!sliderSettled.current) {
+      sliderSettled.current = true
+      // Reflow commits the jump before the class transition comes back.
+      void slider.offsetHeight
+      slider.style.transition = ""
+    }
+  }, [view, locale])
 
   return (
     /* Two zones, and only the top one scrolls.
@@ -345,191 +502,182 @@ function Rail({
        can be as long as it needs to be, and choosing a tool never hides where you stand. */
     <aside
       className="flex max-h-[40vh] w-full flex-none flex-col border-b border-border bg-well md:max-h-none md:w-[clamp(280px,30%,420px)] md:border-r md:border-b-0"
-      aria-label="Registration readiness and tools"
+      aria-label={t("rail.aria")}
     >
-      <div className="nx-scroll min-h-0 flex-1 overflow-auto px-4 pt-5 pb-4 md:px-5">
-      <div className="mb-3.5 nx-label">
-        {mission ? `Registration readiness · ${mission.term}` : "Your record"}
+      {/* Brand block — the design's anchor: a filled tile, the name, one quiet line.
+          Desktop only: on a phone the rail is a 40vh drawer and the header already
+          carries the name; spending drawer height restating it helps nobody. */}
+      <div
+        className="hidden flex-none items-center gap-2.5 border-b border-border px-4 pt-4 pb-3.5 md:flex md:px-5"
+        aria-hidden="true"
+      >
+        <div
+          className="grid size-9 flex-none place-items-center rounded-xl text-cta-foreground"
+          style={{ background: "linear-gradient(135deg, var(--accent), var(--accent-fill))" }}
+        >
+          <Compass size={16} />
+        </div>
+        <div className="min-w-0">
+          <div className="nx-statement text-body leading-tight">{t("app.name")}</div>
+          <div className="mt-0.5 text-micro leading-none text-subtle">{t("app.tagline")}</div>
+        </div>
       </div>
 
-      {/* The program sits above readiness because it decides what readiness can even
-          mean: three of the six tools evaluate rules that belong to one program, and
-          without it they refuse. An unset program is "Action required" in words, not a
-          coloured dot — the same rule every other state on this rail follows. */}
-      {programUnknown ? (
-        <div className="mb-3.5">
-          <RowGroup>
-            <StatusRow
-              tone="warn"
-              label="Tell us your program"
-              meta="Degree progress, sequencing and missions need to know which rules apply to you."
-              value="Action required"
-            />
-          </RowGroup>
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-2 w-full"
+      {/* The program chip — and since the program tool left the nav, the chip *is* the
+          program surface: clicking it opens the picker, and it reads aria-current when
+          that page is open. The support badge is words, not a coloured dot, like every
+          other state on this rail. The design's mouse-tracking spotlight is deliberately
+          not reproduced: the motion contract bans animation that carries no meaning. */}
+      <div className="flex-none border-b border-border px-4 py-3 md:px-5">
+        <div className="nx-label mb-1.5">{t("rail.program.eyebrow")}</div>
+        {programUnknown ? (
+          <div className="rounded-lg border border-border bg-card px-3 py-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <span className="text-body leading-snug">{t("rail.program.unset")}</span>
+              <span className="rounded bg-warning-soft px-1.5 py-0.5 text-micro font-medium text-warning">
+                {t("rail.program.unset.action")}
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 w-full"
+              onClick={() => onOpenView("program")}
+            >
+              {t("rail.program.choose")}
+            </Button>
+          </div>
+        ) : program ? (
+          <button
+            type="button"
             onClick={() => onOpenView("program")}
+            aria-current={view === "program" ? "page" : undefined}
+            title={t("rail.program.open")}
+            className={`w-full rounded-lg border bg-card px-3 py-2.5 text-left transition-colors duration-(--motion-fast) hover:border-primary/40 ${
+              view === "program" ? "border-primary/50" : "border-border"
+            }`}
           >
-            Choose your program
+            <div className="flex items-center justify-between gap-2">
+              <span className="min-w-0 flex-1 text-body leading-snug">
+                {program.program_name}
+              </span>
+              <span
+                className={`rounded px-1.5 py-0.5 text-micro font-medium ${
+                  program.is_encoded
+                    ? "bg-success-soft text-success"
+                    : "bg-warning-soft text-warning"
+                }`}
+              >
+                {program.is_encoded ? t("rail.program.full") : t("rail.program.limited")}
+              </span>
+              <ChevronRight size={13} aria-hidden="true" className="flex-none text-subtle" />
+            </div>
+            <div className="mt-1 text-micro leading-snug text-subtle">
+              {program.is_encoded
+                ? t("rail.program.encoded")
+                : t("rail.program.notEncoded")}
+            </div>
+          </button>
+        ) : (
+          <div className="rounded-lg border border-border bg-card px-3 py-2.5 text-body text-muted-foreground">
+            …
+          </div>
+        )}
+      </div>
+
+      {/* The failed strip. A dead API dressed as an empty record is the silent failure
+          rule 6 forbids — and with live sub-lines below, the stakes double: every slot
+          falls back to its static description while this strip says why. */}
+      {failed ? (
+        <div className="mx-4 mt-3 flex-none rounded-lg border border-destructive/25 bg-destructive-soft px-3 py-2.5 md:mx-5">
+          <div className="text-meta font-medium text-destructive">{t("rail.failed")}</div>
+          <div className="mt-0.5 text-micro leading-relaxed text-muted-foreground">
+            {t("rail.failed.meta")}
+          </div>
+          <Button variant="outline" size="sm" className="mt-2 w-full" onClick={onRetry}>
+            {t("rail.failed.retry")}
           </Button>
-        </div>
-      ) : program ? (
-        <div className="mb-3.5">
-          <RowGroup>
-            <StatusRow
-              tone={program.is_encoded ? "good" : "warn"}
-              label={program.program_name}
-              meta={
-                program.is_encoded
-                  ? "Requirements encoded — degree progress available"
-                  : "Requirements not encoded — policy answers and error decoding only"
-              }
-              value={program.is_encoded ? "Full support" : "Limited"}
-            />
-          </RowGroup>
         </div>
       ) : null}
 
-      {failed ? (
-        <>
-          <RowGroup>
-            <StatusRow
-              tone="danger"
-              label="Couldn't read your record"
-              meta="A failed read, not an empty record — nothing here is known right now."
-              value="Action required"
-            />
-          </RowGroup>
-          <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
-            Retry reading your record
-          </Button>
-        </>
-      ) : !ready ? (
-        <p className="text-body text-muted-foreground">Reading your record…</p>
-      ) : mission ? (
-        <>
-          <div className="mb-4 rounded-lg border border-border bg-card p-4">
-            <div className="flex flex-wrap items-center gap-2.5">
-              {/* The one statement on the screen: the answer to "am I ready to register?" */}
-              <span className="nx-statement text-display">
-                {blockers.length > 0 ? "Blocked" : mission.complete ? "Ready" : "In progress"}
-              </span>
-              <span
-                className={`rounded border px-2 py-0.5 text-micro ${
-                  blockers.length > 0
-                    ? "border-destructive text-destructive"
-                    : "border-primary text-primary"
-                }`}
-              >
-                {blockers.length > 0
-                  ? `${blockers.length} blocker${blockers.length === 1 ? "" : "s"} · action required`
-                  : `${done} of ${mission.steps.length} steps done`}
-              </span>
-            </div>
-            {active?.what_now ? (
-              <p className="mt-2 text-body leading-relaxed text-muted-foreground">
-                Next: {active.what_now}
-              </p>
-            ) : null}
+      {/* The nav is the rail's body now, not its footer — five slots, each sub-line live
+          state. Detail lives one click away in the page each slot opens; the rail
+          stopped duplicating the mission page. The sub-line stays visible on a phone,
+          unlike the old static descriptions: "Blocked · 1 blocker" is exactly what the
+          drawer exists to say. */}
+      <nav
+        aria-label={t("nav.heading")}
+        className="nx-scroll min-h-0 flex-1 overflow-auto px-2 py-2 md:px-3"
+      >
+        <div className="relative flex flex-col">
+          {/* The shared marker: accent tint plus the verdict system's left edge,
+              travelling to the chosen tool. Decoration only — aria-current on the
+              button is the state, and the active item's own ink and weight still say
+              it if this never paints. */}
+          <div
+            ref={sliderRef}
+            aria-hidden="true"
+            className="nx-nav-slider pointer-events-none absolute inset-x-0 top-0 h-0 rounded-md border border-primary/25 bg-accent"
+          >
+            <span className="absolute top-1/2 left-0 h-[60%] w-[3px] -translate-y-1/2 rounded-r-sm bg-primary" />
           </div>
 
-          <RowGroup>
-            {mission.steps.map((step) => (
-              <StatusRow
-                key={step.id}
-                tone={
-                  step.state === "done" ? "good" : step.state === "active" ? "warn" : "neutral"
-                }
-                label={step.title}
-                meta={step.criterion}
-                value={
-                  step.state === "done" ? "Done" : step.state === "active" ? "Now" : "Waiting"
-                }
-              />
-            ))}
-          </RowGroup>
-
-          {blockers.length > 0 ? (
-            <>
-              <div className="mt-5 mb-2.5 nx-label">
-                In the way
-              </div>
-              <RowGroup>
-                {blockers.map((b) => (
-                  <StatusRow key={b.key} tone="danger" label={b.summary} meta={b.next_step} />
-                ))}
-              </RowGroup>
-            </>
-          ) : null}
-        </>
-      ) : (
-        <p className="text-body leading-relaxed text-muted-foreground">
-          {courseCount > 0
-            ? `${courseCount} course${courseCount === 1 ? "" : "s"} in your record and no open registration mission. Ask about your degree, or start preparing for a term.`
-            : "Nothing in your record yet. Ask about a registration error — that needs nothing set up — or add your courses from a transcript."}
-        </p>
-      )}
-
-      <p className="mt-4 text-meta leading-relaxed text-subtle">
-        Recomputed on every read. Your completed courses are self-reported — Path Pilot cannot see
-        Albert.
-      </p>
-      </div>
-
-      {/* Kept deliberately tight. This is the way *out* of the current task, not the task;
-          before it was trimmed it stood at 374px against the readiness zone's 472px, which
-          is most of a column spent on secondary navigation. */}
-      <div className="flex-none border-t border-border px-4 pt-3.5 pb-4 md:px-5">
-        <div className="mb-1.5 nx-label">Records &amp; tools</div>
-        <nav aria-label="Records and tools">
-          <div className="flex flex-col">
-            {nav.map(([id, label]) => (
+          {NAV.map((id, navIndex) => {
+            const Icon = NAV_ICON[id]
+            const isActive = view === id
+            const alarmed = id === "mission" && blockers.length > 0 && ready && !failed
+            return (
               <button
                 key={id}
+                ref={(el) => {
+                  if (el) itemRefs.current.set(id, el)
+                  else itemRefs.current.delete(id)
+                }}
                 type="button"
-                aria-current={view === id ? "page" : undefined}
+                aria-current={isActive ? "page" : undefined}
                 onClick={() => onOpenView(id)}
-                /* Roomy for a thumb, tight for a cursor: the rail is a drawer on a phone
-                   where these are touch targets, and a contested column on a desktop
-                   where they are not.
-
-                   Selected = a chip lifted off the well: fill, ink and weight all say it,
-                   because the rail's left edge belongs to the verdict system and a lone
-                   ring reads as an outline, not a place. */
-                className={`flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-2 text-left text-body transition-colors md:py-1 md:text-meta ${
-                  view === id
-                    ? "bg-card font-medium text-primary shadow-xs"
-                    : "text-muted-foreground hover:bg-card/60 active:bg-card"
-                }`}
+                /* Roomy for a thumb, tight for a cursor: the rail is a drawer on a
+                   phone where these are touch targets. The nudge on hover is the
+                   design's — 2px toward the tool, control feedback pace. */
+                className={`relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-2.5 text-left transition-[transform,color] duration-(--motion-fast) hover:translate-x-0.5 md:py-2 ${
+                  isActive ? "font-medium text-primary" : "text-muted-foreground active:bg-card"
+                } ${settled.has(id) ? "nx-settle" : ""}`}
               >
-                {label}
-                {/* The one nav entry with live state gets it, in words and figures — not
-                    an icon. "blocked" outranks the count because a blocked mission's step
-                    tally is not the news. */}
-                {id === "mission" && mission ? (
+                <Icon
+                  size={15}
+                  aria-hidden="true"
+                  className={`flex-none ${isActive ? "text-primary" : "text-subtle"}`}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-body leading-tight md:text-meta">
+                    {t(`nav.${id}`)}
+                  </span>
+                  {/* The live figure. Red text, not a red dot, when the mission is
+                      blocked — the state names itself in words wherever it appears. */}
                   <span
-                    className={`nx-figure text-micro ${
-                      blockers.length > 0 ? "text-destructive" : "text-subtle"
+                    className={`nx-figure mt-0.5 block text-micro leading-tight font-normal ${
+                      alarmed
+                        ? "font-medium text-destructive"
+                        : isActive
+                          ? "text-muted-foreground"
+                          : "text-subtle"
                     }`}
                   >
-                    {blockers.length > 0
-                      ? "blocked"
-                      : `${done}/${mission.steps.length}`}
+                    {subs[navIndex]}
                   </span>
-                ) : null}
+                </span>
               </button>
-            ))}
-          </div>
-        </nav>
+            )
+          })}
+        </div>
+      </nav>
 
-        {/* Two claims, and both have to survive being skimmed: this is not NYU, and the
-            student data is invented while the policy text is really NYU's. */}
-        <p className="mt-3 text-micro leading-relaxed text-subtle">
-          Personal portfolio project — not an official NYU system. Students and records are
-          fictional; policy text is quoted from public NYU bulletins with source links.
-        </p>
+      {/* Two claims and a promise, and all three have to survive being skimmed: state is
+          recomputed on every read, this is not NYU, and the records are fictional while
+          the policy text is really NYU's. */}
+      <div className="flex-none border-t border-border px-4 pt-3 pb-4 md:px-5">
+        <p className="text-micro leading-relaxed text-subtle">{t("rail.recomputed")}</p>
+        <p className="mt-2 text-micro leading-relaxed text-subtle">{t("rail.disclaimer")}</p>
       </div>
     </aside>
   )

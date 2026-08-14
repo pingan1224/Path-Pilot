@@ -34,6 +34,13 @@
     -webkit-font-smoothing: antialiased;
     background: var(--ground);
     color: var(--ink);
+    /* A chosen theme arrives instead of popping. Body-level only: surfaces repaint
+       instantly inside the crossfading ground, which reads as the room's lights coming
+       up rather than the app tearing — blanketing `*` with colour transitions would
+       also slow every hover state it did not mean to touch. */
+    transition:
+      background-color var(--motion-view) ease,
+      color var(--motion-view) ease;
   }
 
   img,

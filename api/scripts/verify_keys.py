@@ -1,10 +1,11 @@
-"""Confirm both provider keys actually work before any P3 code depends on them.
+"""Confirm the provider key actually works before anything depends on it.
 
     .venv/Scripts/python -m scripts.verify_keys
 
-Three checks: Moonshot chat, Moonshot tool calling (the agent loop depends on it), and an
-OpenAI embedding at our 1024 dimensions. Each prints enough to eyeball; any failure names
-the key at fault.
+One vendor since 2026-08-14 (chat, tool calling and embeddings all on OPENAI_API_KEY),
+so one check function with three probes: chat, tool calling (the agent loop depends on
+it), and an embedding at our 1024 dimensions. Each prints enough to eyeball; a failure
+names the probe at fault.
 """
 
 import os
@@ -17,41 +18,37 @@ load_dotenv()
 EMBEDDING_DIM = 1024
 
 
-def check_moonshot() -> None:
-    client = OpenAI(
-        api_key=os.environ["MOONSHOT_API_KEY"],
-        base_url=os.environ.get("MOONSHOT_BASE_URL", "https://api.moonshot.ai/v1"),
-    )
+def check_openai() -> None:
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
     models = [m.id for m in client.models.list().data]
-    print(f"[moonshot] models visible : {len(models)}")
-    chat_model = os.environ.get("CHAT_MODEL", "kimi-k3")
-    marker = "yes" if chat_model in models else "NOT FOUND — pick from list above"
-    print(f"[moonshot] {chat_model!r} available: {marker}")
-    if chat_model not in models:
-        for m in sorted(models):
-            print(f"           - {m}")
+    print(f"[openai] models visible : {len(models)}")
+    chat_model = os.environ.get("CHAT_MODEL", "gpt-5.4-mini")
+    marker = "yes" if chat_model in models else "NOT FOUND — pick from the account's list"
+    print(f"[openai] {chat_model!r} available: {marker}")
 
-    # kimi-k3 is a reasoning model and rejects any temperature other than 1, so we simply
-    # never send the parameter. Worth remembering for the agent: determinism has to come
-    # from evaluation design, not from temperature=0.
+    # The gpt-5 reasoning family rejects any temperature but the default, so we never
+    # send the parameter — determinism has to come from evaluation design. It also
+    # rejects max_tokens; max_completion_tokens is the one that works, and reasoning
+    # spends from it, so a tight budget yields an empty visible answer.
     response = client.chat.completions.create(
         model=chat_model,
         messages=[{"role": "user", "content": "Reply with exactly: pong"}],
-        max_tokens=64,
+        max_completion_tokens=512,
     )
-    print(f"[moonshot] chat            : {response.choices[0].message.content!r}")
+    print(f"[openai] chat           : {response.choices[0].message.content!r}")
 
     # Tool calling is the capability the whole agent loop rests on; verify it, not hope.
     tool_response = client.chat.completions.create(
         model=chat_model,
-        messages=[{"role": "user", "content": "What holds does student 7 have?"}],
+        messages=[{"role": "user", "content": "What courses does the plan for student 7 hold?"}],
+        max_completion_tokens=512,
         tools=[
             {
                 "type": "function",
                 "function": {
-                    "name": "get_active_holds",
-                    "description": "List active holds on a student's record",
+                    "name": "get_my_plan",
+                    "description": "List the courses on a student's self-reported plan",
                     "parameters": {
                         "type": "object",
                         "properties": {"student_id": {"type": "integer"}},
@@ -63,34 +60,31 @@ def check_moonshot() -> None:
     )
     calls = tool_response.choices[0].message.tool_calls
     if calls:
-        print(f"[moonshot] tool call       : {calls[0].function.name}({calls[0].function.arguments})")
+        print(f"[openai] tool call      : {calls[0].function.name}({calls[0].function.arguments})")
     else:
-        print("[moonshot] tool call       : MODEL DID NOT CALL THE TOOL")
+        print("[openai] tool call      : MODEL DID NOT CALL THE TOOL")
 
-
-def check_openai() -> None:
-    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    response = client.embeddings.create(
+    embedding = client.embeddings.create(
         model=os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small"),
         input=["registration hold financial aid"],
         dimensions=EMBEDDING_DIM,
     )
-    vector = response.data[0].embedding
-    print(f"[openai]   embedding dims  : {len(vector)} (expected {EMBEDDING_DIM})")
-    print(f"[openai]   tokens billed   : {response.usage.total_tokens}")
+    vector = embedding.data[0].embedding
+    print(f"[openai] embedding dims : {len(vector)} (expected {EMBEDDING_DIM})")
+    print(f"[openai] tokens billed  : {embedding.usage.total_tokens}")
 
 
 def main() -> None:
-    failures = []
-    for name, check in (("moonshot", check_moonshot), ("openai", check_openai)):
-        try:
-            check()
-        except Exception as exc:  # noqa: BLE001 — report, don't crash the other check
-            failures.append(name)
-            print(f"[{name}] FAILED: {type(exc).__name__}: {exc}")
+    try:
+        check_openai()
+    except Exception as exc:  # noqa: BLE001 — report with the probe visible above
+        print(f"[openai] FAILED: {type(exc).__name__}: {exc}")
+        print()
+        print("FAILED: openai")
+        return
 
     print()
-    print("all keys verified" if not failures else f"FAILED: {', '.join(failures)}")
+    print("all keys verified")
 
 
 if __name__ == "__main__":

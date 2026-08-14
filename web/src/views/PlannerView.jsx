@@ -15,6 +15,7 @@ import {
   Accordion,
   CardHeading,
   Chip,
+  Code,
   MakeCard,
   Sources,
   tone,
@@ -381,19 +382,26 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
             {results.map((r) => (
               <li
                 key={r.code}
-                className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 p-2.5"
+                className="flex flex-wrap items-center gap-2 rounded-xl p-3"
+                style={{
+                  background: "var(--color-surface-2)",
+                  border: "1px solid var(--color-rail)",
+                }}
               >
-                <div className="min-w-0 flex-1 text-body leading-relaxed">
-                  <span className="font-mono">{r.code}</span> {r.title}
-                  <span className="text-muted-foreground"> · {r.credits}cr</span>
+                <div
+                  className="min-w-0 flex-1 text-[12px] leading-relaxed"
+                  style={{ color: "var(--color-ink)" }}
+                >
+                  <Code>{r.code}</Code> {r.title}
+                  <span style={{ color: "var(--color-ink-3)" }}> · {r.credits}cr</span>
                   {r.prerequisites_text ? (
-                    <span className="block text-meta text-muted-foreground">
+                    <span className="block text-[11px]" style={{ color: "var(--color-ink-3)" }}>
                       Prereq: {r.prerequisites_text}
                     </span>
                   ) : null}
                 </div>
                 {held.has(r.code) ? (
-                  <span className="text-meta text-muted-foreground">added</span>
+                  <span className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>added</span>
                 ) : (
                   <span className="flex flex-wrap gap-1.5">
                     {["completed", "in_progress", "planned"].map((state) => (
@@ -417,8 +425,11 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
           </ul>
         ) : null}
 
-        <details className="rounded-md border border-border bg-muted/40 p-2.5 text-body">
-          <summary className="cursor-pointer text-muted-foreground">
+        <details
+          className="rounded-xl p-3 text-[12px]"
+          style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-rail)" }}
+        >
+          <summary className="cursor-pointer" style={{ color: "var(--color-ink-3)" }}>
             Course not in this catalog? Add it by code
           </summary>
           <div className="mt-2 flex flex-col gap-2">
@@ -458,16 +469,28 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
             {courses.map((c) => (
               <li
                 key={c.course_code}
-                className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2.5"
+                className="flex flex-wrap items-center gap-2 rounded-xl p-3"
+                style={{
+                  background: "var(--color-surface-2)",
+                  border: "1px solid var(--color-rail)",
+                }}
               >
-                <span className="font-mono text-sm">{c.course_code}</span>
-                <span className="min-w-0 flex-1 text-body leading-snug">
+                <Code>{c.course_code}</Code>
+                <span
+                  className="min-w-0 flex-1 text-[12px] leading-snug"
+                  style={{ color: "var(--color-ink)" }}
+                >
                   {c.title ?? "Not in this catalog"}{" "}
                   {!c.in_catalog ? <Tone tone="warn">unverified</Tone> : null}
                 </span>
                 <span className="flex flex-wrap items-center gap-1.5">
                   <select
-                    className="rounded-md border border-border bg-card px-2 py-1 text-body"
+                    className="rounded-lg px-2 py-1 text-[12px]"
+                    style={{
+                      background: "var(--color-surface)",
+                      border: "1px solid var(--color-rail-strong)",
+                      color: "var(--color-ink)",
+                    }}
                     value={c.state}
                     disabled={busy}
                     aria-label={`Status of ${c.course_code}`}
@@ -483,7 +506,12 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
                   </select>
                   {c.state === "completed" ? (
                     <input
-                      className="w-16 rounded-md border border-border bg-card px-2 py-1 text-body uppercase"
+                      className="w-16 rounded-lg px-2 py-1 text-[12px] uppercase"
+                      style={{
+                        background: "var(--color-surface)",
+                        border: "1px solid var(--color-rail-strong)",
+                        color: "var(--color-ink)",
+                      }}
                       value={c.grade ?? ""}
                       placeholder="grade"
                       maxLength={2}
@@ -792,7 +820,13 @@ function HandoffCard({ courses, plan }) {
           aria-label="Your question for the advisor"
         />
         <textarea
-          className="nx-scroll w-full rounded-md border border-border bg-card p-3 font-mono text-meta leading-relaxed outline-none"
+          className="nx-scroll w-full rounded-xl p-3 text-[11px] leading-relaxed outline-none"
+          style={{
+            background: "var(--color-code-bg)",
+            border: "1px solid var(--color-rail)",
+            color: "var(--color-ink-2)",
+            fontFamily: "var(--font-mono)",
+          }}
           readOnly
           value={text}
           rows={14}

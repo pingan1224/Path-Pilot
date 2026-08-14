@@ -35,7 +35,7 @@ export function ArtifactCard({ artifact, onOpenView }) {
       return <DecodeCard decoded={artifact.data} onOpenView={onOpenView} />
     default:
       return (
-        <MakeCard className="p-4">
+        <MakeCard>
           <Muted>
             The assistant produced a result ({artifact.type}) this version of the app
             cannot display. The answer above still stands on its own.
@@ -92,7 +92,7 @@ export function MissionCard({ mission: initial, onOpenView }) {
   // this (see the mission service), so the card offers the click rather than doing it.
   if (!mission) {
     return (
-      <MakeCard className="p-4">
+      <MakeCard>
         <div className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
           No registration mission yet
         </div>
@@ -135,7 +135,7 @@ export function MissionCard({ mission: initial, onOpenView }) {
   const chosen = mission.candidates.filter((c) => c.state === "confirmed")
 
   return (
-    <MakeCard className="p-4" toneName="accent">
+    <MakeCard toneName="accent">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
           Registration mission — {mission.term}
@@ -275,7 +275,7 @@ const BASIS_CHIP = {
 export function SequenceCard({ plan, onOpenView }) {
   if (!plan.feasible) {
     return (
-      <MakeCard className="p-4">
+      <MakeCard>
         <div className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
           No sequence fits
         </div>
@@ -307,7 +307,7 @@ export function SequenceCard({ plan, onOpenView }) {
   const costByCode = Object.fromEntries((plan.delay_costs ?? []).map((c) => [c.code, c]))
 
   return (
-    <MakeCard className="p-4">
+    <MakeCard>
       <div className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
         {plan.terms_needed} term{plan.terms_needed === 1 ? "" : "s"}, finishing {plan.finish_term}
       </div>
@@ -392,7 +392,7 @@ export function DecodeCard({ decoded, onOpenView }) {
   const followUp = decoded.follow_ups?.[0]
 
   return (
-    <MakeCard className="p-4">
+    <MakeCard>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
           {decoded.reason_label ?? "Registration error"}

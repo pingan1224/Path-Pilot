@@ -15,7 +15,13 @@
 export const en = {
   // Shell chrome
   "app.name": "Path Pilot",
-  "app.tagline": "Registration readiness",
+  "app.tagline": "NYU School of Professional Studies",
+  "sidebar.mission.label": "Registration mission",
+  "sidebar.mission.steps": "Step {done} of {total} complete",
+  "palette.placeholder": "Ask Path Pilot or jump to…",
+  "palette.navigate": "navigate",
+  "palette.go": "go",
+  "palette.close": "close",
   "shell.skip": "Skip to content",
   "shell.back": "← Back to assistant",
   "shell.signout": "Sign out",
@@ -65,8 +71,8 @@ export const en = {
   "rail.program.encoded": "Requirements encoded — degree progress available",
   "rail.program.notEncoded":
     "Requirements not encoded — policy answers and error decoding only",
-  "rail.program.full": "Full support",
-  "rail.program.limited": "Limited",
+  "rail.program.full": "Full planning support",
+  "rail.program.limited": "Limited support",
   "rail.failed": "Couldn't read your record",
   "rail.failed.meta":
     "A failed read, not an empty record — nothing here is known right now.",
@@ -133,6 +139,14 @@ export const en = {
     `${count} cited claim${count === 1 ? "" : "s"}`,
   "chat.error.kicker": "Could not answer",
   "chat.error.retry": "Ask again",
+
+  // Chat — header and frame
+  "chat.subtitle": "Grounded in your record and published policy",
+  "chat.ready": "Ready",
+  "chat.sources": "Sources",
+  "chat.sourcesUsed": ({ count }) => `${count} source${count === 1 ? "" : "s"} used`,
+  "chat.footer":
+    "Answers cite their sources — verify anything that affects registration in Albert.",
 
   // Chat — waiting
   "chat.thinking": "Checking your record, policy and plans as needed · ",

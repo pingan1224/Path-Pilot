@@ -29,7 +29,11 @@ function read(key, allowed, fallback) {
 
 export function PrefsProvider({ children }) {
   const [locale, setLocale] = useState(() => read("pp-locale", ["en", "zh"], "en"))
-  const [theme, setTheme] = useState(() => read("pp-theme", ["auto", "light", "dark"], "auto"))
+  // The source design's theme model, adopted verbatim on the 1:1 branch: two states,
+  // dark by default, an explicit attribute always set. The three-state auto mode (and
+  // with it the prefers-color-scheme contract) was the adapted skin's; the design has
+  // no system-preference path and the owner chose the design exactly as drawn.
+  const [theme, setTheme] = useState(() => read("pp-theme", ["light", "dark"], "dark"))
 
   useEffect(() => {
     localStorage.setItem("pp-locale", locale)
@@ -38,8 +42,7 @@ export function PrefsProvider({ children }) {
 
   useEffect(() => {
     localStorage.setItem("pp-theme", theme)
-    if (theme === "auto") document.documentElement.removeAttribute("data-theme")
-    else document.documentElement.setAttribute("data-theme", theme)
+    document.documentElement.setAttribute("data-theme", theme)
   }, [theme])
 
   const value = useMemo(() => {

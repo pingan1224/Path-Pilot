@@ -10,7 +10,13 @@
 export const zh = {
   // Shell chrome
   "app.name": "Path Pilot",
-  "app.tagline": "选课就绪",
+  "app.tagline": "纽约大学专业研究学院",
+  "sidebar.mission.label": "注册任务",
+  "sidebar.mission.steps": "已完成第 {done} / {total} 步",
+  "palette.placeholder": "提问或跳转至…",
+  "palette.navigate": "导航",
+  "palette.go": "跳转",
+  "palette.close": "关闭",
   "shell.skip": "跳到正文",
   "shell.back": "← 返回助手",
   "shell.signout": "退出登录",
@@ -52,7 +58,7 @@ export const zh = {
   "rail.program.choose": "选择学位项目",
   "rail.program.encoded": "培养方案已录入——可查看学位进度",
   "rail.program.notEncoded": "培养方案未录入——仅支持政策问答和报错解读",
-  "rail.program.full": "完整支持",
+  "rail.program.full": "完整规划支持",
   "rail.program.limited": "部分支持",
   "rail.failed": "无法读取你的记录",
   "rail.failed.meta": "是读取失败，不是空记录——此刻这里的一切均属未知。",
@@ -111,6 +117,13 @@ export const zh = {
   "chat.citations": "{count} 条已引用的论断",
   "chat.error.kicker": "无法作答",
   "chat.error.retry": "重新提问",
+
+  // Chat — header and frame
+  "chat.subtitle": "基于你的记录与公开政策作答",
+  "chat.ready": "就绪",
+  "chat.sources": "来源",
+  "chat.sourcesUsed": "已引用 {count} 个来源",
+  "chat.footer": "回答均注明来源——任何影响注册的事项请先在 Albert 核实。",
 
   // Chat — waiting
   "chat.thinking": "正在按需核查你的记录、政策与规划 · ",

@@ -1,38 +1,29 @@
 import { useRef, useState } from "react"
+import { AlertTriangle, Camera, CheckCircle, FileText, Info, Upload, XCircle } from "lucide-react"
 import { api } from "@/api"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { usePrefs } from "@/i18n"
 
-/**
- * Transcript upload and review.
- *
- * The screen is arranged around one asymmetry: a row this tool reads *wrong* and the student
- * accepts puts coursework in their record they never took, and nothing downstream will catch
- * it — while a row it fails to read is merely missing, and visible. So the review is
- * per-row, opt-in, and everything uncertain is separated out with its reason attached rather
- * than mixed into a single "looks good" list.
- *
- * `matched` rows are pre-selected because the reader vouches for them entirely (code, term,
- * grade, and state all resolved). `needs_review` rows are deliberately NOT pre-selected: the
- * whole point of that state is that a person has to look. Selecting them by default would
- * turn "please check this" into "we checked this".
- */
-
-const STATE_LABEL = {
-  completed: "Completed",
-  in_progress: "Taking now",
-  planned: "Planned",
+/** The design's card shell. */
+function MakeCard({ children, delay = 0, style = {}, ...rest }) {
+  return (
+    <div
+      className="pp-slide-up rounded-2xl p-4"
+      style={{
+        background: "var(--color-surface)",
+        border: "1px solid var(--color-rail-strong)",
+        animationDelay: `${delay}ms`,
+        ...style,
+      }}
+      {...rest}
+    >
+      {children}
+    </div>
+  )
 }
 
 export default function IntakeView({ onOpenView }) {
+  const { t } = usePrefs()
   const [reading, setReading] = useState(null)
   const [selected, setSelected] = useState({})
   const [edits, setEdits] = useState({})
@@ -108,16 +99,70 @@ export default function IntakeView({ onOpenView }) {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Add your courses from a transcript</CardTitle>
-          <CardDescription>
-            Upload an unofficial transcript or advising record — a PDF, or a photo of one —
-            and this will read the courses out of it, so you do not have to type them one at
-            a time. Nothing is added to your record until you review it and confirm.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
+      {/* Header — the design's transcript header: icon, title, live stat trio. */}
+      <div className="pp-slide-down flex items-center gap-4">
+        <FileText size={16} style={{ color: "var(--color-violet-light)" }} aria-hidden="true" />
+        <div className="flex-1">
+          <div className="text-[14px] font-semibold" style={{ color: "var(--color-ink)" }}>
+            {t("nav.intake")}
+          </div>
+          <div className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>
+            Upload once, review each row, confirm what is right.
+          </div>
+        </div>
+        {reading && !reading.no_text_layer ? (
+          <div className="flex items-center gap-4">
+            {[
+              { label: "ready", count: reading.counts.matched, color: "var(--color-emerald)" },
+              { label: "review", count: reading.counts.needs_review, color: "var(--color-amber)" },
+              { label: "unreadable", count: reading.counts.unreadable, color: "var(--color-rose)" },
+            ].map((s) => (
+              <div key={s.label} className="text-center">
+                <div className="text-[17px] leading-none font-bold" style={{ color: s.color }}>{s.count}</div>
+                <div className="mt-0.5 text-[10px]" style={{ color: "var(--color-ink-3)" }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {/* The design's photo-warning card — this product's real privacy disclosure,
+          said before the upload because only the student can decide. */}
+      <div
+        className="pp-slide-up flex items-start gap-2.5 rounded-xl px-4 py-3"
+        style={{ background: "var(--color-rose-muted)", border: "1px solid rgba(190,18,60,0.2)" }}
+      >
+        <Camera size={13} style={{ color: "var(--color-rose)", flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
+        <div>
+          <div className="text-[12px] font-semibold" style={{ color: "var(--color-rose)" }}>
+            If you upload a photo or a scan
+          </div>
+          <div className="mt-0.5 text-[11px] leading-relaxed" style={{ color: "var(--color-rose)", opacity: 0.75 }}>
+            The image is sent to OpenAI's vision service to be read — there is no text in it
+            to extract. It is not stored there or here. Reading characters from an image is
+            imperfect, so every row from an image has to be checked by you individually, and
+            none can be added in bulk.
+          </div>
+        </div>
+      </div>
+      <div
+        className="pp-slide-up flex items-start gap-2.5 rounded-xl px-4 py-2.5"
+        style={{ background: "var(--color-sky-muted)", border: "1px solid rgba(96,165,250,0.2)", animationDelay: "60ms" }}
+      >
+        <Info size={12} style={{ color: "var(--color-sky)", flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+        <p className="text-[11px] leading-relaxed" style={{ color: "var(--color-sky)", opacity: 0.85 }}>
+          The file is read and discarded — never stored. Courses enter your record as your
+          own report, the same as typing them. A text PDF exported from Albert is the most
+          accurate option by some distance.
+        </p>
+      </div>
+
+      <MakeCard delay={120}>
+        <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
+          <Upload size={13} aria-hidden="true" style={{ color: "var(--color-ink-3)" }} />
+          Add your courses from a transcript
+        </div>
+        <div className="flex flex-col gap-2">
           <input
             ref={fileRef}
             type="file"
@@ -127,22 +172,6 @@ export default function IntakeView({ onOpenView }) {
             onChange={(e) => upload(e.target.files?.[0])}
             className="rounded-md border bg-muted/40 p-2 text-sm"
           />
-          <p className="text-xs text-muted-foreground">
-            The file is read and discarded — it is never stored. A text PDF exported from
-            Albert is the most accurate option by some distance.
-          </p>
-          {/* Said before the upload, not after. A photo is sent to an outside service to be
-              read, which is a different promise from the one the line above makes, and the
-              student is the only person who can decide whether that is acceptable for their
-              own transcript. */}
-          <p className="text-xs text-muted-foreground">
-            <strong>If you upload a photo or a scan:</strong> the image is sent to OpenAI's
-            vision service to be read, because there is no text in it to extract. It is not
-            stored there or here. Reading characters from an image is imperfect — grades
-            like <span className="font-mono">A</span> and{" "}
-            <span className="font-mono">A-</span> are easy to confuse — so every row from an
-            image has to be checked by you individually, and none can be added in bulk.
-          </p>
           {/* Both states are announced. Reading a photo goes to a vision endpoint and can
               take many seconds, and the failure was previously a bare <p> — a screen-reader
               user got silence in both directions, on the one screen where the wait is long
@@ -165,79 +194,75 @@ export default function IntakeView({ onOpenView }) {
               ) : null}
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </MakeCard>
 
       {result ? (
-        <Card className="border-primary/40">
-          <CardHeader>
-            <CardTitle>
-              Added {result.written} course{result.written === 1 ? "" : "s"} to your record
-            </CardTitle>
-            <CardDescription>
-              They are stored as your own report of your record — the same as typing them in.
-              Nothing here has been verified against Albert.
-            </CardDescription>
-          </CardHeader>
-          <CardFooter className="flex-wrap gap-2">
+        <MakeCard style={{ borderColor: "rgba(124,58,237,0.4)" }}>
+          <div className="flex items-center gap-2 text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
+            <CheckCircle size={13} style={{ color: "var(--color-emerald)" }} aria-hidden="true" />
+            Added {result.written} course{result.written === 1 ? "" : "s"} to your record
+          </div>
+          <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
+            They are stored as your own report of your record — the same as typing them in.
+            Nothing here has been verified against Albert.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
             <Button size="sm" onClick={() => onOpenView?.("planner")}>
               See your degree check →
             </Button>
             <Button size="sm" variant="outline" onClick={() => onOpenView?.("chat")}>
               Ask what to do next →
             </Button>
-          </CardFooter>
-        </Card>
+          </div>
+        </MakeCard>
       ) : null}
 
       {reading?.no_text_layer ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Nothing to read in that file</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2">
+        <MakeCard>
+          <div className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
+            Nothing to read in that file
+          </div>
+          <div className="mt-2 flex flex-col gap-2">
             {reading.notes.map((note, i) => (
-              <p key={i} className="text-sm">
+              <p key={i} className="text-[12px]" style={{ color: "var(--color-ink-2)" }}>
                 {note}
               </p>
             ))}
-          </CardContent>
-          <CardFooter>
+          </div>
+          <div className="mt-3">
             <Button size="sm" variant="outline" onClick={() => onOpenView?.("planner")}>
               Enter courses by hand →
             </Button>
-          </CardFooter>
-        </Card>
+          </div>
+        </MakeCard>
       ) : null}
 
       {reading && !reading.no_text_layer ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              Read {reading.rows.filter((r) => r.course_code).length} course
-              {reading.rows.filter((r) => r.course_code).length === 1 ? "" : "s"} from{" "}
-              {reading.pages} page{reading.pages === 1 ? "" : "s"}
-            </CardTitle>
-            <CardDescription>
-              {reading.counts.matched} ready · {reading.counts.needs_review} need a look ·{" "}
-              {reading.counts.unreadable} could not be read
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
+        <MakeCard delay={60}>
+          <div className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
+            Read {reading.rows.filter((r) => r.course_code).length} course
+            {reading.rows.filter((r) => r.course_code).length === 1 ? "" : "s"} from{" "}
+            {reading.pages} page{reading.pages === 1 ? "" : "s"}
+          </div>
+          <div className="mt-3 flex flex-col gap-3">
             {/* An image reading is a different kind of result and should not look like a
                 clean one. Everything below is a guess at characters, so the screen says so
                 once at the top rather than relying on the student noticing that every row
                 happens to be flagged. */}
             {reading.read_by_ocr ? (
-              /* Warning tokens, not a stock Tailwind amber: there is exactly one palette,
-                 and a hardcoded hue is invisible to the theme toggle. */
-              <p className="rounded-md border border-warning/45 px-3 py-2 text-sm leading-relaxed text-muted-foreground">
-                <strong className="text-warning">Read from an image.</strong> These course
-                codes and grades were recognised from a picture, not extracted from text, so
-                each one is a best guess — check it against your transcript before adding it.
-                Nothing here can be added in bulk. A text PDF exported from Albert avoids all
-                of this.
-              </p>
+              <div
+                className="flex items-start gap-2 rounded-xl px-3 py-2.5"
+                style={{ background: "var(--color-amber-muted)", border: "1px solid rgba(180,83,9,0.2)" }}
+              >
+                <AlertTriangle size={11} style={{ color: "var(--color-amber)", flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+                <p className="text-[11px] leading-relaxed" style={{ color: "var(--color-amber)" }}>
+                  <strong>Read from an image.</strong> These course codes and grades were
+                  recognised from a picture, not extracted from text, so each one is a best
+                  guess — check it against your transcript before adding it. Nothing here can
+                  be added in bulk. A text PDF exported from Albert avoids all of this.
+                </p>
+              </div>
             ) : null}
 
             {reading.notes.map((note, i) => (
@@ -249,15 +274,22 @@ export default function IntakeView({ onOpenView }) {
             {reading.rows.map((row, i) => {
               if (!row.confirmable) {
                 return (
-                  <div key={i} className="rounded-md border border-dashed p-2">
+                  <div
+                    key={i}
+                    className="rounded-xl p-3"
+                    style={{ background: "var(--color-rose-muted)", border: "1px dashed rgba(190,18,60,0.25)" }}
+                  >
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline">Could not read</Badge>
-                      <span className="font-mono text-xs text-muted-foreground">
+                      <XCircle size={12} style={{ color: "var(--color-rose)" }} aria-hidden="true" />
+                      <span className="text-[10px] font-semibold tracking-wide uppercase" style={{ color: "var(--color-rose)" }}>
+                        Could not read
+                      </span>
+                      <span className="text-[11px]" style={{ fontFamily: "var(--font-mono)", color: "var(--color-ink-3)" }}>
                         {row.raw}
                       </span>
                     </div>
                     {row.reasons.map((reason, j) => (
-                      <p key={j} className="mt-1 text-sm text-muted-foreground">
+                      <p key={j} className="mt-1 text-[11px]" style={{ color: "var(--color-ink-3)" }}>
                         {reason}
                       </p>
                     ))}
@@ -269,7 +301,12 @@ export default function IntakeView({ onOpenView }) {
               return (
                 <div
                   key={i}
-                  className={`rounded-md border p-2 ${isMatched ? "" : "border-dashed bg-muted/30"}`}
+                  className="pp-slide-up rounded-xl p-3"
+                  style={{
+                    background: isMatched ? "var(--color-surface-2)" : "var(--color-amber-muted)",
+                    border: `1px solid ${isMatched ? "var(--color-rail)" : "rgba(180,83,9,0.2)"}`,
+                    animationDelay: `${i * 40}ms`,
+                  }}
                 >
                   <label className="flex flex-wrap items-center gap-2">
                     <input
@@ -280,10 +317,20 @@ export default function IntakeView({ onOpenView }) {
                       }
                       disabled={busy}
                     />
-                    <span className="font-mono text-sm">{row.course_code}</span>
-                    <Badge variant={isMatched ? "secondary" : "outline"}>
+                    <span className="text-[11px] font-medium" style={{ fontFamily: "var(--font-mono)", color: "var(--color-violet-light)" }}>
+                      {row.course_code}
+                    </span>
+                    <span
+                      className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
+                      style={
+                        isMatched
+                          ? { background: "var(--color-emerald-muted)", color: "var(--color-emerald)" }
+                          : { background: "var(--color-amber-muted)", color: "var(--color-amber)" }
+                      }
+                    >
+                      {isMatched ? <CheckCircle size={10} aria-hidden="true" /> : <AlertTriangle size={10} aria-hidden="true" />}
                       {isMatched ? "Ready" : "Needs a look"}
-                    </Badge>
+                    </span>
                   </label>
 
                   <div className="mt-2 flex flex-wrap items-center gap-2 pl-6">
@@ -319,15 +366,15 @@ export default function IntakeView({ onOpenView }) {
                   </div>
 
                   {row.reasons.map((reason, j) => (
-                    <p key={j} className="mt-1 pl-6 text-sm text-muted-foreground">
+                    <p key={j} className="mt-1 pl-6 text-[11px]" style={{ color: "var(--color-ink-3)" }}>
                       {reason}
                     </p>
                   ))}
                 </div>
               )
             })}
-          </CardContent>
-          <CardFooter className="flex-wrap gap-2">
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button disabled={busy || chosen === 0} onClick={confirm}>
               Add {chosen} course{chosen === 1 ? "" : "s"} to my record
             </Button>
@@ -344,12 +391,12 @@ export default function IntakeView({ onOpenView }) {
             >
               Select all readable
             </Button>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>
               Rows marked “needs a look” are not selected for you — that is the point of the
               label.
             </p>
-          </CardFooter>
-        </Card>
+          </div>
+        </MakeCard>
       ) : null}
     </div>
   )

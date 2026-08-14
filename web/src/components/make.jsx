@@ -58,11 +58,26 @@ export const TONE = {
 export const tone = (name) => TONE[name] ?? TONE.neutral
 
 /** The card: a raised surface with a rail. `tone` tints the border when a card carries a
- *  verdict of its own; otherwise it is the neutral rail. */
-export function MakeCard({ children, delay = 0, toneName, className = "", style, ...rest }) {
+ *  verdict of its own; otherwise it is the neutral rail.
+ *
+ *  `pad` is a prop rather than something the caller appends to `className`, because
+ *  Tailwind resolves conflicting utilities by source order, not by the order they appear
+ *  in the attribute — a caller's `p-6` would not reliably beat a base `p-4`. It also
+ *  carries the default: every card in the design is padded, and the shared shell losing
+ *  the padding the two private copies had built in is exactly how the degree-progress
+ *  page ended up flush to its own edges. */
+export function MakeCard({
+  children,
+  delay = 0,
+  toneName,
+  pad = "p-4",
+  className = "",
+  style,
+  ...rest
+}) {
   return (
     <div
-      className={`pp-slide-up rounded-2xl ${className}`}
+      className={`pp-slide-up rounded-2xl ${pad} ${className}`}
       style={{
         background: "var(--color-surface)",
         border: `1px solid ${toneName ? tone(toneName).border : "var(--color-rail-strong)"}`,

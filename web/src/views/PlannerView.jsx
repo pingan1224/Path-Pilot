@@ -309,6 +309,11 @@ function RingSummary({ plan }) {
           animationDelay: "60ms",
         }}
       >
+        {/* The figure sits in the ring's centre, not under it. The design's own markup
+            stacks the text below the svg and pulls it up 8px, which lands it outside
+            the ring — a donut's value belongs in the hole it leaves. Absolute centring
+            over the same box, so the two stay locked together at any size. */}
+        <div className="relative" style={{ width: 124, height: 124 }}>
         <svg width="124" height="124" viewBox="0 0 124 124" aria-hidden="true">
           <circle cx="62" cy="62" r="52" fill="none" stroke="var(--color-surface-2)" strokeWidth="10" />
           <circle
@@ -336,13 +341,14 @@ function RingSummary({ plan }) {
             }}
           />
         </svg>
-        <div className="-mt-2 text-center">
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
           <div className="text-[28px] leading-none font-bold" style={{ color: "var(--color-ink)" }}>
             {ringAnimated ? Math.round((completed / TOTAL) * 100) : 0}%
           </div>
           <div className="mt-1 text-[11px]" style={{ color: "var(--color-ink-3)" }}>
             {completed} of {TOTAL} cr
           </div>
+        </div>
         </div>
       </div>
 

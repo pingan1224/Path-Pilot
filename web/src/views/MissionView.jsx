@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   AlertTriangle,
   CheckCircle,
-  ChevronDown,
   Circle,
   Clock,
   Copy,
@@ -21,6 +20,7 @@ import {
   WarnNote,
   isProgramIssue,
 } from "@/components/nocturne"
+import { Accordion } from "@/components/make"
 import { usePrefs } from "@/i18n"
 
 /**
@@ -46,20 +46,6 @@ const STEP_ICON = {
 }
 
 const TERM_SUGGESTIONS = ["Fall 2026", "Spring 2027", "Summer 2027"]
-
-/** The design's accordion body: measured max-height, 270ms. */
-function StepBody({ open, children }) {
-  const ref = useRef(null)
-  useEffect(() => {
-    const el = ref.current
-    if (el) el.style.maxHeight = open ? `${el.scrollHeight}px` : "0px"
-  })
-  return (
-    <div ref={ref} className="pp-accordion" style={{ maxHeight: 0 }}>
-      {children}
-    </div>
-  )
-}
 
 export default function MissionView({ onOpenPlanner, onOpenProgram }) {
   const { t } = usePrefs()
@@ -379,34 +365,19 @@ function Mission({ mission, busy, act, onMission, onOpenPlanner, t }) {
 
               {/* Right: step card */}
               <div className="mb-2 min-w-0 flex-1">
-                <div
-                  className="overflow-hidden rounded-2xl"
-                  style={{
-                    border: `1px solid ${
-                      isOpen && status === "active"
-                        ? "rgba(124,58,237,0.3)"
-                        : isOpen && status === "blocked"
-                          ? "rgba(180,83,9,0.25)"
-                          : isOpen && status === "done"
-                            ? "rgba(4,120,87,0.2)"
-                            : "var(--color-rail)"
-                    }`,
-                    background: "var(--color-surface)",
-                  }}
-                >
-                  <button
-                    type="button"
-                    aria-expanded={isOpen}
-                    onClick={() => setExpanded(isOpen ? "" : step.id)}
-                    className="flex w-full items-start gap-3 px-4 py-3.5 text-left"
-                    style={{ transition: "background 140ms ease" }}
-                    onMouseEnter={(e) => {
-                      if (!isOpen) e.currentTarget.style.background = "rgba(124,58,237,0.02)"
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = ""
-                    }}
-                  >
+                <Accordion
+                  open={isOpen}
+                  onToggle={() => setExpanded(isOpen ? "" : step.id)}
+                  toneName={
+                    status === "done"
+                      ? "good"
+                      : status === "blocked"
+                        ? "warn"
+                        : status === "active"
+                          ? "accent"
+                          : undefined
+                  }
+                  header={
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span
@@ -437,53 +408,38 @@ function Mission({ mission, busy, act, onMission, onOpenPlanner, t }) {
                         </div>
                       ) : null}
                     </div>
-                    <div
-                      style={{
-                        transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-                        transition: "transform 220ms cubic-bezier(0.22,1,0.36,1)",
-                        color: "var(--color-ink-3)",
-                        flexShrink: 0,
-                        marginTop: 2,
-                      }}
-                    >
-                      <ChevronDown size={13} aria-hidden="true" />
+                  }
+                >
+                  <p className="mt-3 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-2)" }}>
+                    {step.criterion}
+                  </p>
+                  {step.evidence.map((line, j) => (
+                    <p key={j} className="mt-1 text-[11px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
+                      {line}
+                    </p>
+                  ))}
+                  {step.what_now ? (
+                    <p className="mt-1.5 text-[12px]" style={{ color: "var(--color-ink)" }}>
+                      → {step.what_now}
+                    </p>
+                  ) : null}
+                  {step.note ? (
+                    <div className="mt-2">
+                      <WarnNote>{step.note}</WarnNote>
                     </div>
-                  </button>
+                  ) : null}
 
-                  <StepBody open={isOpen}>
-                    <div className="px-4 pb-4" style={{ borderTop: "1px solid var(--color-rail)" }}>
-                      <p className="mt-3 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-2)" }}>
-                        {step.criterion}
-                      </p>
-                      {step.evidence.map((line, j) => (
-                        <p key={j} className="mt-1 text-[11px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
-                          {line}
-                        </p>
-                      ))}
-                      {step.what_now ? (
-                        <p className="mt-1.5 text-[12px]" style={{ color: "var(--color-ink)" }}>
-                          → {step.what_now}
-                        </p>
-                      ) : null}
-                      {step.note ? (
-                        <div className="mt-2">
-                          <WarnNote>{step.note}</WarnNote>
-                        </div>
-                      ) : null}
-
-                      {/* The real work each step expands into. */}
-                      {step.id === "gaps" ? (
-                        <GapsBody mission={mission} state={step.state} busy={busy} act={act} onOpenPlanner={onOpenPlanner} />
-                      ) : step.id === "candidates" ? (
-                        <CandidatesBody mission={mission} busy={busy} act={act} />
-                      ) : step.id === "open_items" ? (
-                        <OpenItemsBody mission={mission} busy={busy} act={act} />
-                      ) : step.id === "handoff" ? (
-                        <HandoffBody mission={mission} busy={busy} onMission={onMission} />
-                      ) : null}
-                    </div>
-                  </StepBody>
-                </div>
+                  {/* The real work each step expands into. */}
+                  {step.id === "gaps" ? (
+                    <GapsBody mission={mission} state={step.state} busy={busy} act={act} onOpenPlanner={onOpenPlanner} />
+                  ) : step.id === "candidates" ? (
+                    <CandidatesBody mission={mission} busy={busy} act={act} />
+                  ) : step.id === "open_items" ? (
+                    <OpenItemsBody mission={mission} busy={busy} act={act} />
+                  ) : step.id === "handoff" ? (
+                    <HandoffBody mission={mission} busy={busy} onMission={onMission} />
+                  ) : null}
+                </Accordion>
               </div>
             </div>
           )

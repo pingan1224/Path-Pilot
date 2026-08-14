@@ -1,19 +1,11 @@
 import { useState } from "react"
+import { AlertTriangle, ArrowRight, Sparkles } from "lucide-react"
 import { api } from "@/api"
-import { Badge } from "@/components/ui/badge"
+import { Banner, Chip, Code, MakeCard, Muted } from "@/components/make"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
 
 /**
- * Inline artifact cards for the chat surface.
+ * Inline artifact cards for the chat surface, in the shared card language.
  *
  * The server's Artifact Contract decides what appears here: each answer carries
  * `artifacts`, each one re-read from authoritative state at answer time — never a
@@ -29,8 +21,7 @@ import { Progress } from "@/components/ui/progress"
  *
  * And the buttons are real. "Add to my plan" calls the same student-authenticated
  * endpoint the Mission page uses, and the server's recomputed mission replaces the card
- * state. Before this file existed, the agent's one actionable output — a proposed course
- * — was invisible in the chat that produced it; acting on it meant finding another tab.
+ * state.
  */
 
 /** One artifact from the server, rendered by this client's registry — or the fallback. */
@@ -44,12 +35,12 @@ export function ArtifactCard({ artifact, onOpenView }) {
       return <DecodeCard decoded={artifact.data} onOpenView={onOpenView} />
     default:
       return (
-        <Card>
-          <CardContent className="pt-4 text-meta text-muted-foreground">
+        <MakeCard className="p-4">
+          <Muted>
             The assistant produced a result ({artifact.type}) this version of the app
             cannot display. The answer above still stands on its own.
-          </CardContent>
-        </Card>
+          </Muted>
+        </MakeCard>
       )
   }
 }
@@ -62,6 +53,21 @@ const STEP_LABEL = {
   candidates: "Choose courses",
   open_items: "Settle open items",
   handoff: "Advisor handoff",
+}
+
+/** The card's footer link into the full page. */
+function OpenLink({ children, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="mt-3 flex items-center gap-1.5 text-[12px] font-medium"
+      style={{ color: "var(--color-violet-light)" }}
+    >
+      {children}
+      <ArrowRight size={12} aria-hidden="true" />
+    </button>
+  )
 }
 
 /** Mission state with actionable proposals; also covers the "no mission yet" case. */
@@ -86,29 +92,40 @@ export function MissionCard({ mission: initial, onOpenView }) {
   // this (see the mission service), so the card offers the click rather than doing it.
   if (!mission) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>No registration mission yet</CardTitle>
-          <CardDescription>
-            A mission tracks your preparation for one term — courses chosen, blockers
-            settled, a summary for your advisor. Pick a term to start one.
-          </CardDescription>
-        </CardHeader>
-        <CardFooter className="flex-wrap gap-2">
+      <MakeCard className="p-4">
+        <div className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
+          No registration mission yet
+        </div>
+        <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
+          A mission tracks your preparation for one term — courses chosen, blockers
+          settled, a summary for your advisor. Pick a term to start one.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
           {TERM_SUGGESTIONS.map((term) => (
-            <Button
+            <button
               key={term}
-              size="sm"
-              variant="outline"
+              type="button"
               disabled={busy}
               onClick={() => act(() => api.createMission(term))}
+              className="rounded-full px-3 py-1.5 text-[12px]"
+              style={{
+                background: "var(--color-surface-2)",
+                border: "1px solid var(--color-rail-strong)",
+                color: "var(--color-ink-2)",
+              }}
             >
               {term}
-            </Button>
+            </button>
           ))}
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        </CardFooter>
-      </Card>
+        </div>
+        {error ? (
+          <div className="mt-2">
+            <Banner toneName="danger" role="alert">
+              {error}
+            </Banner>
+          </div>
+        ) : null}
+      </MakeCard>
     )
   }
 
@@ -118,144 +135,164 @@ export function MissionCard({ mission: initial, onOpenView }) {
   const chosen = mission.candidates.filter((c) => c.state === "confirmed")
 
   return (
-    <Card className="border-primary/30">
-      <CardHeader>
-        <CardTitle className="flex flex-wrap items-center gap-2">
+    <MakeCard className="p-4" toneName="accent">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
           Registration mission — {mission.term}
-          {mission.complete ? <Badge>Complete</Badge> : null}
-          {/* Badged so nobody is surprised to find a container they did not create. The
-              term is the only thing the assistant chose, and it is changeable. */}
-          {mission.created_by === "ai" ? (
-            <Badge variant="outline">Started by the assistant</Badge>
-          ) : null}
-        </CardTitle>
-        <CardDescription>
-          {done} of {mission.steps.length} steps done
-          {active ? ` · now: ${STEP_LABEL[active.id] ?? active.title}` : ""}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <Progress value={(done / mission.steps.length) * 100} />
+        </span>
+        {mission.complete ? <Chip toneName="good">Complete</Chip> : null}
+        {/* Badged so nobody is surprised to find a container they did not create. The
+            term is the only thing the assistant chose, and it is changeable. */}
+        {mission.created_by === "ai" ? <Chip toneName="accent">Started by the assistant</Chip> : null}
+      </div>
+      <p className="mt-1 text-[12px]" style={{ color: "var(--color-ink-3)" }}>
+        {done} of {mission.steps.length} steps done
+        {active ? ` · now: ${STEP_LABEL[active.id] ?? active.title}` : ""}
+      </p>
 
-        {proposals.length > 0 ? (
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium">
-                Suggested — not in your plan until you confirm:
-              </p>
-              {/* One click for a whole one-shot proposal. Still one deliberate act per
-                  batch, and each course keeps its own buttons for picking selectively —
-                  batching the click must not blur what was agreed to. */}
-              {proposals.length > 1 ? (
+      <div
+        className="mt-3 h-1.5 overflow-hidden rounded-full"
+        style={{ background: "var(--color-surface-3)" }}
+      >
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${(done / mission.steps.length) * 100}%`,
+            background: "linear-gradient(90deg, var(--color-violet), var(--color-violet-light))",
+            transition: "width 700ms cubic-bezier(0.22,1,0.36,1)",
+          }}
+        />
+      </div>
+
+      {proposals.length > 0 ? (
+        <div className="mt-3 flex flex-col gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span
+              className="flex items-center gap-1.5 text-[11px] font-medium"
+              style={{ color: "var(--color-violet-light)" }}
+            >
+              <Sparkles size={11} aria-hidden="true" />
+              Suggested — not in your plan until you confirm
+            </span>
+            {/* One click for a whole one-shot proposal. Still one deliberate act per
+                batch, and each course keeps its own buttons for picking selectively —
+                batching the click must not blur what was agreed to. */}
+            {proposals.length > 1 ? (
+              <Button
+                size="xs"
+                variant="outline"
+                disabled={busy}
+                onClick={() =>
+                  act(async () => {
+                    let latest = mission
+                    for (const c of proposals) {
+                      latest = await api.missionDecideCandidate(mission.id, c.id, true)
+                    }
+                    return latest
+                  })
+                }
+              >
+                Add all {proposals.length}
+              </Button>
+            ) : null}
+          </div>
+          {proposals.map((c, i) => (
+            <div
+              key={c.id}
+              className="pp-slide-up rounded-xl p-3"
+              style={{
+                background: "var(--color-violet-muted)",
+                border: "1px solid rgba(124,58,237,0.25)",
+                animationDelay: `${i * 60}ms`,
+              }}
+            >
+              <Code>{c.course_code}</Code>
+              {c.rationale ? (
+                <p
+                  className="mt-1 text-[11px] leading-relaxed"
+                  style={{ color: "var(--color-ink-2)" }}
+                >
+                  {c.rationale}
+                </p>
+              ) : null}
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <Button
+                  size="xs"
+                  disabled={busy}
+                  onClick={() => act(() => api.missionDecideCandidate(mission.id, c.id, true))}
+                >
+                  Add to my plan
+                </Button>
                 <Button
                   size="xs"
                   variant="outline"
                   disabled={busy}
-                  onClick={() =>
-                    act(async () => {
-                      let latest = mission
-                      for (const c of proposals) {
-                        latest = await api.missionDecideCandidate(mission.id, c.id, true)
-                      }
-                      return latest
-                    })
-                  }
+                  onClick={() => act(() => api.missionDecideCandidate(mission.id, c.id, false))}
                 >
-                  Add all {proposals.length}
+                  No thanks
                 </Button>
-              ) : null}
-            </div>
-            {proposals.map((c) => (
-              <div
-                key={c.id}
-                className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 p-2"
-              >
-                <span className="font-mono text-sm">{c.course_code}</span>
-                {c.rationale ? (
-                  <span className="min-w-0 flex-1 text-sm text-muted-foreground">
-                    {c.rationale}
-                  </span>
-                ) : null}
-                <span className="flex gap-1.5">
-                  <Button
-                    size="xs"
-                    disabled={busy}
-                    onClick={() =>
-                      act(() => api.missionDecideCandidate(mission.id, c.id, true))
-                    }
-                  >
-                    Add to my plan
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() =>
-                      act(() => api.missionDecideCandidate(mission.id, c.id, false))
-                    }
-                  >
-                    No thanks
-                  </Button>
-                </span>
               </div>
-            ))}
-          </div>
-        ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
 
-        {chosen.length > 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Chosen: {chosen.map((c) => c.course_code).join(", ")}
-          </p>
-        ) : null}
+      {chosen.length > 0 ? (
+        <p className="mt-3 text-[11px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
+          Chosen: {chosen.map((c) => c.course_code).join(", ")}
+        </p>
+      ) : null}
 
-        {mission.open_blockers.length > 0 ? (
-          <p className="text-sm text-destructive">
+      {mission.open_blockers.length > 0 ? (
+        <div className="mt-2">
+          <Banner toneName="danger" icon={AlertTriangle}>
             {mission.open_blockers.length} unresolved blocker
             {mission.open_blockers.length === 1 ? "" : "s"} on your chosen courses.
-          </p>
-        ) : null}
+          </Banner>
+        </div>
+      ) : null}
 
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-      </CardContent>
-      <CardFooter>
-        <Button size="sm" variant="ghost" onClick={() => onOpenView?.("mission")}>
-          Open the full mission →
-        </Button>
-      </CardFooter>
-    </Card>
+      {error ? (
+        <div className="mt-2">
+          <Banner toneName="danger" role="alert">
+            {error}
+          </Banner>
+        </div>
+      ) : null}
+
+      <OpenLink onClick={() => onOpenView?.("mission")}>Open the full mission</OpenLink>
+    </MakeCard>
   )
 }
 
-const BASIS_BADGE = {
-  published: { variant: "secondary", label: "Published" },
-  irregular: { variant: "outline", label: "Irregular — guess" },
-  unstated: { variant: "outline", label: "Term is a guess" },
+const BASIS_CHIP = {
+  published: { toneName: "good", label: "Published" },
+  irregular: { toneName: "warn", label: "Irregular — guess" },
+  unstated: { toneName: "neutral", label: "Term is a guess" },
 }
 
 /** Compact term-by-term schedule, or the binding constraint when nothing fits. */
 export function SequenceCard({ plan, onOpenView }) {
   if (!plan.feasible) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>No sequence fits</CardTitle>
-          <CardDescription>{plan.infeasibility?.explanation}</CardDescription>
-        </CardHeader>
+      <MakeCard className="p-4">
+        <div className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
+          No sequence fits
+        </div>
+        <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
+          {plan.infeasibility?.explanation}
+        </p>
         {plan.infeasibility?.remedies?.length ? (
-          <CardContent className="flex flex-col gap-1.5">
+          <ul className="mt-2 space-y-1">
             {plan.infeasibility.remedies.map((remedy, i) => (
-              <p key={i} className="text-sm text-muted-foreground">
+              <li key={i} className="text-[12px]" style={{ color: "var(--color-ink-2)" }}>
                 • {remedy}
-              </p>
+              </li>
             ))}
-          </CardContent>
+          </ul>
         ) : null}
-        <CardFooter>
-          <Button size="sm" variant="ghost" onClick={() => onOpenView?.("sequence")}>
-            Adjust the constraints →
-          </Button>
-        </CardFooter>
-      </Card>
+        <OpenLink onClick={() => onOpenView?.("sequence")}>Adjust the constraints</OpenLink>
+      </MakeCard>
     )
   }
 
@@ -266,67 +303,62 @@ export function SequenceCard({ plan, onOpenView }) {
   // What each of next term's courses costs if it waits, keyed for the row that names it.
   // The grid answers "in what order"; this answers "why this one, why now" — which is the
   // question the product is for, so it renders beside the course rather than under the
-  // card. A course that can wait says so: a card where every row shouts is a card students
-  // stop reading.
-  const costByCode = Object.fromEntries(
-    (plan.delay_costs ?? []).map((c) => [c.code, c]),
-  )
+  // card.
+  const costByCode = Object.fromEntries((plan.delay_costs ?? []).map((c) => [c.code, c]))
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>
-          {plan.terms_needed} term{plan.terms_needed === 1 ? "" : "s"}, finishing{" "}
-          {plan.finish_term}
-        </CardTitle>
-        <CardDescription>
-          {plan.chosen_track ? `Concentration: ${plan.chosen_track} · ` : ""}
-          {plan.max_credits_per_term} credits/term
-          {plan.credit_cap_was_assumed ? " (assumed)" : ""}
-          {guesses > 0
-            ? ` · ${guesses} placement${guesses === 1 ? "" : "s"} in unconfirmed terms`
-            : ""}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-2">
+    <MakeCard className="p-4">
+      <div className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
+        {plan.terms_needed} term{plan.terms_needed === 1 ? "" : "s"}, finishing {plan.finish_term}
+      </div>
+      <p className="mt-1 text-[12px]" style={{ color: "var(--color-ink-3)" }}>
+        {plan.chosen_track ? `Concentration: ${plan.chosen_track} · ` : ""}
+        {plan.max_credits_per_term} credits/term
+        {plan.credit_cap_was_assumed ? " (assumed)" : ""}
+        {guesses > 0
+          ? ` · ${guesses} placement${guesses === 1 ? "" : "s"} in unconfirmed terms`
+          : ""}
+      </p>
+
+      <div className="mt-3 flex flex-col gap-2">
         {plan.terms.map((term, termIndex) => (
           <div
             key={term.term}
-            className={
-              termIndex === 0
-                ? "rounded-md border border-primary/40 bg-muted/40 p-2"
-                : "rounded-md border bg-muted/40 p-2"
-            }
+            className="rounded-xl p-3"
+            style={{
+              background: "var(--color-surface-2)",
+              border: `1px solid ${termIndex === 0 ? "rgba(124,58,237,0.25)" : "var(--color-rail)"}`,
+            }}
           >
-            <p className="text-sm font-semibold">
-              {term.term}{" "}
-              <span className="font-normal text-muted-foreground">
-                · {term.credits} cr
+            <div className="flex flex-wrap items-baseline gap-2">
+              <span className="text-[12px] font-semibold" style={{ color: "var(--color-ink)" }}>
+                {term.term}
               </span>
-              {termIndex === 0 ? (
-                <span className="font-normal text-muted-foreground"> · next term</span>
-              ) : null}
-            </p>
-            <div className="mt-1 flex flex-col gap-1">
+              <span className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>
+                · {term.credits} cr{termIndex === 0 ? " · next term" : ""}
+              </span>
+            </div>
+            <div className="mt-1.5 flex flex-col gap-1.5">
               {term.courses.map((course) => {
-                const badge = BASIS_BADGE[course.offering_basis] ?? BASIS_BADGE.unstated
+                const chip = BASIS_CHIP[course.offering_basis] ?? BASIS_CHIP.unstated
                 const cost = termIndex === 0 ? costByCode[course.course_code] : undefined
                 return (
                   <div key={course.course_code} className="flex flex-col gap-0.5">
-                    <p className="flex flex-wrap items-center gap-2 text-sm">
-                      <span className="font-mono">{course.course_code}</span>
-                      <Badge variant={badge.variant}>{badge.label}</Badge>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Code>{course.course_code}</Code>
+                      <Chip toneName={chip.toneName}>{chip.label}</Chip>
                       {cost?.breaks_plan ? (
-                        <Badge variant="destructive">Cannot wait</Badge>
+                        <Chip toneName="danger">Cannot wait</Chip>
                       ) : cost?.terms_lost > 0 ? (
-                        <Badge variant="secondary">
-                          +{cost.terms_lost} term{cost.terms_lost === 1 ? "" : "s"} if it
-                          waits
-                        </Badge>
+                        <Chip toneName="warn">
+                          +{cost.terms_lost} term{cost.terms_lost === 1 ? "" : "s"} if it waits
+                        </Chip>
                       ) : null}
-                    </p>
+                    </div>
                     {cost ? (
-                      <p className="text-meta text-muted-foreground">{cost.explanation}</p>
+                      <p className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>
+                        {cost.explanation}
+                      </p>
                     ) : null}
                   </div>
                 )
@@ -334,65 +366,68 @@ export function SequenceCard({ plan, onOpenView }) {
             </div>
           </div>
         ))}
-        {plan.assumptions.length > 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Rests on {plan.assumptions.length} assumption
-            {plan.assumptions.length === 1 ? "" : "s"} — check them before relying on
-            this.
-          </p>
-        ) : null}
-      </CardContent>
-      <CardFooter>
-        <Button size="sm" variant="ghost" onClick={() => onOpenView?.("sequence")}>
-          Open the full sequence →
-        </Button>
-      </CardFooter>
-    </Card>
+      </div>
+
+      {plan.assumptions.length > 0 ? (
+        <p className="mt-2 text-[11px]" style={{ color: "var(--color-ink-3)" }}>
+          Rests on {plan.assumptions.length} assumption
+          {plan.assumptions.length === 1 ? "" : "s"} — check them before relying on this.
+        </p>
+      ) : null}
+
+      <OpenLink onClick={() => onOpenView?.("sequence")}>Open the full sequence</OpenLink>
+    </MakeCard>
   )
 }
 
-const OUTCOME_BADGE = {
-  identified: { variant: "default", label: "Cause identified" },
-  ambiguous: { variant: "secondary", label: "Needs one more detail" },
-  unrecognized: { variant: "outline", label: "Could not decode" },
+const OUTCOME_CHIP = {
+  identified: { toneName: "good", label: "Cause identified" },
+  ambiguous: { toneName: "warn", label: "Needs one more detail" },
+  unrecognized: { toneName: "neutral", label: "Could not decode" },
 }
 
 /** Compact decoded-error result with the follow-up question when there is one. */
 export function DecodeCard({ decoded, onOpenView }) {
-  const badge = OUTCOME_BADGE[decoded.outcome] ?? OUTCOME_BADGE.unrecognized
+  const chip = OUTCOME_CHIP[decoded.outcome] ?? OUTCOME_CHIP.unrecognized
   const followUp = decoded.follow_ups?.[0]
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex flex-wrap items-center gap-2">
+    <MakeCard className="p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
           {decoded.reason_label ?? "Registration error"}
-          <Badge variant={badge.variant}>{badge.label}</Badge>
-        </CardTitle>
-        {decoded.reading ? <CardDescription>{decoded.reading}</CardDescription> : null}
-      </CardHeader>
-      <CardContent className="flex flex-col gap-2">
+        </span>
+        <Chip toneName={chip.toneName}>{chip.label}</Chip>
+      </div>
+      {decoded.reading ? (
+        <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
+          {decoded.reading}
+        </p>
+      ) : null}
+
+      <div className="mt-2 flex flex-col gap-2">
         {decoded.outcome === "ambiguous" && decoded.candidates?.length > 1 ? (
-          <p className="text-sm text-muted-foreground">
-            Consistent with: {decoded.candidates.slice(0, 2).map((c) => c.label).join(" — or — ")}
+          <p className="text-[12px]" style={{ color: "var(--color-ink-2)" }}>
+            Consistent with:{" "}
+            {decoded.candidates
+              .slice(0, 2)
+              .map((c) => c.label)
+              .join(" — or — ")}
           </p>
         ) : null}
         {followUp ? (
-          <p className="text-sm">
-            <span className="font-medium">To narrow it down:</span> {followUp.question}
-          </p>
+          <Banner toneName="accent" title="To narrow it down">
+            {followUp.question}
+          </Banner>
         ) : null}
         {decoded.responsible_office ? (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>
             Who can act: {decoded.responsible_office.replace(/_/g, " ")}
           </p>
         ) : null}
-      </CardContent>
-      <CardFooter>
-        <Button size="sm" variant="ghost" onClick={() => onOpenView?.("decoder")}>
-          Open the full decoder →
-        </Button>
-      </CardFooter>
-    </Card>
+      </div>
+
+      <OpenLink onClick={() => onOpenView?.("decoder")}>Open the full decoder</OpenLink>
+    </MakeCard>
   )
 }

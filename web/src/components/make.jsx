@@ -1,0 +1,277 @@
+import { AlertTriangle, CheckCircle, ChevronDown, Info, XCircle } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+
+/**
+ * The card language, defined once.
+ *
+ * Every surface in the app is built from these: the design's rounded-2xl card on
+ * --color-surface with a rail, its rounded-xl tinted banner, its small tone chip, and
+ * its measured accordion. They were being re-declared per view — PlannerView and
+ * IntakeView each grew their own MakeCard — which is exactly how the pre-Figma codebase
+ * ended up with eight hand-rolled finding cards that disagreed with each other. One
+ * definition, so a change to the language reaches every screen at once.
+ *
+ * TONE is the whole colour vocabulary. Callers pass a tone and the words; the words must
+ * carry the statement on their own, because nothing here is allowed to signal by colour
+ * alone.
+ */
+
+export const TONE = {
+  good: {
+    icon: CheckCircle,
+    color: "var(--color-emerald)",
+    bg: "var(--color-emerald-muted)",
+    border: "rgba(4,120,87,0.2)",
+  },
+  warn: {
+    icon: AlertTriangle,
+    color: "var(--color-amber)",
+    bg: "var(--color-amber-muted)",
+    border: "rgba(180,83,9,0.2)",
+  },
+  danger: {
+    icon: XCircle,
+    color: "var(--color-rose)",
+    bg: "var(--color-rose-muted)",
+    border: "rgba(190,18,60,0.2)",
+  },
+  info: {
+    icon: Info,
+    color: "var(--color-sky)",
+    bg: "var(--color-sky-muted)",
+    border: "rgba(96,165,250,0.2)",
+  },
+  accent: {
+    icon: Info,
+    color: "var(--color-violet-light)",
+    bg: "var(--color-violet-muted)",
+    border: "rgba(124,58,237,0.25)",
+  },
+  neutral: {
+    icon: Info,
+    color: "var(--color-ink-3)",
+    bg: "var(--color-surface-3)",
+    border: "var(--color-rail)",
+  },
+}
+
+export const tone = (name) => TONE[name] ?? TONE.neutral
+
+/** The card: a raised surface with a rail. `tone` tints the border when a card carries a
+ *  verdict of its own; otherwise it is the neutral rail. */
+export function MakeCard({ children, delay = 0, toneName, className = "", style, ...rest }) {
+  return (
+    <div
+      className={`pp-slide-up rounded-2xl ${className}`}
+      style={{
+        background: "var(--color-surface)",
+        border: `1px solid ${toneName ? tone(toneName).border : "var(--color-rail-strong)"}`,
+        animationDelay: `${delay}ms`,
+        ...style,
+      }}
+      {...rest}
+    >
+      {children}
+    </div>
+  )
+}
+
+/** Eyebrow / title / description, the design's card header stack. */
+export function CardHeading({ eyebrow, title, desc, right }) {
+  return (
+    <div className="mb-3 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        {eyebrow ? (
+          <div
+            className="mb-1 text-[10px] font-medium tracking-wide uppercase"
+            style={{ color: "var(--color-ink-3)" }}
+          >
+            {eyebrow}
+          </div>
+        ) : null}
+        {title ? (
+          <div className="text-[14px] font-semibold" style={{ color: "var(--color-ink)" }}>
+            {title}
+          </div>
+        ) : null}
+        {desc ? (
+          <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
+            {desc}
+          </p>
+        ) : null}
+      </div>
+      {right ? <div className="shrink-0">{right}</div> : null}
+    </div>
+  )
+}
+
+/**
+ * The tinted banner: an icon, a bold line, and the body. Every note in the product is
+ * one of these — the error, the caveat, the privacy disclosure, the boundary statement.
+ * `role` is the caller's, because only they know whether a banner is an alert.
+ */
+export function Banner({ toneName = "info", title, children, icon, role, className = "" }) {
+  const cfg = tone(toneName)
+  const Icon = icon ?? cfg.icon
+  return (
+    <div
+      role={role}
+      className={`flex items-start gap-2.5 rounded-xl px-4 py-2.5 ${className}`}
+      style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}
+    >
+      <Icon
+        size={12}
+        aria-hidden="true"
+        style={{ color: cfg.color, flexShrink: 0, marginTop: 3 }}
+      />
+      <div className="min-w-0">
+        {title ? (
+          <div className="text-[12px] font-semibold" style={{ color: cfg.color }}>
+            {title}
+          </div>
+        ) : null}
+        <div
+          className="text-[11px] leading-relaxed"
+          style={{ color: cfg.color, opacity: title ? 0.8 : 1 }}
+        >
+          {children}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** The small tone pill — a state named in words on its own tint. */
+export function Chip({ toneName = "neutral", children, icon }) {
+  const cfg = tone(toneName)
+  const Icon = icon
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
+      style={{ background: cfg.bg, color: cfg.color }}
+    >
+      {Icon ? <Icon size={10} aria-hidden="true" /> : null}
+      {children}
+    </span>
+  )
+}
+
+/** A course code, wherever one appears. */
+export function Code({ children }) {
+  return (
+    <span
+      className="text-[11px] font-medium"
+      style={{ fontFamily: "var(--font-mono)", color: "var(--color-violet-light)" }}
+    >
+      {children}
+    </span>
+  )
+}
+
+/**
+ * The design's accordion: a header row that toggles, a body measured to its content.
+ * Height is measured on every render, not only when `open` flips, because the body
+ * re-wraps when the locale or the viewport changes.
+ */
+export function Accordion({ open, onToggle, header, children, toneName, delay = 0 }) {
+  const bodyRef = useRef(null)
+  useEffect(() => {
+    const el = bodyRef.current
+    if (el) el.style.maxHeight = open ? `${el.scrollHeight}px` : "0px"
+  })
+
+  return (
+    <div
+      className="pp-slide-up overflow-hidden rounded-xl"
+      style={{
+        background: "var(--color-surface)",
+        border: `1px solid ${toneName ? tone(toneName).border : "var(--color-rail-strong)"}`,
+        animationDelay: `${delay}ms`,
+      }}
+    >
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={onToggle}
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+        style={{ transition: "background 140ms ease" }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "rgba(124,58,237,0.03)"
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = ""
+        }}
+      >
+        {header}
+        <div
+          style={{
+            transform: open ? "rotate(0deg)" : "rotate(-90deg)",
+            transition: "transform 220ms cubic-bezier(0.22,1,0.36,1)",
+            color: "var(--color-ink-3)",
+            flexShrink: 0,
+          }}
+        >
+          <ChevronDown size={13} aria-hidden="true" />
+        </div>
+      </button>
+      <div
+        ref={bodyRef}
+        className="pp-accordion"
+        style={{ maxHeight: 0 }}
+      >
+        <div className="px-4 pb-3.5" style={{ borderTop: "1px solid var(--color-rail)" }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** A collapsed citation list — the reader who doubts a claim opens it. */
+export function Sources({ citations }) {
+  if (!citations?.length) return null
+  return (
+    <details className="mt-2 text-[11px]" style={{ color: "var(--color-ink-3)" }}>
+      <summary className="cursor-pointer">
+        {citations.length === 1 ? "Source" : `${citations.length} sources`}
+      </summary>
+      <ul className="mt-1 space-y-1">
+        {citations.map((c, i) => (
+          <li key={i}>
+            {c.url ? (
+              <a href={c.url} target="_blank" rel="noreferrer" className="underline">
+                {c.label}
+              </a>
+            ) : (
+              c.label
+            )}
+            {c.verified_on ? ` · checked ${c.verified_on}` : ""}
+            {c.quote ? (
+              <span
+                className="mt-0.5 block rounded px-2 py-1"
+                style={{ background: "var(--color-code-bg)", fontFamily: "var(--font-mono)" }}
+              >
+                “{c.quote}”
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
+/** Body copy inside a card. */
+export function Muted({ children }) {
+  return (
+    <p className="text-[12px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
+      {children}
+    </p>
+  )
+}
+
+/** Open state that follows a prop until the reader overrides it. */
+export function useDisclosure(defaultOpen) {
+  const [open, setOpen] = useState(defaultOpen)
+  return [open, () => setOpen((o) => !o)]
+}

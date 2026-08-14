@@ -2,25 +2,8 @@ import { useRef, useState } from "react"
 import { AlertTriangle, Camera, CheckCircle, FileText, Info, Upload, XCircle } from "lucide-react"
 import { api } from "@/api"
 import { Button } from "@/components/ui/button"
+import { MakeCard } from "@/components/make"
 import { usePrefs } from "@/i18n"
-
-/** The design's card shell. */
-function MakeCard({ children, delay = 0, style = {}, ...rest }) {
-  return (
-    <div
-      className="pp-slide-up rounded-2xl p-4"
-      style={{
-        background: "var(--color-surface)",
-        border: "1px solid var(--color-rail-strong)",
-        animationDelay: `${delay}ms`,
-        ...style,
-      }}
-      {...rest}
-    >
-      {children}
-    </div>
-  )
-}
 
 export default function IntakeView({ onOpenView }) {
   const { t } = usePrefs()

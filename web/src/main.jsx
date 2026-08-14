@@ -13,12 +13,18 @@ import '@fontsource/jetbrains-mono/500.css'
 import './index.css'
 import './tailwind.css'
 import App from './App.jsx'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { PrefsProvider } from './i18n'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <PrefsProvider>
-      <App />
+      {/* The shell has its own boundary around the view area, which is the one a
+          student should ever meet. This is the backstop for a throw in the shell
+          itself — without it that case is still a blank page. */}
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </PrefsProvider>
     <Analytics />
     <SpeedInsights />

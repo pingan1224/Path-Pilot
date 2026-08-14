@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { api } from "@/api"
 import AmbientBg from "@/components/AmbientBg"
 import CommandPalette from "@/components/CommandPalette"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 import MakeSidebar from "@/components/MakeSidebar"
 import { ProgramNotice } from "@/components/nocturne"
 import { usePrefs } from "@/i18n"
@@ -218,6 +219,10 @@ export default function StudentShell({ me, onSignOut }) {
             </div>
           ) : null}
 
+          {/* Scoped to the view, not the shell: a screen that throws leaves the sidebar
+              standing, so the way out is a click rather than a refresh. Keyed on the
+              view so navigating away clears the error. */}
+          <ErrorBoundary resetKey={view}>
           {/* `hidden`, not unmount: the thread survives a trip to a tool page. */}
           <div className={inChat ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
             <ChatHome
@@ -284,6 +289,7 @@ export default function StudentShell({ me, onSignOut }) {
               )}
             </div>
           ) : null}
+          </ErrorBoundary>
         </main>
       </div>
 

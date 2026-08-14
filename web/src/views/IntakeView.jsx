@@ -5,6 +5,27 @@ import { Button } from "@/components/ui/button"
 import { MakeCard } from "@/components/make"
 import { usePrefs } from "@/i18n"
 
+/**
+ * Transcript upload and review.
+ *
+ * The screen is arranged around one asymmetry: a row this tool reads *wrong* and the
+ * student accepts puts coursework in their record they never took, and nothing
+ * downstream will catch it — while a row it fails to read is merely missing, and
+ * visible. So the review is per-row, opt-in, and everything uncertain is separated out
+ * with its reason attached rather than mixed into a single "looks good" list.
+ *
+ * `matched` rows are pre-selected because the reader vouches for them entirely (code,
+ * term, grade and state all resolved). `needs_review` rows are deliberately NOT
+ * pre-selected: the whole point of that state is that a person has to look. Selecting
+ * them by default would turn "please check this" into "we checked this".
+ */
+
+const STATE_LABEL = {
+  completed: "Completed",
+  in_progress: "Taking now",
+  planned: "Planned",
+}
+
 export default function IntakeView({ onOpenView }) {
   const { t } = usePrefs()
   const [reading, setReading] = useState(null)

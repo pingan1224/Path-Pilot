@@ -28,12 +28,16 @@ import { usePrefs } from "@/i18n"
  * - A sign-out control exists because sessions are real; the design has none. It rides
  *   the student chip as a quiet icon button in the design's hover language.
  *
- * The active marker is the 3px violet edge alone — no rounded tint block. The design's
- * source draws both, but wires them to one ref, so the block never receives a position
- * and never renders: what the design *ships* is just the travelling edge plus each
- * item's own indicator strip growing to 60%. A first pass here "repaired" the bug and
- * got a visual the design never had; 1:1 means the running appearance, so the repair
- * was reverted and only the edge travels.
+ * The active marker is one travelling 3px violet edge — no rounded tint block. The
+ * design's source draws the block too, but wires it to the same ref as the edge, so it
+ * never receives a position and never renders: what the design *ships* is the edge
+ * alone. A first pass here "repaired" that bug and produced a visual the design never
+ * had; 1:1 means the running appearance, so the repair was reverted.
+ *
+ * The design also gives every item its own indicator strip at the same left edge, in
+ * the same violet. Coincident with the travelling one it can only be invisible or —
+ * when the two are measured against different boxes — a doubled line. It is dropped
+ * here and the travelling edge is the single marker.
  */
 
 const NAV_ITEMS = [
@@ -76,11 +80,13 @@ export default function MakeSidebar({
 
   // The shared travelling marker (see the header comment for the repair).
   const itemRefs = useRef(new Map())
+  const navRef = useRef(null)
   const sliderRef = useRef(null)
   const settledRef = useRef(false)
   useLayoutEffect(() => {
     const slider = sliderRef.current
-    if (!slider) return
+    const nav = navRef.current
+    if (!slider || !nav) return
     const el = itemRefs.current.get(view)
     if (!el) {
       slider.style.opacity = "0"
@@ -88,7 +94,12 @@ export default function MakeSidebar({
     }
     slider.style.opacity = "1"
     const apply = () => {
-      slider.style.transform = `translateY(${el.offsetTop}px)`
+      // Measured against the nav's own box, the way the design does it. `el.offsetTop`
+      // is relative to the items' wrapper, while the marker is positioned on the nav —
+      // and the nav's py-2 sits between them, so offsetTop put the marker 8px high and
+      // it read as a second line beside each item's own strip.
+      const offset = el.getBoundingClientRect().top - nav.getBoundingClientRect().top + nav.scrollTop
+      slider.style.transform = `translateY(${offset}px)`
       slider.style.height = `${el.offsetHeight}px`
     }
     if (!settledRef.current) {
@@ -191,7 +202,11 @@ export default function MakeSidebar({
       </div>
 
       {/* Nav */}
-      <nav className="relative min-h-0 flex-1 overflow-y-auto px-2 py-2" aria-label={t("nav.heading")}>
+      <nav
+        ref={navRef}
+        className="relative min-h-0 flex-1 overflow-y-auto px-2 py-2"
+        aria-label={t("nav.heading")}
+      >
         {/* The travelling edge — the whole marker (see the header note). */}
         <div
           ref={sliderRef}
@@ -232,17 +247,6 @@ export default function MakeSidebar({
                   e.currentTarget.style.transform = "translateX(0)"
                 }}
               >
-                {/* The design's per-item indicator strip, growing when active. */}
-                <span
-                  aria-hidden="true"
-                  className="absolute top-1/2 left-0 -translate-y-1/2 rounded-r-sm"
-                  style={{
-                    width: 2,
-                    height: active ? "60%" : 0,
-                    background: "var(--color-violet)",
-                    transition: "height 240ms cubic-bezier(0.22,1,0.36,1)",
-                  }}
-                />
                 <Icon
                   size={15}
                   aria-hidden="true"

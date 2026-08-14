@@ -1,5 +1,12 @@
-import { useEffect, useMemo, useState } from "react"
-import { GraduationCap } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import {
+  AlertTriangle,
+  CheckCircle,
+  ChevronDown,
+  Clock,
+  GraduationCap,
+  XCircle,
+} from "lucide-react"
 import { api } from "@/api"
 import { Finding } from "@/components/Finding"
 import {
@@ -184,6 +191,60 @@ export default function PlannerView({ onOpenProgram }) {
 
         <RingSummary plan={plan} />
 
+        {/* Legend — the design's status strip, in the plan's own verdict language. */}
+        <div
+          className="pp-fade-in mb-5 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl px-4 py-2.5"
+          style={{
+            background: "var(--color-surface)",
+            border: "1px solid var(--color-rail)",
+            animationDelay: "320ms",
+          }}
+        >
+          <span
+            className="text-[11px] font-medium tracking-wide uppercase"
+            style={{ color: "var(--color-ink-3)" }}
+          >
+            Status
+          </span>
+          {[
+            { icon: CheckCircle, color: "var(--color-emerald)", label: "Verified met" },
+            { icon: XCircle, color: "var(--color-rose)", label: "Not met" },
+            { icon: AlertTriangle, color: "var(--color-amber)", label: "Ask a human" },
+            { icon: Clock, color: "var(--color-violet-light)", label: "Counting in-progress" },
+          ].map(({ icon: Icon, color, label }) => (
+            <div key={label} className="flex items-center gap-1.5">
+              <Icon size={12} style={{ color }} aria-hidden="true" />
+              <span className="text-[11px]" style={{ color: "var(--color-ink-2)" }}>
+                {label}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Disclaimer — the design's sky card, carrying the plan's real one. */}
+        <div
+          className="pp-fade-in mb-5 flex items-start gap-2.5 rounded-xl px-4 py-3"
+          style={{
+            background: "var(--color-sky-muted)",
+            border: "1px solid rgba(96,165,250,0.2)",
+            animationDelay: "360ms",
+          }}
+        >
+          <GraduationCap
+            size={13}
+            style={{ color: "var(--color-sky)", flexShrink: 0, marginTop: 1 }}
+            aria-hidden="true"
+          />
+          <div>
+            <div className="text-[12px] font-medium" style={{ color: "var(--color-sky)" }}>
+              Self-reported record
+            </div>
+            <div className="mt-0.5 text-[11px]" style={{ color: "var(--color-sky)", opacity: 0.7 }}>
+              {plan.disclaimer}
+            </div>
+          </div>
+        </div>
+
         <PlanCard
           plan={plan}
           includePlanned={includePlanned}
@@ -225,11 +286,17 @@ function RingSummary({ plan }) {
   const inProgOffset =
     circumference * (1 - (plan.credits_completed + plan.credits_in_progress) / TOTAL)
 
+  const remaining = Math.max(
+    plan.credits_required - plan.credits_completed - plan.credits_in_progress,
+    0,
+  )
+  const remainingUp = useCountUp(remaining, 750, ringAnimated)
+
   const STATS = [
     { label: "Completed", value: completed, color: "var(--color-emerald)", bg: "var(--color-emerald-muted)" },
     { label: "In progress", value: inProg, color: "var(--color-violet-light)", bg: "var(--color-violet-muted)" },
-    { label: "Planned", value: planned, color: "var(--color-sky)", bg: "var(--color-sky-muted)" },
-    { label: "Required", value: TOTAL, color: "var(--color-ink-2)", bg: "var(--color-surface)" },
+    { label: "Remaining", value: remainingUp, color: "var(--color-ink-2)", bg: "var(--color-surface)" },
+    { label: "Planned", value: planned, color: "var(--color-amber)", bg: "var(--color-amber-muted)" },
   ]
 
   return (
@@ -502,60 +569,161 @@ function PlanCard({ plan, includePlanned, onTogglePlanned }) {
   )
 
   return (
-    <MakeCard delay={200} className="mb-4" aria-labelledby="plan-heading">
-      <CardHeading
-        eyebrow={`Computed from published rules · checked ${plan.rules_verified_on}`}
-        title={`${plan.program_name} — degree check`}
-      />
-      <div className="flex flex-col gap-3">
-        <label className="flex items-center gap-2 text-body text-muted-foreground">
+    <div className="mb-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div
+            className="text-[10px] font-medium tracking-wide uppercase"
+            style={{ color: "var(--color-ink-3)" }}
+          >
+            Computed from published rules · checked {plan.rules_verified_on}
+          </div>
+          <div className="text-[14px] font-semibold" style={{ color: "var(--color-ink)" }}>
+            {plan.program_name} — degree check
+          </div>
+        </div>
+        <label
+          className="flex items-center gap-2 text-[12px]"
+          style={{ color: "var(--color-ink-3)" }}
+        >
           <input type="checkbox" checked={includePlanned} onChange={onTogglePlanned} />
-          Count planned &amp; in-progress courses
+          Count planned &amp; in-progress
         </label>
-
-        <p className="flex flex-wrap gap-x-4 gap-y-1 text-body">
-          <span>
-            <strong className="font-medium">{plan.credits_completed}</strong> completed
-          </span>
-          <span>
-            <strong className="font-medium">{plan.credits_in_progress}</strong> in progress
-          </span>
-          <span>
-            <strong className="font-medium">{plan.credits_planned}</strong> planned
-          </span>
-          <span className="text-muted-foreground">of {plan.credits_required} required</span>
-        </p>
-
-        <ul className="findings">
-          {settled.map((f, i) => (
-            <Finding key={i} finding={f} />
-          ))}
-        </ul>
-
-        {forHumans.length > 0 ? (
-          <>
-            <div className="flex flex-col gap-1">
-              <div className="text-[10px] font-medium tracking-wide uppercase" style={{ color: "var(--color-amber)" }}>
-                Needs a human
-              </div>
-              <Muted>
-                These are the parts this tool cannot settle — which is exactly what to bring
-                to your advisor.
-              </Muted>
-            </div>
-            <ul className="findings">
-              {forHumans.map((f, i) => (
-                <Finding key={i} finding={f} />
-              ))}
-            </ul>
-          </>
-        ) : null}
-
-        <p className="text-[11px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
-          {plan.disclaimer}
-        </p>
       </div>
-    </MakeCard>
+
+      <div className="space-y-3">
+        {settled.map((f, i) => (
+          <GroupSection key={f.key} finding={f} defaultOpen={f.verdict !== "satisfied"} delay={400 + i * 70} />
+        ))}
+        {forHumans.length > 0 ? (
+          <div
+            className="mt-1 text-[10px] font-medium tracking-wide uppercase"
+            style={{ color: "var(--color-amber)" }}
+          >
+            Needs a human — exactly what to bring to your advisor
+          </div>
+        ) : null}
+        {forHumans.map((f, i) => (
+          <GroupSection key={f.key} finding={f} defaultOpen delay={500 + i * 70} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ---------------------------------------------------------------------------------- */
+
+/**
+ * The design's requirement-group accordion, one per finding. The verdict maps onto the
+ * design's status vocabulary; the body holds what the engine actually said — detail,
+ * next step, and the citations rule 2 requires. The design's per-course dot strip is
+ * absent because the plan's findings carry no per-course rows to draw.
+ */
+const GROUP_ICON = {
+  satisfied: { icon: CheckCircle, color: "var(--color-emerald)", label: "Met" },
+  not_satisfied: { icon: XCircle, color: "var(--color-rose)", label: "Not met" },
+  conditional: { icon: AlertTriangle, color: "var(--color-amber)", label: "Ask a human" },
+  unverifiable: { icon: AlertTriangle, color: "var(--color-amber)", label: "Ask a human" },
+}
+
+function GroupSection({ finding, defaultOpen, delay }) {
+  const [open, setOpen] = useState(defaultOpen)
+  const bodyRef = useRef(null)
+  const cfg = GROUP_ICON[finding.verdict] ?? GROUP_ICON.unverifiable
+  const Icon = cfg.icon
+
+  useEffect(() => {
+    const el = bodyRef.current
+    if (el) el.style.maxHeight = open ? `${el.scrollHeight}px` : "0px"
+  })
+
+  return (
+    <div
+      className="pp-slide-up overflow-hidden rounded-xl"
+      style={{
+        border: "1px solid var(--color-rail-strong)",
+        background: "var(--color-surface)",
+        animationDelay: `${delay}ms`,
+      }}
+    >
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
+        style={{ transition: "background 140ms ease" }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "rgba(124,58,237,0.03)"
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = ""
+        }}
+      >
+        <Icon size={14} style={{ color: cfg.color, flexShrink: 0 }} aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <span className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
+            {finding.summary}
+          </span>
+        </div>
+        <span className="shrink-0 text-[11px] font-medium" style={{ color: cfg.color }}>
+          {cfg.label}
+        </span>
+        <div
+          style={{
+            transform: open ? "rotate(0deg)" : "rotate(-90deg)",
+            transition: "transform 220ms cubic-bezier(0.22,1,0.36,1)",
+            color: "var(--color-ink-3)",
+            flexShrink: 0,
+          }}
+        >
+          <ChevronDown size={13} aria-hidden="true" />
+        </div>
+      </button>
+
+      <div
+        ref={bodyRef}
+        className="overflow-hidden"
+        style={{ maxHeight: 0, transition: "max-height 270ms cubic-bezier(0.22,1,0.36,1)" }}
+      >
+        <div className="px-4 pb-3.5" style={{ borderTop: "1px solid var(--color-rail)" }}>
+          <p className="mt-3 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-2)" }}>
+            {finding.detail}
+          </p>
+          {finding.next_step ? (
+            <p className="mt-1.5 text-[12px]" style={{ color: "var(--color-ink)" }}>
+              → {finding.next_step}
+            </p>
+          ) : null}
+          {finding.citations?.length ? (
+            <details className="mt-2 text-[11px]" style={{ color: "var(--color-ink-3)" }}>
+              <summary className="cursor-pointer">Source</summary>
+              <ul className="mt-1 space-y-1">
+                {finding.citations.map((c, i) => (
+                  <li key={i}>
+                    {c.url ? (
+                      <a href={c.url} target="_blank" rel="noreferrer" className="underline">
+                        {c.label}
+                      </a>
+                    ) : (
+                      c.label
+                    )}
+                    {c.verified_on ? ` · checked ${c.verified_on}` : ""}
+                    {c.quote ? (
+                      <span
+                        className="mt-0.5 block rounded px-2 py-1"
+                        style={{ background: "var(--color-code-bg)", fontFamily: "var(--font-mono)" }}
+                      >
+                        {c.quote}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </div>
+      </div>
+    </div>
   )
 }
 

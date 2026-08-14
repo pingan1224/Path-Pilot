@@ -28,9 +28,12 @@ import { usePrefs } from "@/i18n"
  * - A sign-out control exists because sessions are real; the design has none. It rides
  *   the student chip as a quiet icon button in the design's hover language.
  *
- * One repair: the design wires its rounded marker and its 3px edge to the same ref, so
- * the rounded block never moves. Both halves live in one travelling container here —
- * the drawn intent, working.
+ * The active marker is the 3px violet edge alone — no rounded tint block. The design's
+ * source draws both, but wires them to one ref, so the block never receives a position
+ * and never renders: what the design *ships* is just the travelling edge plus each
+ * item's own indicator strip growing to 60%. A first pass here "repaired" the bug and
+ * got a visual the design never had; 1:1 means the running appearance, so the repair
+ * was reverted and only the edge travels.
  */
 
 const NAV_ITEMS = [
@@ -189,17 +192,12 @@ export default function MakeSidebar({
 
       {/* Nav */}
       <nav className="relative min-h-0 flex-1 overflow-y-auto px-2 py-2" aria-label={t("nav.heading")}>
-        {/* Travelling marker: rounded tint + the violet left edge, one container. */}
+        {/* The travelling edge — the whole marker (see the header note). */}
         <div
           ref={sliderRef}
           aria-hidden="true"
-          className="pointer-events-none absolute right-2 left-2 rounded-lg"
-          style={{
-            top: 0,
-            height: 0,
-            background: "var(--color-violet-muted)",
-            border: "1px solid rgba(124,58,237,0.25)",
-          }}
+          className="pointer-events-none absolute left-2"
+          style={{ top: 0, height: 0 }}
         >
           <span
             className="absolute top-1/2 -translate-y-1/2 rounded-r-sm"
@@ -234,6 +232,17 @@ export default function MakeSidebar({
                   e.currentTarget.style.transform = "translateX(0)"
                 }}
               >
+                {/* The design's per-item indicator strip, growing when active. */}
+                <span
+                  aria-hidden="true"
+                  className="absolute top-1/2 left-0 -translate-y-1/2 rounded-r-sm"
+                  style={{
+                    width: 2,
+                    height: active ? "60%" : 0,
+                    background: "var(--color-violet)",
+                    transition: "height 240ms cubic-bezier(0.22,1,0.36,1)",
+                  }}
+                />
                 <Icon
                   size={15}
                   aria-hidden="true"

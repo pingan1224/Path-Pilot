@@ -163,6 +163,7 @@ export default function IntakeView({ onOpenView }) {
           Add your courses from a transcript
         </div>
         <div className="flex flex-col gap-2">
+          {/* The design's upload button, fronting the real file input. */}
           <input
             ref={fileRef}
             type="file"
@@ -170,8 +171,22 @@ export default function IntakeView({ onOpenView }) {
             disabled={busy}
             aria-label="Transcript PDF or photo"
             onChange={(e) => upload(e.target.files?.[0])}
-            className="rounded-md border bg-muted/40 p-2 text-sm"
+            className="sr-only"
           />
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => fileRef.current?.click()}
+            className="flex w-fit items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-medium"
+            style={{
+              background: "var(--color-surface-2)",
+              color: "var(--color-ink-2)",
+              border: "1px solid var(--color-rail-strong)",
+            }}
+          >
+            <Upload size={12} aria-hidden="true" />
+            Choose a PDF or photo…
+          </button>
           {/* Both states are announced. Reading a photo goes to a vision endpoint and can
               take many seconds, and the failure was previously a bare <p> — a screen-reader
               user got silence in both directions, on the one screen where the wait is long

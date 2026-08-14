@@ -52,6 +52,7 @@ def sequence_for_user(
     max_credits_per_term: int | None = None,
     horizon: int = DEFAULT_HORIZON,
     program_code: str | None = None,
+    defer: str | None = None,
 ) -> tuple[SequencePlan, dict]:
     if program_code is None:
         program_code = program_for_user(session, user_id).code
@@ -73,6 +74,7 @@ def sequence_for_user(
         max_credits_per_term=cap,
         horizon=horizon,
         credit_cap_was_assumed=max_credits_per_term is None,
+        defer=defer,
     )
 
     # What each of next term's courses costs if it waits. Computed alongside the plan
@@ -97,6 +99,11 @@ def sequence_for_user(
         "credit_cap_was_assumed": max_credits_per_term is None,
         "courses_stated": len(stated),
         "delay_costs": costs,
+        # Echoed so the caller can tell a what-if answer from the baseline one. The
+        # sequence endpoint computes and stores nothing, so a deferral is a question
+        # asked, never a plan saved — and the UI has to be able to say which it is
+        # looking at.
+        "deferred": defer,
     }
     return plan, meta
 

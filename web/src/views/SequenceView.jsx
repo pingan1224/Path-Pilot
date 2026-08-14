@@ -1,41 +1,53 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   AlertTriangle,
-  Calendar,
+  ArrowRight,
+  CalendarClock,
   CheckCircle,
   ChevronDown,
   Circle,
   GraduationCap,
   Info,
+  RotateCcw,
   Sparkles,
 } from "lucide-react"
 import { api } from "@/api"
 import { Finding } from "@/components/Finding"
-import {
-  ErrorNote,
-  INPUT_CLASS,
-  Muted,
-  ProgramNotice,
-  WarnNote,
-  isProgramIssue,
-} from "@/components/nocturne"
+import { Banner, Chip, Code, Muted } from "@/components/make"
+import { ErrorNote, INPUT_CLASS, ProgramNotice, WarnNote, isProgramIssue } from "@/components/nocturne"
 import { Button } from "@/components/ui/button"
 import { usePrefs } from "@/i18n"
 
 /**
- * The sequence planner in the source design's term-column language (1:1 branch):
- * header with an on-track graduation card and the violet recompute button, amber
- * placement warning, sky assumptions disclosure, then terms side by side — Spring in
- * emerald, Fall in violet, each with a credits bar and course cards.
+ * The course planner — a what-if console, not a document.
  *
- * What each element carries is real, and the differences from the design are all
- * data-honesty, not taste: the on-track card shows the solver's actual finish term;
- * "Recalculate" re-runs the real backtracking solve (no staged 1.6s theatre); the
- * assumptions list is the solver's own — the per-term credit cap is the student's
- * number, offerings the bulletin does not publish are guesses and each placement says
- * so on itself; and the design's drag-to-resequence is deliberately absent, because
- * dragging a course into a term is a claim about prerequisites and offerings that only
- * the solver can check — the honest lever is the constraint form, then re-solve.
+ * The screen it replaced showed one static column and a text field, and a student could
+ * do nothing with either: a plan with one term left has nothing to drag, and typing a
+ * term into a box produced no visible answer when the constraint did not bind. The
+ * source design solves this with drag-and-drop between terms, which reads as editing a
+ * schedule — and editing is the one thing this surface must not offer, because moving a
+ * course is a claim about prerequisites, offerings and credit load that only the solver
+ * can settle.
+ *
+ * So the gesture is kept and its meaning is corrected: **every control here poses a
+ * question, and the answer is the finish date moving.**
+ *
+ *   Load      — the per-term credit cap is the student's own number, assumed rather than
+ *               published (see CLAUDE.md), which makes it the most valuable input on the
+ *               page. 3/6/9/12 re-solves instantly.
+ *   Defer     — "what if this waits?" runs the solver's own counterfactual: the course is
+ *               held out of the starting term and the whole thing is re-planned,
+ *               concentration choice included. Dragging a card to the Later zone asks
+ *               exactly this. The drop zone is labelled "later", never a named term,
+ *               because where the course lands is the solver's answer, not the drag's.
+ *   Deadline  — a date to finish by, answered as fits / does not fit with what binds.
+ *
+ * Nothing here is saved. `GET /sequence` computes and stores nothing, so a what-if is a
+ * question asked, and the header says which answer is on screen.
+ *
+ * Delay costs were already computed for every course in the starting term and were only
+ * ever shown in the chat. They belong here: they turn a list of courses into a priced
+ * list, which is the difference between a schedule and a decision.
  */
 
 const CREDIT_CHOICES = [3, 6, 9, 12]
@@ -45,50 +57,64 @@ const SEM_STYLE = {
   Fall: { primary: "var(--color-violet-light)", bg: "var(--color-violet-muted)", border: "rgba(124,58,237,0.25)" },
   Summer: { primary: "var(--color-amber)", bg: "var(--color-amber-muted)", border: "rgba(180,83,9,0.2)" },
 }
-
-const semesterOf = (term) => {
-  const season = String(term).split(" ")[0]
-  return SEM_STYLE[season] ?? SEM_STYLE.Fall
-}
+const semesterOf = (term) => SEM_STYLE[String(term).split(" ")[0]] ?? SEM_STYLE.Fall
 
 const BASIS_META = {
-  published: { icon: CheckCircle, color: "var(--color-emerald)", label: "Published" },
-  irregular: { icon: AlertTriangle, color: "var(--color-amber)", label: "Runs irregularly" },
-  unstated: { icon: Circle, color: "var(--color-ink-3)", label: "Term is a guess" },
+  published: { icon: CheckCircle, toneName: "good", label: "Published" },
+  irregular: { icon: AlertTriangle, toneName: "warn", label: "Runs irregularly" },
+  unstated: { icon: Circle, toneName: "neutral", label: "Term is a guess" },
 }
+
+/** A placeholder requirement (an elective with no course chosen) cannot be deferred —
+ *  there is no course to hold out. The solver names these in prose, not as a code. */
+const isPlaceholder = (code) => /\(|\)/.test(code)
 
 export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
   const { t } = usePrefs()
-  const [startTerm, setStartTerm] = useState("")
   const [deadline, setDeadline] = useState("")
   const [maxCredits, setMaxCredits] = useState("")
+  const [deferred, setDeferred] = useState(null)
   const [plan, setPlan] = useState(null)
+  const [baseline, setBaseline] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [showAssumptions, setShowAssumptions] = useState(false)
+  const [dragging, setDragging] = useState(null)
+  const [dragOver, setDragOver] = useState(false)
 
-  async function load(overrides = {}) {
+  /** One solve. `keepBaseline` holds the un-deferred answer so the header can price the
+   *  what-if against it — the student needs the comparison, not just the new date. */
+  const load = useCallback(async (overrides = {}) => {
+    const next = {
+      deadline: overrides.deadline ?? deadline,
+      maxCredits: overrides.maxCredits ?? maxCredits,
+      defer: "defer" in overrides ? overrides.defer : deferred,
+    }
     setBusy(true)
     setError(null)
     try {
-      setPlan(
-        await api.sequence({
-          startTerm: overrides.startTerm ?? startTerm,
-          deadline: overrides.deadline ?? deadline,
-          maxCredits: overrides.maxCredits ?? maxCredits,
-        }),
-      )
+      const result = await api.sequence(next)
+      setPlan(result)
+      if (!next.defer) setBaseline(result)
+      return result
     } catch (err) {
       setError(err)
+      return null
     } finally {
       setBusy(false)
     }
-  }
+  }, [deadline, maxCredits, deferred])
 
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  async function ask(overrides) {
+    if ("defer" in overrides) setDeferred(overrides.defer)
+    if ("maxCredits" in overrides) setMaxCredits(overrides.maxCredits)
+    await load(overrides)
+  }
 
   if (error && !plan) {
     return (
@@ -114,130 +140,163 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
     )
   }
 
+  const costByCode = Object.fromEntries((plan.delay_costs ?? []).map((c) => [c.code, c]))
   const guesses = plan.feasible
     ? plan.terms.flatMap((tm) => tm.courses).filter((c) => c.offering_basis !== "published").length
     : 0
+  const cap = plan.max_credits_per_term
+  // The what-if's price, against the answer without it.
+  const movedBy =
+    plan.deferred && baseline?.finish_term && plan.finish_term !== baseline.finish_term
+      ? { from: baseline.finish_term, to: plan.finish_term }
+      : null
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Header — the design's: icon, title, on-track card, violet recompute. */}
+      {/* The answer, as the headline. Every control below moves this line. */}
       <div
         className="pp-slide-down shrink-0 px-6 py-4"
         style={{ borderBottom: "1px solid var(--color-rail)", background: "var(--color-surface)" }}
       >
-        <div className="flex flex-wrap items-center gap-4">
-          <Calendar size={16} style={{ color: "var(--color-violet-light)" }} aria-hidden="true" />
+        <div className="flex flex-wrap items-start gap-4">
+          <CalendarClock
+            size={22}
+            style={{ color: "var(--color-violet-light)", flexShrink: 0, marginTop: 2 }}
+            aria-hidden="true"
+          />
           <div className="min-w-0 flex-1">
-            <div className="text-[14px] font-semibold" style={{ color: "var(--color-ink)" }}>
+            <div className="text-[11px] font-medium tracking-wide uppercase" style={{ color: "var(--color-ink-3)" }}>
               {t("nav.sequence")}
             </div>
-            <div className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>
-              Prerequisite order, published offerings, your credit load, one concentration in
-              full, a term to finish by — solved together.
-            </div>
+            {plan.feasible ? (
+              <h1
+                key={plan.finish_term}
+                className="pp-badge-pop text-[22px] leading-tight font-semibold"
+                style={{ fontFamily: "var(--font-display)", color: "var(--color-ink)" }}
+              >
+                Finishing {plan.finish_term}
+                <span className="ml-2 text-[13px] font-normal" style={{ color: "var(--color-ink-3)" }}>
+                  · {plan.terms_needed} term{plan.terms_needed === 1 ? "" : "s"} left
+                </span>
+              </h1>
+            ) : (
+              <h1
+                className="text-[22px] leading-tight font-semibold"
+                style={{ fontFamily: "var(--font-display)", color: "var(--color-amber)" }}
+              >
+                No order fits your constraints
+              </h1>
+            )}
           </div>
-          {plan.feasible ? (
-            <div
-              className="flex items-center gap-2 rounded-xl px-3 py-2"
-              style={{ background: "var(--color-emerald-muted)", border: "1px solid rgba(4,120,87,0.2)" }}
-            >
-              <GraduationCap size={13} style={{ color: "var(--color-emerald)" }} aria-hidden="true" />
-              <div>
-                <div className="text-[10px]" style={{ color: "var(--color-emerald)", opacity: 0.75 }}>
-                  {plan.terms_needed} more term{plan.terms_needed === 1 ? "" : "s"}
-                </div>
-                <div className="text-[12px] font-semibold" style={{ color: "var(--color-emerald)" }}>
-                  Finishing {plan.finish_term}
-                </div>
-              </div>
-            </div>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => load()}
-            disabled={busy}
-            className="flex items-center gap-2 rounded-xl px-3 py-2 text-[12px] font-medium"
-            style={{
-              background: busy ? "var(--color-surface-2)" : "var(--color-violet)",
-              color: busy ? "var(--color-ink-3)" : "#fff",
-              transition: "background 200ms ease, color 200ms ease",
-              cursor: busy ? "not-allowed" : "pointer",
-            }}
-          >
+          {busy ? (
             <Sparkles
-              size={12}
+              size={14}
               aria-hidden="true"
-              style={{ animation: busy ? "pp-spinner 1s linear infinite" : "none" }}
+              style={{ color: "var(--color-violet-light)", animation: "pp-spinner 1s linear infinite" }}
             />
-            {busy ? "Solving…" : "Recalculate"}
-          </button>
+          ) : null}
         </div>
 
-        {/* Constraint form — the honest lever the design's drag-and-drop is not. */}
-        <form
-          className="mt-3 flex flex-wrap items-end gap-3"
-          onSubmit={(e) => {
-            e.preventDefault()
-            load()
-          }}
-        >
-          <label className="flex min-w-[140px] flex-1 flex-col gap-1 text-[11px]" style={{ color: "var(--color-ink-3)" }}>
-            Starting term
-            <input
-              className={INPUT_CLASS}
-              value={startTerm}
-              onChange={(e) => setStartTerm(e.target.value)}
-              placeholder={plan.start_term}
-              disabled={busy}
-            />
-          </label>
-          <label className="flex min-w-[140px] flex-1 flex-col gap-1 text-[11px]" style={{ color: "var(--color-ink-3)" }}>
-            Finish by (optional)
-            <input
-              className={INPUT_CLASS}
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              placeholder="e.g. Spring 2028"
-              disabled={busy}
-            />
-          </label>
-          <label className="flex min-w-[120px] flex-col gap-1 text-[11px]" style={{ color: "var(--color-ink-3)" }}>
-            Credits per term
-            <select
-              className={INPUT_CLASS}
-              value={maxCredits}
-              onChange={(e) => {
-                setMaxCredits(e.target.value)
-                load({ maxCredits: e.target.value })
-              }}
-              disabled={busy}
+        {/* Load — the student's own number, and the fastest way to move the answer. */}
+        <div className="mt-4 flex flex-wrap items-end gap-4">
+          <div>
+            <div className="mb-1 text-[10px] font-medium tracking-wide uppercase" style={{ color: "var(--color-ink-3)" }}>
+              Credits per term{plan.credit_cap_was_assumed ? " · assumed, not a rule" : ""}
+            </div>
+            <div
+              className="flex items-center gap-0.5 rounded-lg p-0.5"
+              style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-rail-strong)" }}
+              role="group"
+              aria-label="Credits per term"
             >
-              <option value="">{plan.max_credits_per_term} (assumed)</option>
-              {CREDIT_CHOICES.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-        </form>
+              {CREDIT_CHOICES.map((n) => {
+                const active = cap === n
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-pressed={active}
+                    disabled={busy}
+                    onClick={() => ask({ maxCredits: String(n) })}
+                    className="rounded-md px-3 py-1 text-[12px] font-semibold"
+                    style={{
+                      background: active ? "var(--color-surface-3)" : "transparent",
+                      color: active ? "var(--color-ink)" : "var(--color-ink-3)",
+                      transition: "background 220ms ease, color 220ms ease",
+                    }}
+                  >
+                    {n}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <form
+            className="flex items-end gap-2"
+            onSubmit={(e) => {
+              e.preventDefault()
+              load()
+            }}
+          >
+            <label className="flex flex-col gap-1 text-[10px] font-medium tracking-wide uppercase" style={{ color: "var(--color-ink-3)" }}>
+              Finish by
+              <input
+                className={INPUT_CLASS}
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                placeholder="e.g. Spring 2027"
+                disabled={busy}
+              />
+            </label>
+            <Button type="submit" variant="outline" size="sm" disabled={busy}>
+              Check
+            </Button>
+          </form>
+        </div>
       </div>
 
-      {/* Warnings + assumptions, the design's banner stack. */}
-      <div className="shrink-0 space-y-2 px-6 pt-4 pb-0">
+      {/* What-if banner: what was asked, what it costs, and the way back. */}
+      <div className="shrink-0 space-y-2 px-6 pt-4">
         {error ? <ErrorNote>{error.message}</ErrorNote> : null}
-        {guesses > 0 ? (
+
+        {plan.deferred ? (
           <div
-            className="pp-slide-up flex items-start gap-2.5 rounded-xl px-4 py-2.5"
-            style={{ background: "var(--color-amber-muted)", border: "1px solid rgba(180,83,9,0.2)" }}
+            className="pp-slide-up flex flex-wrap items-center gap-3 rounded-xl px-4 py-3"
+            style={{ background: "var(--color-violet-muted)", border: "1px solid rgba(124,58,237,0.25)" }}
           >
-            <AlertTriangle size={12} style={{ color: "var(--color-amber)", flexShrink: 0, marginTop: 1.5 }} aria-hidden="true" />
-            <p className="text-[12px] leading-snug" style={{ color: "var(--color-amber)" }}>
-              {guesses} placement{guesses === 1 ? "" : "s"} sit in a term the bulletin does not
-              confirm — each is marked on its own card below.
-            </p>
+            <Sparkles size={13} style={{ color: "var(--color-violet-light)" }} aria-hidden="true" />
+            <div className="min-w-0 flex-1">
+              <div className="text-[12px] font-semibold" style={{ color: "var(--color-violet-light)" }}>
+                What if <Code>{plan.deferred}</Code> waits?
+              </div>
+              <div className="mt-0.5 text-[11px]" style={{ color: "var(--color-ink-2)" }}>
+                {movedBy
+                  ? `You would finish ${movedBy.to} instead of ${movedBy.from}.`
+                  : "The finish date does not move — this one can wait for free."}{" "}
+                Nothing is saved; this is a question, not a change to your plan.
+              </div>
+            </div>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => ask({ defer: null })}>
+              <RotateCcw size={12} aria-hidden="true" />
+              Reset
+            </Button>
           </div>
         ) : null}
+
+        {plan.feasible && plan.deadline ? (
+          <Banner toneName="good" icon={GraduationCap}>
+            Finishing {plan.finish_term} — inside your {plan.deadline} deadline.
+          </Banner>
+        ) : null}
+
+        {guesses > 0 ? (
+          <Banner toneName="warn">
+            {guesses} placement{guesses === 1 ? "" : "s"} sit in a term the bulletin does not
+            confirm — each is marked on its own card.
+          </Banner>
+        ) : null}
+
         {plan.assumptions.length > 0 ? (
           <>
             <button
@@ -248,7 +307,7 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
             >
               <Info size={12} style={{ color: "var(--color-sky)" }} aria-hidden="true" />
               <span className="flex-1 text-[12px]" style={{ color: "var(--color-sky)" }}>
-                What this sequence rests on — {plan.assumptions.length} assumption
+                What this rests on — {plan.assumptions.length} assumption
                 {plan.assumptions.length === 1 ? "" : "s"}, none verifiable here
               </span>
               <ChevronDown
@@ -292,17 +351,17 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
         ) : null}
       </div>
 
-      {/* Term columns, or the binding constraint where the grid would have been. */}
+      {/* The board. */}
       {plan.feasible ? (
         <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden px-6 pt-3 pb-6">
           <div className="flex h-full min-h-0 gap-4">
             {plan.terms.map((term, ti) => {
               const sc = semesterOf(term.term)
-              const cap = plan.max_credits_per_term
+              const isNext = ti === 0
               return (
                 <div
                   key={term.term}
-                  className="pp-slide-up flex min-h-0 min-w-[240px] flex-1 flex-col"
+                  className="pp-slide-up flex min-h-0 w-[280px] flex-none flex-col"
                   style={{ animationDelay: `${ti * 70 + 160}ms` }}
                 >
                   <div
@@ -312,8 +371,16 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
                     <div className="mb-1 flex items-center justify-between">
                       <span className="text-[13px] font-semibold" style={{ color: sc.primary }}>
                         {term.term}
+                        {isNext ? (
+                          <span className="ml-1.5 text-[10px] font-normal" style={{ color: "var(--color-ink-3)" }}>
+                            next term
+                          </span>
+                        ) : null}
                       </span>
-                      <span className="text-[11px] font-semibold" style={{ fontFamily: "var(--font-mono)", color: sc.primary }}>
+                      <span
+                        className="text-[11px] font-semibold"
+                        style={{ fontFamily: "var(--font-mono)", color: sc.primary }}
+                      >
                         {term.credits} / {cap} cr
                       </span>
                     </div>
@@ -328,72 +395,78 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
                       />
                     </div>
                   </div>
+
                   <div
                     className="nx-scroll min-h-0 flex-1 space-y-1.5 overflow-y-auto rounded-b-2xl p-2.5"
                     style={{ background: "var(--color-surface)", border: `1px solid ${sc.border}` }}
                   >
-                    {term.courses.map((course, ci) => {
-                      const meta = BASIS_META[course.offering_basis] ?? BASIS_META.unstated
-                      const MetaIcon = meta.icon
-                      const shaky = course.offering_basis !== "published"
-                      return (
-                        <div
-                          key={course.course_code}
-                          className="overflow-hidden rounded-xl"
-                          style={{
-                            border: `1px solid ${shaky ? "rgba(180,83,9,0.25)" : "var(--color-rail)"}`,
-                            background: shaky ? "var(--color-amber-muted)" : "var(--color-surface-2)",
-                            animation: `pp-slide-up 200ms cubic-bezier(0.22,1,0.36,1) ${ci * 60}ms both`,
-                          }}
-                        >
-                          <div className="flex items-start gap-2.5 px-3 py-2.5">
-                            <MetaIcon size={13} style={{ color: meta.color, flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
-                            <div className="min-w-0 flex-1">
-                              <span className="text-[11px] font-medium" style={{ fontFamily: "var(--font-mono)", color: "var(--color-violet-light)" }}>
-                                {course.course_code}
-                              </span>
-                              <div className="mt-0.5 text-[12px] leading-snug font-medium" style={{ color: "var(--color-ink)" }}>
-                                {course.title}
-                              </div>
-                              <div className="mt-0.5 text-[10px]" style={{ color: "var(--color-ink-3)" }}>
-                                {course.requirement ? `${course.requirement} · ` : ""}
-                                {meta.label}
-                              </div>
-                            </div>
-                            <span
-                              className="shrink-0 rounded px-1.5 py-0.5 text-[11px]"
-                              style={{ fontFamily: "var(--font-mono)", background: "var(--color-surface-3)", color: "var(--color-ink-3)" }}
-                            >
-                              {course.credits} cr
-                            </span>
-                          </div>
-                          {shaky ? (
-                            <div className="px-3 py-2" style={{ borderTop: "1px solid rgba(180,83,9,0.15)", background: "rgba(180,83,9,0.06)" }}>
-                              <p className="text-[11px] leading-snug" style={{ color: "var(--color-amber)" }}>
-                                {course.offering_note}
-                                {course.offering_source ? ` (“${course.offering_source}”)` : ""}
-                              </p>
-                            </div>
-                          ) : null}
-                        </div>
-                      )
-                    })}
+                    {term.courses.map((course, ci) => (
+                      <CourseCard
+                        key={course.course_code}
+                        course={course}
+                        cost={isNext ? costByCode[course.course_code] : undefined}
+                        deferrable={isNext && !isPlaceholder(course.course_code) && !plan.deferred}
+                        busy={busy}
+                        index={ci}
+                        onDefer={() => ask({ defer: course.course_code })}
+                        onDragStart={() => setDragging(course.course_code)}
+                        onDragEnd={() => {
+                          setDragging(null)
+                          setDragOver(false)
+                        }}
+                      />
+                    ))}
                   </div>
                 </div>
               )
             })}
+
+            {/* The drop zone. Labelled "later", never a named term: where a deferred
+                course lands is the solver's answer, and promising a term the drag cannot
+                deliver would be the schedule lying about itself. */}
+            {dragging ? (
+              <div
+                className="flex min-h-0 w-[280px] flex-none flex-col justify-center"
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setDragOver(true)
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const code = dragging
+                  setDragging(null)
+                  setDragOver(false)
+                  if (code) ask({ defer: code })
+                }}
+              >
+                <div
+                  className="pp-fade-in flex h-40 flex-col items-center justify-center gap-2 rounded-2xl px-4 text-center"
+                  style={{
+                    border: `2px dashed ${dragOver ? "var(--color-violet)" : "var(--color-rail-strong)"}`,
+                    background: dragOver ? "var(--color-violet-muted)" : "transparent",
+                    transition: "background 160ms ease, border-color 160ms ease",
+                  }}
+                >
+                  <ArrowRight size={16} style={{ color: "var(--color-violet-light)" }} aria-hidden="true" />
+                  <span className="text-[12px] font-medium" style={{ color: "var(--color-violet-light)" }}>
+                    Drop to ask “what if this waits?”
+                  </span>
+                  <span className="text-[10px]" style={{ color: "var(--color-ink-3)" }}>
+                    The solver decides which term it lands in
+                  </span>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : (
         <div className="nx-scroll min-h-0 flex-1 overflow-y-auto px-6 pt-3 pb-6">
           <div
             className="pp-slide-up rounded-2xl p-4"
-            style={{ background: "var(--color-surface)", border: "1px solid rgba(124,58,237,0.3)" }}
+            style={{ background: "var(--color-surface)", border: "1px solid rgba(180,83,9,0.25)" }}
           >
-            <div className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
-              No order fits — what is standing in the way
-            </div>
-            <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-2)" }}>
+            <p className="text-[12px] leading-relaxed" style={{ color: "var(--color-ink-2)" }}>
               {plan.infeasibility?.explanation}
             </p>
             {plan.infeasibility?.binding_labels?.length ? (
@@ -412,59 +485,126 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
                     />
                   ))}
                 </ul>
-                <Muted>
-                  Each of these was established by removing it and re-solving — not inferred.
-                </Muted>
+                <Muted>Each was established by removing it and re-solving — not inferred.</Muted>
               </div>
             ) : null}
-            {onOpenPlanner ? (
-              <div className="mt-3">
-                <Button variant="outline" onClick={onOpenPlanner}>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {plan.deferred ? (
+                <Button size="sm" variant="outline" disabled={busy} onClick={() => ask({ defer: null })}>
+                  <RotateCcw size={12} aria-hidden="true" />
+                  Undo the what-if
+                </Button>
+              ) : null}
+              {onOpenPlanner ? (
+                <Button size="sm" variant="outline" onClick={onOpenPlanner}>
                   Check my record →
                 </Button>
-              </div>
-            ) : null}
-          </div>
-
-          {plan.rejected_tracks.length > 0 ? (
-            <div
-              className="pp-slide-up mt-4 rounded-2xl p-4"
-              style={{ background: "var(--color-surface)", border: "1px solid var(--color-rail-strong)" }}
-            >
-              <div className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
-                Concentrations that do not fit
-              </div>
-              <ul className="findings mt-2">
-                {plan.rejected_tracks.map((track) => (
-                  <Finding key={track.track} verdict="conditional" label="Does not fit" summary={track.track} detail={track.why} />
-                ))}
-              </ul>
+              ) : null}
             </div>
-          ) : null}
+          </div>
         </div>
       )}
-
-      {/* Rejected tracks under a feasible grid ride below the columns. */}
-      {plan.feasible && plan.rejected_tracks.length > 0 ? (
-        <div className="shrink-0 px-6 pb-4">
-          <details className="text-[12px]" style={{ color: "var(--color-ink-3)" }}>
-            <summary className="cursor-pointer">
-              {plan.rejected_tracks.length} other concentration
-              {plan.rejected_tracks.length === 1 ? "" : "s"} could not be sequenced
-            </summary>
-            <ul className="findings mt-2">
-              {plan.rejected_tracks.map((track) => (
-                <Finding key={track.track} verdict="conditional" label="Does not fit" summary={track.track} detail={track.why} />
-              ))}
-            </ul>
-          </details>
-        </div>
-      ) : null}
 
       <p className="shrink-0 px-6 pb-4 text-[10px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
         {plan.disclaimer}
         {plan.chosen_track ? ` Concentration: ${plan.chosen_track}.` : ""}
       </p>
+    </div>
+  )
+}
+
+/* ---------------------------------------------------------------------------------- */
+
+/**
+ * One placement, priced. The delay cost is the reason this course is where it is, so it
+ * renders on the card rather than under the board — a caveat averaged across a plan
+ * tells the student nothing about which course to go and check.
+ */
+function CourseCard({ course, cost, deferrable, busy, index, onDefer, onDragStart, onDragEnd }) {
+  const meta = BASIS_META[course.offering_basis] ?? BASIS_META.unstated
+  const MetaIcon = meta.icon
+  const shaky = course.offering_basis !== "published"
+
+  return (
+    <div
+      draggable={deferrable}
+      onDragStart={deferrable ? onDragStart : undefined}
+      onDragEnd={deferrable ? onDragEnd : undefined}
+      className="overflow-hidden rounded-xl"
+      style={{
+        border: `1px solid ${shaky ? "rgba(180,83,9,0.25)" : "var(--color-rail)"}`,
+        background: shaky ? "var(--color-amber-muted)" : "var(--color-surface-2)",
+        cursor: deferrable ? "grab" : "default",
+        animation: `pp-slide-up 200ms cubic-bezier(0.22,1,0.36,1) ${index * 60}ms both`,
+      }}
+    >
+      <div className="flex items-start gap-2.5 px-3 py-2.5">
+        <MetaIcon
+          size={13}
+          style={{ color: meta.toneName === "good" ? "var(--color-emerald)" : meta.toneName === "warn" ? "var(--color-amber)" : "var(--color-ink-3)", flexShrink: 0, marginTop: 2 }}
+          aria-hidden="true"
+        />
+        <div className="min-w-0 flex-1">
+          <Code>{course.course_code}</Code>
+          <div className="mt-0.5 text-[12px] leading-snug font-medium" style={{ color: "var(--color-ink)" }}>
+            {course.title}
+          </div>
+          <div className="mt-0.5 text-[10px]" style={{ color: "var(--color-ink-3)" }}>
+            {course.requirement ? `${course.requirement} · ` : ""}
+            {meta.label}
+          </div>
+        </div>
+        <span
+          className="shrink-0 rounded px-1.5 py-0.5 text-[11px]"
+          style={{ fontFamily: "var(--font-mono)", background: "var(--color-surface-3)", color: "var(--color-ink-3)" }}
+        >
+          {course.credits} cr
+        </span>
+      </div>
+
+      {/* The price of waiting — the answer to "why this one, why now". */}
+      {cost ? (
+        <div
+          className="flex flex-wrap items-center gap-2 px-3 py-2"
+          style={{
+            borderTop: "1px solid var(--color-rail)",
+            background: cost.breaks_plan ? "var(--color-rose-muted)" : "transparent",
+          }}
+        >
+          {cost.breaks_plan ? (
+            <Chip toneName="danger">Cannot wait</Chip>
+          ) : cost.terms_lost > 0 ? (
+            <Chip toneName="warn">
+              +{cost.terms_lost} term{cost.terms_lost === 1 ? "" : "s"} if it waits
+            </Chip>
+          ) : (
+            <Chip toneName="good">Can wait for free</Chip>
+          )}
+          {deferrable ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onDefer}
+              className="ml-auto text-[11px] font-medium"
+              style={{ color: "var(--color-violet-light)" }}
+            >
+              What if it waits? →
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {shaky ? (
+        <div
+          className="px-3 py-2"
+          style={{ borderTop: "1px solid rgba(180,83,9,0.15)", background: "rgba(180,83,9,0.06)" }}
+        >
+          <p className="text-[11px] leading-snug" style={{ color: "var(--color-amber)" }}>
+            {course.offering_note}
+            {course.offering_source ? ` (“${course.offering_source}”)` : ""}
+          </p>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -130,11 +130,15 @@ export const api = {
       body: JSON.stringify({ question: question || null }),
     }),
   // sequence — a GET because it computes and stores nothing; same inputs, same answer
-  sequence: ({ startTerm, deadline, maxCredits } = {}) => {
+  // `defer` asks the counterfactual — hold this course out of the starting term and
+  // re-solve around it, concentration choice included. It writes nothing: a deferral is
+  // a question the student asked, not a plan they saved.
+  sequence: ({ startTerm, deadline, maxCredits, defer } = {}) => {
     const params = new URLSearchParams();
     if (startTerm) params.set("start_term", startTerm);
     if (deadline) params.set("deadline", deadline);
     if (maxCredits) params.set("max_credits_per_term", String(maxCredits));
+    if (defer) params.set("defer", defer);
     const query = params.toString();
     return request(`/sequence${query ? `?${query}` : ""}`);
   },

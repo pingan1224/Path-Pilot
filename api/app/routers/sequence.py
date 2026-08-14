@@ -95,6 +95,10 @@ class SequenceOut(BaseModel):
     unplaceable: list[str]
     # Empty whenever there is no feasible plan: a delay cost is a comparison against one.
     delay_costs: list[DelayCostOut] = []
+    # The course this answer was asked to hold out of the starting term, if any. A
+    # deferral is a question, not a saved plan — this endpoint still stores nothing — so
+    # the caller needs to know whether it is looking at the baseline or a what-if.
+    deferred: str | None = None
     disclaimer: str = (
         "An order that satisfies the published rules, computed from what you have entered. "
         "It is not a guarantee that a section will run or that a seat will exist — Path Pilot "
@@ -116,6 +120,11 @@ def get_sequence(
     start_term: str | None = Query(default=None, description='e.g. "Fall 2026"'),
     deadline: str | None = Query(default=None, description="Term you want to finish by"),
     max_credits_per_term: int | None = Query(default=None, ge=1, le=24),
+    defer: str | None = Query(
+        default=None,
+        max_length=24,
+        description="Hold this course out of the starting term and re-solve around it",
+    ),
     identity: Identity = Depends(student_only),
     session: Session = Depends(get_session),
 ) -> SequenceOut:
@@ -135,6 +144,7 @@ def get_sequence(
         start_term=start,
         deadline=finish_by,
         max_credits_per_term=max_credits_per_term,
+        defer=defer,
     )
 
     terms_out: list[TermOut] = []
@@ -183,6 +193,7 @@ def get_sequence(
             )
             for c in meta["delay_costs"]
         ],
+        deferred=meta["deferred"],
         finish_term=str(plan.finish_term) if plan.finish_term else None,
         terms_needed=len(plan.terms_used),
         assumptions=[

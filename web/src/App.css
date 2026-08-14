@@ -1,180 +1,149 @@
 /* ---------------------------------------------------------------------------
-   Tokens — a deep indigo ground and a violet accent, applied to the whole product
+   Tokens — the Figma Make palette, verbatim (1:1 replication branch, 2026-08-14)
    ---------------------------------------------------------------------------
 
-   These values come from a Figma Make design (Responsive UI Demo for Path Pilot). They
-   replaced the Nocturne palette that preceded them; the density, the 8px radii and the
-   type system are unchanged, because only colour, layout and motion were being taken.
+   The source design's variables under the source design's own names: --color-ink,
+   --color-violet, --color-rail, ... . On this branch they are the single source of
+   truth, copied value-for-value including the theme model — DARK IS THE DEFAULT and an
+   explicit [data-theme] wins; there is no prefers-color-scheme block, because the design
+   has none. Fonts are the design's too: Fraunces for display, DM Sans for text,
+   JetBrains Mono for code, self-hosted via fontsource.
 
-   The import discipline is the one Nocturne arrived under, and it is the reason a whole
-   re-skin costs one block: the design's *values* are mapped onto this project's *token
-   names*, never imported under their own (`--color-canvas`, `--color-ink-2`, …). One
-   vocabulary, so shadcn comes along for free — tailwind.css aliases
-   `--color-primary: var(--accent-fill)` with `@theme inline`, so a utility re-reads the
-   variable from the cascade at paint time and every shadcn component re-themes with no
-   per-component work.
+   Two known costs, accepted knowingly rather than missed (the adapted skin on the
+   parent commit solved both, and the 1:1 instruction overrode it):
+   - --color-ink-3 measures 2.26-3.09:1 against the four grounds in both themes — under
+     WCAG AA for the meta text it carries.
+   - light-theme amber and emerald dip under 4.5:1 on some grounds.
 
-   Everything below was re-solved for contrast rather than copied. The design ships two
-   AA failures of its own, and they are not incidental — they sit under exactly the text
-   this product cannot afford to lose:
+   The legacy token names (--ground, --ink, --accent, ...) survive below as ALIASES so
+   the views not yet rebuilt (decoder, program picker, dashboard, login) keep rendering;
+   they must not gain independent values. tailwind.css maps the shadcn vocabulary onto
+   the same variables. */
 
-   - Its `--color-ink-3` carries the provenance layer: timestamps, "Checked <date>", the
-     assistant disclaimer, nav sub-labels. It measures 2.26–3.09:1 across the four depths
-     in both themes. Re-solved to 4.64:1 worst case.
-   - Its light-theme amber measures 3.86–4.49:1 on three of the four depths, and its
-     light-theme emerald 4.21:1 on the deepest. Both re-solved to 4.64:1.
+@import './make.css';
 
-   Re-solving moved OKLCH lightness only, holding hue and chroma, so the design's colour
-   identity survives the correction. Every pair the product actually paints was then swept
-   — three ink tones, four semantic tones and the accent against all four depths, each
-   tone against its own soft wash, and each filled-background foreground: 0 failures.
+/* ── Dark theme (default) ─────────────────────────────────── */
+:root,
+[data-theme='dark'] {
+  --color-ink: #eef0ff;
+  --color-ink-2: #8b92b3;
+  --color-ink-3: #555e80;
 
-   `--on-filled` is what goes *on* a filled semantic background. It is not white in dark
-   mode: the semantic tones stay light there so they still work as text, which leaves them
-   far too light to carry white (white on dark danger measures 2.77:1).
+  --color-canvas: #0b0d1a;
+  --color-surface: #141728;
+  --color-surface-2: #1b2040;
+  --color-surface-3: #222847;
 
-   `--accent-fill` and `--on-accent` are new, and they are the one place this design could
-   not be expressed in the existing vocabulary. In a dark theme a tone is either light
-   enough to read as text or dark enough to carry white text, never both. The design
-   resolves that with two violets — a deep `#7c3aed` for filled controls, a light `#a78bfa`
-   for emphasis text — and a single `--accent` cannot be both: the deep violet measures
-   2.78:1 as text on --surface-2. So --accent stays the emphasis tone that the 22 existing
-   usages expect, and the filled call-to-action gets its own pair. */
+  --color-violet: #7c3aed;
+  --color-violet-light: #a78bfa;
+  --color-violet-dim: #4c1d95;
 
-/* Three depths, one story: the rail sits in a --well (recessed — persistent context and
-   the way around), work happens on --ground, and the things work produces (cards,
-   findings, artifacts) float on --surface.
+  --color-amber: #f59e0b;
+  --color-amber-light: #fcd34d;
+  --color-emerald: #10b981;
+  --color-rose: #f87171;
+  --color-sky: #60a5fa;
 
-   The well is measured in OKLab lightness, not in contrast ratio. The outgoing palette
-   set that bar as 1.16:1 and the number cannot be carried over: contrast ratio compresses
-   badly near black, and this design's ground (#0b0d1a, luminance 0.0043) sits well below
-   the old one (#161826, 0.0086) — recessing it all the way to pure black only reaches
-   1.09:1, so the bar is unreachable rather than missed. Matching the outgoing palette's
-   perceptual step instead (dL 0.023 dark, 0.050 light) reproduces the same *visible* zone
-   boundary at both depths. */
+  --color-rail: rgba(255, 255, 255, 0.06);
+  --color-rail-strong: rgba(255, 255, 255, 0.11);
+
+  --color-code-bg: rgba(0, 0, 0, 0.22);
+  --color-bubble-agent: #1b2040;
+
+  --color-emerald-muted: rgba(16, 185, 129, 0.1);
+  --color-amber-muted: rgba(245, 158, 11, 0.1);
+  --color-rose-muted: rgba(248, 113, 113, 0.1);
+  --color-sky-muted: rgba(96, 165, 250, 0.1);
+  --color-violet-muted: rgba(124, 58, 237, 0.15);
+}
+
+/* ── Light theme ──────────────────────────────────────────── */
+[data-theme='light'] {
+  --color-ink: #0f1324;
+  --color-ink-2: #4a5280;
+  --color-ink-3: #8891b8;
+
+  --color-canvas: #f0f2fa;
+  --color-surface: #ffffff;
+  --color-surface-2: #eaecf7;
+  --color-surface-3: #dde1f2;
+
+  --color-violet: #6d28d9;
+  --color-violet-light: #5b21b6;
+  --color-violet-dim: #ede9fe;
+
+  --color-amber: #b45309;
+  --color-amber-light: #d97706;
+  --color-emerald: #047857;
+  --color-rose: #be123c;
+  --color-sky: #1d4ed8;
+
+  --color-rail: rgba(0, 0, 0, 0.07);
+  --color-rail-strong: rgba(0, 0, 0, 0.12);
+
+  --color-code-bg: rgba(0, 0, 0, 0.05);
+  --color-bubble-agent: #ffffff;
+
+  --color-emerald-muted: rgba(4, 120, 87, 0.1);
+  --color-amber-muted: rgba(180, 83, 9, 0.1);
+  --color-rose-muted: rgba(190, 18, 60, 0.1);
+  --color-sky-muted: rgba(29, 78, 216, 0.1);
+  --color-violet-muted: rgba(109, 40, 217, 0.12);
+}
+
+/* ── Fonts, type scale, radius, motion — shared by both themes ── */
 :root {
-  --ground: #f0f2fa;
-  --well: #dde1f2;
-  --surface: #ffffff;
-  --surface-2: #eaecf7;
-  --ink: #0f1324;
-  --ink-2: #4a5280;
-  --ink-3: #596185;
-  --line: #d0d3e2;
-  --line-soft: #e4e7f4;
+  --font-display: 'Fraunces Variable', Georgia, serif;
+  --font-sans: 'DM Sans Variable', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
 
-  --accent: #5b21b6;
-  --accent-fill: #6d28d9;
-  --accent-soft: #efe8ff;
-  --on-filled: #ffffff;
-  --on-accent: #ffffff;
-
-  --good: #007150;
-  --good-soft: #def5ea;
-  --warn: #a54600;
-  --warn-soft: #ffe7d8;
-  --danger: #be123c;
-  --danger-soft: #ffe0e1;
-  --neutral: #4a5280;
-  --neutral-soft: #eaecf7;
-
+  /* Legacy names still read by the not-yet-rebuilt views. */
+  --font-ui: var(--font-sans);
+  --mono: var(--font-mono);
   --radius: 8px;
-  --mono: "Cascadia Code", Consolas, ui-monospace, "SF Mono", Menlo, monospace;
 
-  /* Motion speaks with three durations and two easings, taken from the design's own
-     motion.ts. --motion-fast is control feedback (hover, press); --motion-view is anything
-     that arrives or leaves (messages, views, list items); --motion-stagger is the gap
-     between siblings in a list that resolves in reading order. The two long-running
-     exceptions — the 1.5s scan and the 1s settle — stay literal in their own rules because
-     nothing else may reuse them: an indeterminate wait and a server-recompute mark are not
-     paces, they are specific meanings.
-
-     --ease-spring overshoots, so it is reserved for things that *appear* and want to be
-     noticed once (a badge resolving, a status pill landing). Never for anything that
-     moves on hover — an overshoot that fires on every pointer pass reads as a wobble. */
-  --motion-fast: 160ms;
-  --motion-view: 260ms;
-  --motion-stagger: 50ms;
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-
-  /* One superfamily, three widths, three jobs — see the type note below. */
-  --font-ui: "Archivo Variable", "Segoe UI Variable Text", "Segoe UI", system-ui,
-    -apple-system, sans-serif;
-
-  /* The scale. Six steps, in rem so browser text-zoom actually moves them; the px values
-     this replaced (ten of them between 10 and 14.5) did not. */
   --t-display: 1.875rem;
   --t-title: 1.25rem;
   --t-lead: 0.9375rem;
   --t-body: 0.84375rem;
   --t-meta: 0.75rem;
   --t-micro: 0.6875rem;
+
+  --motion-fast: 160ms;
+  --motion-view: 260ms;
+  --motion-stagger: 50ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Dark values live in one block and are repeated for the explicit data-theme
-   override, so a viewer toggle beats the OS preference in both directions.
+/* ── Legacy aliases — one direction only: legacy name -> Make token ── */
+:root,
+[data-theme='dark'],
+[data-theme='light'] {
+  --ground: var(--color-canvas);
+  --well: var(--color-surface);
+  --surface: var(--color-surface);
+  --surface-2: var(--color-surface-2);
+  --ink: var(--color-ink);
+  --ink-2: var(--color-ink-2);
+  --ink-3: var(--color-ink-3);
+  --line: var(--color-rail-strong);
+  --line-soft: var(--color-rail);
 
-   Nocturne ships a dark ground only; the light values above were derived from these by
-   mirroring lightness in OKLCH on the system's own shared perceptual scale, holding hue
-   and re-tuning chroma to what the gamut allows at the new lightness.
-
-   The `:not([data-theme="light"])` is what makes "both directions" true. Without it only
-   the dark direction worked: `[data-theme="dark"]` outranks `:root`, but a `light` request
-   had nothing to match, and this media block — equal specificity, later in the file — kept
-   winning on a dark-preference OS. Cheaper than repeating the light values a third time. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --ground: #0b0d1a;
-    --well: #070815;
-    --surface: #141728;
-    --surface-2: #1b2040;
-    --ink: #eef0ff;
-    --ink-2: #8b92b3;
-    --ink-3: #808aaf;
-    --line: #2c304d;
-    --line-soft: #1a1d34;
-
-    --accent: #a78bfa;
-    --accent-fill: #7c3aed;
-    --accent-soft: #241f35;
-    --on-filled: #0b0d1a;
-    --on-accent: #ffffff;
-
-    --good: #10b981;
-    --good-soft: #0f291d;
-    --warn: #f59e0b;
-    --warn-soft: #301f09;
-    --danger: #f87171;
-    --danger-soft: #351a19;
-    --neutral: #8b92b3;
-    --neutral-soft: #1b2040;
-  }
-}
-
-:root[data-theme="dark"] {
-  --ground: #0b0d1a;
-  --well: #070815;
-  --surface: #141728;
-  --surface-2: #1b2040;
-  --ink: #eef0ff;
-  --ink-2: #8b92b3;
-  --ink-3: #808aaf;
-  --line: #2c304d;
-  --line-soft: #1a1d34;
-  --accent: #a78bfa;
-  --accent-fill: #7c3aed;
-  --accent-soft: #241f35;
-  --on-filled: #0b0d1a;
+  --accent: var(--color-violet-light);
+  --accent-fill: var(--color-violet);
+  --accent-soft: var(--color-violet-muted);
+  --on-filled: #ffffff;
   --on-accent: #ffffff;
-  --good: #10b981;
-  --good-soft: #0f291d;
-  --warn: #f59e0b;
-  --warn-soft: #301f09;
-  --danger: #f87171;
-  --danger-soft: #351a19;
-  --neutral: #8b92b3;
-  --neutral-soft: #1b2040;
+
+  --good: var(--color-emerald);
+  --good-soft: var(--color-emerald-muted);
+  --warn: var(--color-amber);
+  --warn-soft: var(--color-amber-muted);
+  --danger: var(--color-rose);
+  --danger-soft: var(--color-rose-muted);
+  --neutral: var(--color-ink-2);
+  --neutral-soft: var(--color-surface-3);
 }
 
 /* ---------------------------------------------------------------------------

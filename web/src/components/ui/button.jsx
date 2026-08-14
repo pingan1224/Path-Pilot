@@ -13,9 +13,13 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        // bg-cta, not bg-primary: the filled call-to-action takes the design's deep violet,
+        // which is a background-only tone. See the note in tailwind.css.
+        default: "bg-cta text-cta-foreground hover:bg-cta/90",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
+          // Stock shadcn says text-white here; on this palette's dark danger that measures
+          // 2.77:1. --on-filled (via destructive-foreground) flips with the theme.
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 focus-visible:ring-destructive/20",
         outline:
           "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:

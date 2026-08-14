@@ -20,14 +20,19 @@ class Settings(BaseSettings):
     # Comma-separated in the environment, split into a list below.
     cors_origins: str = "http://localhost:5173"
 
-    # LLM (Moonshot / Kimi, OpenAI-compatible). Optional: without them the assistant
-    # reports itself unavailable instead of the API failing to boot.
-    moonshot_api_key: str | None = None
-    moonshot_base_url: str = "https://api.moonshot.cn/v1"
-    chat_model: str = "kimi-k3"
-
-    # Embeddings (OpenAI). Separate provider because Moonshot has no embeddings endpoint.
+    # One provider for everything since 2026-08-14: chat, embeddings and the intake
+    # vision endpoint all run on OPENAI_API_KEY. It was two vendors before that (chat on
+    # Moonshot Kimi via its OpenAI-compatible endpoint, everything else on OpenAI);
+    # services/llm.py is still the only file that knows which vendor serves the
+    # conversation, so switching back is that file plus these settings.
+    #
+    # Optional: without a key the assistant reports itself unavailable instead of the
+    # API failing to boot.
     openai_api_key: str | None = None
+    chat_model: str = "gpt-5.4-mini"
+    # gpt-5-family models take a reasoning-effort knob; None means don't send the
+    # parameter, which keeps a non-reasoning CHAT_MODEL (gpt-4.1 line) working unchanged.
+    chat_reasoning_effort: str | None = None
     embedding_model: str = "text-embedding-3-small"
 
     # Which chunking strategy retrieval reads. Every arm is embedded and stored at once,

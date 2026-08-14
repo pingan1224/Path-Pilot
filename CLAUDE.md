@@ -18,7 +18,7 @@ numbers the proposal promised**. The eval harness is the point, not an afterthou
 | Backend | FastAPI (Python 3.13) | `api/`. All business logic and AI lives here |
 | Database | Postgres + pgvector | Business data and embeddings in the same database |
 | ORM | SQLAlchemy 2.x | Typed `Mapped[]` style, not legacy declarative |
-| LLM | Moonshot Kimi, via the OpenAI SDK | Added in P3. See the P3 facts at the end — the `.cn` endpoint, and never send `temperature` |
+| LLM | OpenAI (chat + embeddings + vision) | One vendor since 2026-08-14; was Moonshot Kimi for chat before that. See the P3 facts at the end — never send `temperature`, and it is `max_completion_tokens`, not `max_tokens` |
 | Deploy | Vercel (web) + Render (api) | |
 
 Do **not** add LangChain, LlamaIndex, or any RAG framework. Retrieval, chunking, and
@@ -267,8 +267,21 @@ The chat is the student's default tab; the floating Ask Path Pilot panel is gone
 - **The greeting is computed, not generated.** Profile + mission state → deterministic
   greeting and context-aware suggestion chips. No LLM call for "hello".
 
-The old views (decoder/mission/sequence/planner) survive as secondary tabs — the "let me
-look at the records myself" path. Do not remove them.
+The full pages (decoder/mission/sequence/planner/program/intake) survive as routes — the
+"let me look at the records myself" path. Do not remove them. **But the rail's nav holds
+five slots, not one per page (2026-08-14):** chat, degree progress, mission, transcript,
+course planner — and each slot's sub-line is *live state* ("27 / 36 credits",
+"Blocked · 1 blocker", "11 courses on record"), recomputed with the rail's other reads,
+so the nav doubles as the dashboard. Three pages hold no slot because a slot was
+duplicating an entry point that already existed: the **decoder**'s entry is the chat
+(paste the error; the empty-record greeting leads with a decoder question) with /decoder
+still deep-linkable; the **program** page opens from the enrolled-program chip above the
+nav; the **dashboard** is the pre-shell demo overview, deep-link only. The rail no longer
+renders the mission's step detail either — that was the readiness body duplicating the
+mission page; the verdict survives at nav altitude as the mission slot's sub-line, in
+red words when blocked. A failed record read pins a strip above the nav and every
+sub-line falls back to its static description: "no access" must never render as
+"no results".
 
 ## One-shot execution (M7-B)
 
@@ -666,6 +679,13 @@ attempts, high-stakes escalation recall 0.963, over-escalation 0.0, citation cov
 latency p50/p95 6,227/15,740 ms, iterations mean 2.78. Retrieval on the same corpus:
 recall@5 0.91, MRR 0.825, 3 misses (R24, R40, R42).
 
+**Those behavior numbers were measured on Kimi and the chat model has since changed
+(2026-08-14, see P3 facts) — they are the previous model's baseline, not the current
+system's.** The behavior prompt was tuned against kimi; a full `--gate --repeat 3` run on
+the OpenAI model is owed before quoting any behavior number. Retrieval and decoder
+numbers are unaffected (no chat model in either), and intake OCR now shares a vendor
+with everything else.
+
 **Every failure this suite has produced was intermittent**, and until 2026-08-11 it could
 not say so: one attempt per case, a model that rejects any temperature but 1, and a coin
 flip reported as a verdict. B35's write-tool call was 2 of 6 before it was fixed; B29-B32
@@ -698,16 +718,24 @@ nothing.
 The behavior prompt was tuned against these cases — treat the set as a regression gate,
 and add held-out cases before claiming generalization.
 
-P3 facts worth knowing: chat = Moonshot via OpenAI SDK (`MOONSHOT_BASE_URL` is the .cn
-endpoint; never send temperature — kimi-k3 rejects anything but 1); embeddings = OpenAI
-text-embedding-3-small at dimensions=1024. Agent loop: max 6 iterations, submit_answer
+P3 facts worth knowing: everything on one OpenAI key since 2026-08-14 — chat
+(`CHAT_MODEL`, default `gpt-5.4-mini`), embeddings (text-embedding-3-small at
+dimensions=1024) and the intake vision endpoint. `services/llm.py` is still the only
+file that knows which vendor serves the conversation; the swap off Moonshot was that
+file plus two settings, exactly as its header promised. Two constraints of the gpt-5
+reasoning family, conveniently the same shape Kimi had: never send `temperature`
+(only the default is accepted), and the completion budget is `max_completion_tokens`
+(`max_tokens` is rejected outright; reasoning spends from the budget, so keep it
+generous or the visible answer arrives empty). `CHAT_REASONING_EFFORT` exists and is
+unset by default — set it only after measuring, and it must not be sent to
+non-reasoning models (gpt-4.1 line). Agent loop: max 6 iterations, submit_answer
 forced on the last, citations validated server-side against tool-returned source ids.
 
-Model choice (measured 2026-08-03 on hero cases 1/2/5, n=1 each — indicative, not a
-benchmark; P4 does this properly):
-- kimi-k2.7-code-highspeed: 7-14s, correct behavior on all three → demo default
-- kimi-k3: 26-62s, deepest reasoning (found the prereq chain unprompted)
-- kimi-k2.6: 24-40s, over-escalated routine questions three times → avoid
+Model choice: the Kimi three-way comparison (2026-08-03, k2.7-highspeed 7-14s → demo
+default, k3 deepest, k2.6 over-escalated → avoid) is historical — kept in git, no longer
+quoted here. `gpt-5.4-mini` was picked for the same role the k2.7 measurement selected
+for: fast, cheap, correct tool calling. First measured turn: 2.5s, 2 iterations, 2 valid
+citations. That is one turn, not a benchmark — the full eval re-run is the benchmark.
 
 ## Out of scope
 

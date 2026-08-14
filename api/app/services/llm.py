@@ -1,15 +1,15 @@
 """Chat-model client. The only file that knows which vendor serves the conversation.
 
-Moonshot's endpoint is OpenAI-compatible, so the OpenAI SDK does the transport and this
-module only pins down our usage of it. Swapping vendors means editing this file and
-nothing else.
+OpenAI since 2026-08-14; Moonshot Kimi before that, over the same SDK — which is why the
+swap was this file, two settings, and nothing else.
 
-Two Kimi-specific constraints, both discovered by running scripts/verify_keys.py rather
-than assumed:
-- kimi-k3 rejects any temperature except 1, so we never send the parameter. Determinism
+Constraints of the gpt-5 reasoning family, checked by running scripts/verify_keys.py
+rather than assumed — and notably the same shape as Kimi's, so nothing downstream moved:
+- Only the default temperature is accepted, so we never send the parameter. Determinism
   for evaluation has to come from eval design, not temperature=0.
-- It is a reasoning model: thinking consumes output tokens, so max_tokens must be generous
-  or the visible answer arrives empty.
+- Thinking consumes output tokens, so the completion budget must be generous or the
+  visible answer arrives empty. `max_tokens` is rejected outright for these models;
+  `max_completion_tokens` is the parameter, and the non-reasoning lines accept it too.
 """
 
 from functools import lru_cache
@@ -27,12 +27,12 @@ class LlmNotConfiguredError(RuntimeError):
 
 @lru_cache(maxsize=1)
 def get_client() -> OpenAI:
-    if not settings.moonshot_api_key:
+    if not settings.openai_api_key:
         raise LlmNotConfiguredError(
-            "MOONSHOT_API_KEY is not set. The assistant is unavailable; "
+            "OPENAI_API_KEY is not set. The assistant is unavailable; "
             "the rest of the API is unaffected."
         )
-    return OpenAI(api_key=settings.moonshot_api_key, base_url=settings.moonshot_base_url)
+    return OpenAI(api_key=settings.openai_api_key)
 
 
 def chat(
@@ -50,8 +50,10 @@ def chat(
     kwargs: dict[str, Any] = {
         "model": settings.chat_model,
         "messages": messages,
-        "max_tokens": max_tokens,
+        "max_completion_tokens": max_tokens,
     }
+    if settings.chat_reasoning_effort is not None:
+        kwargs["reasoning_effort"] = settings.chat_reasoning_effort
     if tools:
         kwargs["tools"] = tools
     if tool_choice is not None:

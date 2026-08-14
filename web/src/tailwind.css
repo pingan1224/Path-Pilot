@@ -30,14 +30,24 @@
   --color-popover: var(--surface);
   --color-popover-foreground: var(--ink);
 
-  /* shadcn's "primary" is the main call-to-action colour — this project's --accent (the
-     brand purple already on .btn--primary) is exactly that, and NOT shadcn's own "accent",
-     which is a lighter secondary highlight and is mapped to --accent-soft below. Getting
-     these two the wrong way round is the easiest way to make every button look washed out. */
-  /* Not #ffffff. White on the dark accent measures 3.06:1 — under AA on every primary
-     button in dark mode. --on-filled flips with the theme; see the note in App.css. */
+  /* shadcn's "primary" is the brand tone, and NOT shadcn's own "accent", which is a
+     lighter secondary highlight and is mapped to --accent-soft below. Getting these two
+     the wrong way round is the easiest way to make every button look washed out.
+
+     "primary" is --accent, the *emphasis* tone, because that is the role the codebase
+     already uses it in: `text-primary` on the active nav item, `border-primary` on a
+     highlighted card. --accent survives both jobs — as text it clears 4.5:1 on all four
+     depths, and filled with --on-filled on top it clears 7.10:1. So any shadcn component
+     added later is safe on the stock `bg-primary text-primary-foreground` pairing.
+
+     --color-cta is the design's deep violet, and it is a *background only*. The palette
+     carries two violets because a dark theme cannot get one tone to both read as text and
+     carry white text; the deep one measures 3.12:1 as text on --surface, which is how the
+     active nav item failed when "primary" briefly pointed at it. Never write `text-cta`. */
   --color-primary: var(--accent);
   --color-primary-foreground: var(--on-filled);
+  --color-cta: var(--accent-fill);
+  --color-cta-foreground: var(--on-accent);
 
   --color-secondary: var(--surface-2);
   --color-secondary-foreground: var(--ink);

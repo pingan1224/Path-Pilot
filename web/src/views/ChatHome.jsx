@@ -3,6 +3,7 @@ import { api } from "@/api"
 import { Button } from "@/components/ui/button"
 import { ArtifactCard } from "@/components/chat/cards"
 import { describeDegradations } from "@/lib/degradations"
+import { usePrefs } from "@/i18n"
 
 /**
  * The conversation surface. StudentShell owns the frame around it — the readiness rail,
@@ -31,40 +32,34 @@ import { describeDegradations } from "@/lib/degradations"
  * elapsed-seconds line while working, and the real list of what was consulted after.
  */
 
-const TOOL_LABEL = {
-  search_policy: "policy search",
-  get_course_info: "course catalog",
-  get_my_plan: "your plan",
-  albert_checklist: "where to look in Albert",
-  decode_registration_error: "error decoder",
-  get_mission_state: "mission state",
-  propose_mission_candidates: "course suggestions",
-  get_course_sequence: "term sequence",
-}
+// Known tool names, so a label lookup can fall back to the raw name for a tool the
+// dictionary has not met. Labels live in i18n/en.js under `tool.*`.
+const KNOWN_TOOLS = [
+  "search_policy",
+  "get_course_info",
+  "get_my_plan",
+  "albert_checklist",
+  "decode_registration_error",
+  "get_mission_state",
+  "propose_mission_candidates",
+  "get_course_sequence",
+]
+
+const toolLabel = (t, name) => (KNOWN_TOOLS.includes(name) ? t(`tool.${name}`) : name)
 
 /**
- * The kicker over each answer. `tone` drives the colour; the label is the text that has to
- * carry the same meaning on its own.
+ * The kicker over each answer. `tone` drives the colour; the label key resolves to the
+ * text that has to carry the same meaning on its own.
+ * The boundary note (chat.boundary) is shown only on the turns where the boundary is the
+ * point — a refusal, or a question handed to a person. Printing it under every answer
+ * would train the student to stop reading it. Its wording is architecture rule 8.
  */
 const DECISION_KICKER = {
-  answered: { tone: "accent", label: "Answered from verified sources" },
-  answered_with_caveat: { tone: "warn", label: "Answered — read the caveats" },
-  escalated: { tone: "warn", label: "Routed to a human" },
-  refused: { tone: "danger", label: "Outside what I can verify" },
+  answered: { tone: "accent", label: "kicker.answered" },
+  answered_with_caveat: { tone: "warn", label: "kicker.caveat" },
+  escalated: { tone: "warn", label: "kicker.escalated" },
+  refused: { tone: "danger", label: "kicker.refused" },
 }
-
-/**
- * What the assistant cannot do, said next to the answer rather than once in a footer.
- *
- * Shown on the turns where the boundary is the point — a refusal, or a question handed to
- * a person. Printing it under every answer would train the student to stop reading it,
- * which costs exactly the turns it exists for. The wording is architecture rule 8, not a
- * tone choice: the AI never mutates official records.
- */
-const BOUNDARY_NOTE =
-  "I can read published rules, explain what your entries imply, and open a case with the " +
-  "right office. I cannot clear a hold, waive a prerequisite, approve an exception, or " +
-  "change your enrollment — those stay with the offices that decide them."
 
 const TONE_TEXT = {
   accent: "text-primary",
@@ -74,8 +69,29 @@ const TONE_TEXT = {
   neutral: "text-subtle",
 }
 
+/* nx-pop, not nx-msg: the verdict badge is the one element that resolves with a spring —
+   it lands just after the message's own rise and wants to be noticed once. */
 function Kicker({ tone, children }) {
-  return <div className={`nx-label ${TONE_TEXT[tone]}`}>{children}</div>
+  return <div className={`nx-pop w-fit nx-label ${TONE_TEXT[tone]}`}>{children}</div>
+}
+
+/** A message's byline: who spoke and when, in the reader's locale. */
+function Byline({ name, at, locale, alignEnd }) {
+  return (
+    <div
+      className={`flex items-baseline gap-2 text-micro text-subtle ${alignEnd ? "justify-end" : ""}`}
+    >
+      <span className="font-medium text-muted-foreground">{name}</span>
+      {at ? (
+        <time className="nx-figure" dateTime={at.toISOString()}>
+          {at.toLocaleTimeString(locale === "zh" ? "zh-Hans" : "en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+          })}
+        </time>
+      ) : null}
+    </div>
+  )
 }
 
 /**
@@ -134,7 +150,7 @@ function BotAvatar() {
  * returning to a half-finished mission, and it is the one part of the greeting the rail
  * does not already say in the same words.
  */
-function LandingHero({ notes, railVisible }) {
+function LandingHero({ notes, railVisible, t }) {
   // The routine greeting restates the rail. Printed beside it, it reads as the screen
   // saying the same thing twice; with the rail closed it is the only place that says it.
   const shown = notes.filter((n) => !n.routine || !railVisible)
@@ -151,11 +167,10 @@ function LandingHero({ notes, railVisible }) {
       {/* Was "What's in your way?" — the readiness question, when the product answered
           whether you were blocked. It plans a term now, so the front door asks the question
           the product can actually finish. */}
-      <h1 className="nx-statement text-display">What should you take next?</h1>
+      <h1 className="nx-statement text-display">{t("chat.hero.title")}</h1>
 
       <p className="max-w-[54ch] text-lead leading-relaxed text-muted-foreground">
-        I read NYU&rsquo;s published rules and the courses you have entered — nothing else.
-        I cannot see Albert, so anything I cannot check, I name instead of guessing.
+        {t("chat.hero.desc")}
       </p>
 
       {shown.map((note, i) => (
@@ -177,7 +192,7 @@ function LandingHero({ notes, railVisible }) {
  * known. The elapsed count is the one real number available, so it gets tabular figures
  * and stops jittering as it ticks.
  */
-function Thinking() {
+function Thinking({ t }) {
   const [seconds, setSeconds] = useState(0)
   useEffect(() => {
     const timer = setInterval(() => setSeconds((s) => s + 1), 1000)
@@ -189,40 +204,44 @@ function Thinking() {
       <div className="flex min-w-0 flex-1 flex-col gap-2 pt-2.5">
         <div className="nx-scan h-[2px] w-full max-w-[260px] rounded-full" aria-hidden="true" />
         <span className="text-meta leading-relaxed text-muted-foreground">
-          Checking your record, policy and plans as needed ·{" "}
+          {t("chat.thinking")}
           <span className="nx-figure">{seconds}s</span>
-          {seconds > 20 ? " · still working, longer answers mean more lookups" : ""}
+          {seconds > 20 ? t("chat.thinking.long") : ""}
         </span>
       </div>
     </div>
   )
 }
 
-/** Where the student stands, without the salutation — the caller decides how it opens. */
-function greetingFor(missions, profileCount) {
+/**
+ * Where the student stands, without the salutation — the caller decides how it opens.
+ * Chip *keys*, not chip text: the greeting is stored in the thread at one point in time,
+ * but chips are live controls and must re-label when the locale flips.
+ */
+function greetingFor(missions, profileCount, t) {
   const openMission = missions.find((m) => !m.complete)
 
   if (openMission) {
     const active = openMission.steps.find((s) => s.state === "active")
     return {
-      status:
-        `your ${openMission.term} mission is ` +
-        `${openMission.steps.filter((s) => s.state === "done").length} of ${openMission.steps.length} steps done.` +
-        (active?.what_now ? ` Next: ${active.what_now}` : ""),
-      chips: ["What should I take next term?", "Suggest courses for my mission"],
+      status: t("greet.mission", {
+        term: openMission.term,
+        done: openMission.steps.filter((s) => s.state === "done").length,
+        total: openMission.steps.length,
+        next: active?.what_now ?? "",
+      }),
+      chips: ["chip.next", "chip.suggest"],
     }
   }
   if (profileCount > 0) {
     return {
-      status:
-        `you have ${profileCount} course${profileCount === 1 ? "" : "s"} on record ` +
-        "and no term being prepared.",
-      chips: ["Plan my next semester", "Which course would delay me if I skipped it?"],
+      status: t("greet.courses", { count: profileCount }),
+      chips: ["chip.plan", "chip.delay"],
     }
   }
   return {
-    status: "there is nothing on record yet.",
-    chips: ["What does ERR_PREREQ mean?", "What should I do first?"],
+    status: t("greet.empty"),
+    chips: ["chip.prereq", "chip.first"],
   }
 }
 
@@ -236,26 +255,26 @@ function greetingFor(missions, profileCount) {
  * the whole reason the policy-search budget exists; showing it is cheap here and there is
  * no honest reason to hide it.
  */
-function AuditPane({ thread }) {
+function AuditPane({ thread, t }) {
   const entries = []
   thread.forEach((entry, turn) => {
     if (entry.kind !== "assistant") return
     entry.result.tool_trace.forEach((call, i) => {
       entries.push({
         id: `${turn}-${i}`,
-        label: TOOL_LABEL[call.tool] ?? call.tool,
+        label: toolLabel(t, call.tool),
         meta: call.failed
-          ? "failed — not reflected in the answer"
+          ? t("audit.failed")
           : call.source_ids?.length
-            ? `${call.source_ids.length} source${call.source_ids.length === 1 ? "" : "s"} returned`
-            : "returned no citable source",
+            ? t("audit.sources", { count: call.source_ids.length })
+            : t("audit.noSources"),
         tone: call.failed ? "danger" : call.source_ids?.length ? "good" : "neutral",
       })
     })
     entry.result.degraded_modes.forEach((mode, i) => {
       entries.push({
         id: `${turn}-d${i}`,
-        label: "Ran degraded",
+        label: t("audit.degraded"),
         meta: describeDegradations([mode]),
         tone: "warn",
       })
@@ -265,21 +284,21 @@ function AuditPane({ thread }) {
   return (
     <aside
       className="nx-scroll max-h-[45vh] w-full flex-none overflow-auto border-b border-border px-4 py-5 lg:order-last lg:max-h-none lg:w-[300px] lg:border-l lg:border-b-0 lg:px-5"
-      aria-label="What the assistant checked"
+      aria-label={t("audit.aria")}
     >
       <div className="mb-1.5 nx-label">
-        What was checked
+        {t("audit.title")}
       </div>
       <p className="mb-4 text-meta leading-relaxed text-muted-foreground">
-        Every lookup is scoped to your record before it runs, and written to the audit log.
+        {t("audit.desc")}
       </p>
 
       {entries.length === 0 ? (
         <p className="text-meta text-muted-foreground">
-          Nothing yet — this fills in as you ask.
+          {t("audit.empty")}
         </p>
       ) : (
-        <div className="flex flex-col">
+        <div className="nx-cascade flex flex-col">
           {entries.map((e, i) => (
             <div key={e.id} className="flex gap-3">
               <div className="flex flex-none flex-col items-center">
@@ -314,6 +333,7 @@ export default function ChatHome({
   onOpenView,
   onTurn,
 }) {
+  const { t, locale } = usePrefs()
   const [thread, setThread] = useState([])
   const [question, setQuestion] = useState("")
   const [chips, setChips] = useState([])
@@ -332,7 +352,7 @@ export default function ChatHome({
     if (ready) {
       const recovering = greeted.current === "failed"
       greeted.current = "ready"
-      const greeting = greetingFor(missions, courses.length)
+      const greeting = greetingFor(missions, courses.length, t)
       const note = {
         kind: "assistant-note",
         // `routine` is what the rail is already saying in its own words. The recovery
@@ -340,25 +360,22 @@ export default function ChatHome({
         // reach a student who is looking at the conversation on its own.
         routine: !recovering,
         text: recovering
-          ? `Your record is readable again — ${greeting.status}`
-          : `Hi ${first} — ${greeting.status}`,
+          ? t("greet.recovered", { status: greeting.status })
+          : t("greet.hi", { name: first, status: greeting.status }),
       }
-      setThread((t) => (recovering ? [...t, note] : [note]))
+      setThread((prev) => (recovering ? [...prev, note] : [note]))
       setChips(greeting.chips)
     } else if (loadFailed && greeted.current === null) {
       greeted.current = "failed"
       setThread([
         {
           kind: "assistant-note",
-          text:
-            `Hi ${first} — I couldn't read your record just now, so I can't say where your ` +
-            "registration stands. That is a connection problem, not an empty record. I can " +
-            "still explain registration errors and published policy — neither needs it.",
+          text: t("greet.failed", { name: first }),
         },
       ])
-      setChips(["What does ERR_PREREQ mean?", "How do registration holds work?"])
+      setChips(["chip.prereq", "chip.holds"])
     }
-  }, [ready, loadFailed, missions, courses, me.full_name])
+  }, [ready, loadFailed, missions, courses, me.full_name, t])
 
   // `active` is in the deps because a hidden pane loses its scroll position: coming back
   // from a tool page must land on the latest turn, not the top of the thread.
@@ -382,16 +399,19 @@ export default function ChatHome({
         role: e.kind === "user" ? "user" : "assistant",
         content: e.kind === "user" ? e.text : e.result.answer,
       }))
-    setThread((t) => [...t, { kind: "user", text: trimmed }])
+    setThread((prev) => [...prev, { kind: "user", text: trimmed, at: new Date() }])
     setBusy(true)
     try {
       const result = await api.ask(trimmed, history)
-      setThread((t) => [...t, { kind: "assistant", result }])
+      setThread((prev) => [...prev, { kind: "assistant", result, at: new Date() }])
       // The answer may have moved the mission; the shell's rail must not keep showing
       // the old one.
       onTurn?.()
     } catch (err) {
-      setThread((t) => [...t, { kind: "error", text: trimmed, message: err.message }])
+      setThread((prev) => [
+        ...prev,
+        { kind: "error", text: trimmed, message: err.message },
+      ])
     } finally {
       setBusy(false)
     }
@@ -427,17 +447,18 @@ export default function ChatHome({
             }
           >
             <div className="mx-auto flex w-full max-w-[760px] flex-col gap-5">
-              {landing ? <LandingHero notes={thread} railVisible={railVisible} /> : null}
+              {landing ? <LandingHero notes={thread} railVisible={railVisible} t={t} /> : null}
               {landing ? null : thread.map((entry, i) => {
                 if (entry.kind === "user") {
                   return (
-                    <div key={i} className="nx-msg flex justify-end">
+                    <div key={i} className="nx-msg flex flex-col items-end gap-1">
+                      <Byline name={t("chat.you")} at={entry.at} locale={locale} alignEnd />
                       {/* --ink on the accent tint, not --accent. The accent-on-its-own-tint
                           pair now clears AA in dark (4.67 after the palette promotion
                           lightened --accent, up from 4.43), but --ink measures 11.80 on the
                           same tint, and this is the student's own words being read back —
                           the one place in the thread with no reason to be near the floor. */}
-                      <div className="max-w-[76%] rounded-[14px] rounded-br-sm bg-accent px-4 py-2.5 text-lead leading-relaxed text-foreground">
+                      <div className="max-w-[76%] rounded-[14px] rounded-tr-sm bg-accent px-4 py-2.5 text-lead leading-relaxed text-foreground">
                         {entry.text}
                       </div>
                     </div>
@@ -449,7 +470,7 @@ export default function ChatHome({
                     <div key={i} className="nx-msg flex gap-3.5" role="alert">
                       <BotAvatar />
                       <div className="flex min-w-0 flex-1 flex-col gap-2">
-                        <Kicker tone="danger">Could not answer</Kicker>
+                        <Kicker tone="danger">{t("chat.error.kicker")}</Kicker>
                         <p className="text-lead leading-relaxed">{entry.message}</p>
                         <div>
                           <Button
@@ -458,7 +479,7 @@ export default function ChatHome({
                             disabled={busy}
                             onClick={() => ask(entry.text)}
                           >
-                            Ask again
+                            {t("chat.error.retry")}
                           </Button>
                         </div>
                       </div>
@@ -481,7 +502,7 @@ export default function ChatHome({
                 const artifacts = result.artifacts ?? []
                 const kicker = DECISION_KICKER[result.decision] ?? DECISION_KICKER.answered
                 const consulted = [
-                  ...new Set(result.tool_trace.map((t) => TOOL_LABEL[t.tool] ?? t.tool)),
+                  ...new Set(result.tool_trace.map((call) => toolLabel(t, call.tool))),
                 ]
                 const showBoundary =
                   result.decision === "refused" || result.decision === "escalated"
@@ -489,17 +510,29 @@ export default function ChatHome({
                 return (
                   <div key={i} className="nx-msg flex gap-3.5">
                     <BotAvatar />
-                    <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-                      <Kicker tone={kicker.tone}>{kicker.label}</Kicker>
+                    {/* nx-cascade: the answer's parts resolve in reading order — byline,
+                        then the answer, then what it carries. Fade only; the row's own
+                        rise is the movement. */}
+                    <div className="nx-cascade flex min-w-0 flex-1 flex-col gap-1.5">
+                      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <Byline name={t("chat.assistant")} at={entry.at} locale={locale} />
+                        <Kicker tone={kicker.tone}>{t(kicker.label)}</Kicker>
+                      </div>
 
-                      <p className="text-lead leading-relaxed whitespace-pre-wrap text-pretty">
-                        {result.answer}
-                      </p>
+                      {/* The answer rides in a bubble — the source design's message shape,
+                          card surface on the ground, squared toward the avatar. Everything
+                          the answer *carries* (cards, caveats, citations) stays outside
+                          the bubble: evidence about the answer, not part of it. */}
+                      <div className="w-fit max-w-full rounded-[14px] rounded-tl-sm border border-border bg-card px-4 py-3">
+                        <p className="text-lead leading-relaxed whitespace-pre-wrap text-pretty">
+                          {result.answer}
+                        </p>
+                      </div>
 
+                      <div className="flex flex-col gap-2.5">
                       {result.case_number ? (
                         <div className="rounded-md border border-primary/45 bg-accent px-3.5 py-2.5 text-meta leading-relaxed">
-                          Case <strong className="font-medium">{result.case_number}</strong> has
-                          been opened — quote it when you contact the office.
+                          {t("chat.case", { number: result.case_number })}
                         </div>
                       ) : null}
 
@@ -517,27 +550,26 @@ export default function ChatHome({
 
                       {result.degraded_modes.length > 0 ? (
                         <div className="rounded-md border border-warning/45 px-3.5 py-2.5 text-meta leading-relaxed text-muted-foreground">
-                          <span className="font-medium text-warning">Ran degraded — </span>
+                          <span className="font-medium text-warning">{t("chat.degraded")}</span>
                           {describeDegradations(result.degraded_modes)}.
                         </div>
                       ) : null}
 
                       {showBoundary ? (
                         <div className="rounded-md border border-primary/40 bg-accent px-3.5 py-2.5 text-meta leading-relaxed text-muted-foreground">
-                          {BOUNDARY_NOTE}
+                          {t("chat.boundary")}
                         </div>
                       ) : null}
 
                       {consulted.length > 0 || result.citations.length > 0 ? (
                         <div className="flex flex-col gap-1 text-micro text-subtle">
                           {consulted.length > 0 ? (
-                            <div>Checked: {consulted.join(" · ")}</div>
+                            <div>{t("chat.checked", { tools: consulted.join(" · ") })}</div>
                           ) : null}
                           {result.citations.length > 0 ? (
                             <details>
                               <summary className="cursor-pointer">
-                                {result.citations.length} cited claim
-                                {result.citations.length === 1 ? "" : "s"}
+                                {t("chat.citations", { count: result.citations.length })}
                               </summary>
                               <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-4">
                                 {result.citations.map((c, j) => (
@@ -548,12 +580,13 @@ export default function ChatHome({
                           ) : null}
                         </div>
                       ) : null}
+                      </div>
                     </div>
                   </div>
                 )
                 })}
 
-              {busy ? <Thinking /> : null}
+              {busy ? <Thinking t={t} /> : null}
               <div ref={endRef} />
             </div>
           </div>
@@ -561,41 +594,61 @@ export default function ChatHome({
           <div className="px-4 pt-1 pb-4 sm:px-7">
             <div className="mx-auto flex max-w-[760px] flex-col gap-3">
               {chips.length > 0 && !busy ? (
-                <div className="nx-scroll flex gap-2 overflow-x-auto pb-1">
+                <div className="nx-cascade nx-scroll flex gap-2 overflow-x-auto pb-1">
+                  {/* Chips hold dictionary keys, resolved here so a locale flip re-labels
+                      them. The lift on hover is --motion-fast; asking sends the *resolved*
+                      text, because the agent receives what the student read. Their
+                      arrival cascades left to right — reading order, same rule as the
+                      answer's parts. */}
                   {chips.map((chip) => (
                     <Button
                       key={chip}
                       size="sm"
                       variant="outline"
-                      className="flex-none rounded-full whitespace-nowrap"
-                      onClick={() => ask(chip)}
+                      className="flex-none rounded-full whitespace-nowrap transition-transform hover:-translate-y-px"
+                      onClick={() => ask(t(chip))}
                     >
-                      {chip}
+                      {t(chip)}
                     </Button>
                   ))}
                 </div>
               ) : null}
 
+              {/* A textarea, not an input: a pasted Albert error is multi-line, and the
+                  composer is the one place the product explicitly invites a paste. Grows
+                  to four lines then scrolls; Enter sends, Shift+Enter breaks a line. */}
               <form
-                className="flex items-center gap-2 rounded-lg border border-border bg-card py-1.5 pr-1.5 pl-3.5"
+                className="flex items-end gap-2 rounded-lg border border-border bg-card py-1.5 pr-1.5 pl-3.5"
                 onSubmit={(e) => {
                   e.preventDefault()
                   ask(question)
                 }}
               >
                 <label className="sr-only" htmlFor="chat-input">
-                  Ask a question
+                  {t("chat.ask.label")}
                 </label>
-                <input
+                <textarea
                   id="chat-input"
-                  className="min-w-0 flex-1 bg-transparent py-1.5 text-lead outline-none placeholder:text-subtle"
+                  rows={1}
+                  className="nx-scroll max-h-28 min-w-0 flex-1 resize-none bg-transparent py-1.5 text-lead outline-none placeholder:text-subtle"
                   value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="Ask what to take next term, paste an enrollment error, or check your degree…"
+                  onChange={(e) => {
+                    setQuestion(e.target.value)
+                    e.target.style.height = "auto"
+                    e.target.style.height = `${Math.min(e.target.scrollHeight, 112)}px`
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault()
+                      ask(question)
+                      e.target.style.height = "auto"
+                    }
+                  }}
+                  placeholder={t("chat.placeholder")}
                   disabled={busy}
                 />
-                <Button type="submit" variant="outline" disabled={busy || !question.trim()}>
-                  Ask
+                <Button type="submit" disabled={busy || !question.trim()}>
+                  {t("chat.ask")}
                 </Button>
               </form>
 
@@ -607,16 +660,14 @@ export default function ChatHome({
                   read. It returns with the first answer, which is what it is for. */}
               {landing ? null : (
                 <p className="text-meta leading-relaxed text-muted-foreground">
-                  Answers cite what they rest on and say when something could not be
-                  verified. Not an NYU system, and it cannot see Albert — verify anything
-                  that affects registration there before you act on it.
+                  {t("chat.disclaimer")}
                 </p>
               )}
             </div>
           </div>
         </section>
 
-        {showAudit ? <AuditPane thread={thread} /> : null}
+        {showAudit ? <AuditPane thread={thread} t={t} /> : null}
       </div>
   )
 }

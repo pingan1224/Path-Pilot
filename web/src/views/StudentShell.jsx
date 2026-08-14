@@ -239,6 +239,21 @@ export default function StudentShell({ me, onSignOut }) {
             // design's own full-height layouts ride in a scroll container the old shell
             // used to provide.
             <div key={view} className="pp-page-enter min-h-0 flex-1 overflow-hidden">
+              {/* Views rebuilt to the design's full-height layouts own their scroll;
+                  the rest ride in the scroll container the old shell used to provide. */}
+              {view === "mission" && !(program && !program.is_encoded) ? (
+                <MissionView
+                  onOpenPlanner={() => setView("planner")}
+                  onOpenProgram={() => setView("program")}
+                />
+              ) : view === "planner" ? (
+                <PlannerView onOpenProgram={() => setView("program")} />
+              ) : view === "sequence" ? (
+                <SequenceView
+                  onOpenPlanner={() => setView("planner")}
+                  onOpenProgram={() => setView("program")}
+                />
+              ) : (
               <div className="nx-scroll h-full overflow-y-auto">
                 <div className="mx-auto w-full max-w-[920px] px-4 py-6 sm:px-6">
                   {view === "intake" ? (
@@ -246,22 +261,10 @@ export default function StudentShell({ me, onSignOut }) {
                   ) : view === "decoder" ? (
                     <DecoderView onOpenPlanner={() => setView("planner")} />
                   ) : view === "mission" ? (
-                    program && !program.is_encoded ? (
-                      <ProgramNotice
-                        code="program_not_encoded"
-                        message={`Path Pilot has not transcribed the degree requirements for ${program.program_name}, so it cannot track a registration mission for it. Policy answers and registration error decoding still work for your program.`}
-                        onChooseProgram={() => setView("program")}
-                      />
-                    ) : (
-                      <MissionView
-                        onOpenPlanner={() => setView("planner")}
-                        onOpenProgram={() => setView("program")}
-                      />
-                    )
-                  ) : view === "sequence" ? (
-                    <SequenceView
-                      onOpenPlanner={() => setView("planner")}
-                      onOpenProgram={() => setView("program")}
+                    <ProgramNotice
+                      code="program_not_encoded"
+                      message={`Path Pilot has not transcribed the degree requirements for ${program?.program_name}, so it cannot track a registration mission for it. Policy answers and registration error decoding still work for your program.`}
+                      onChooseProgram={() => setView("program")}
                     />
                   ) : view === "program" ? (
                     <ProgramView
@@ -278,6 +281,7 @@ export default function StudentShell({ me, onSignOut }) {
                   )}
                 </div>
               </div>
+              )}
             </div>
           ) : null}
         </main>

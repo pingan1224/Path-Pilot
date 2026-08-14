@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
+import { GraduationCap } from "lucide-react"
 import { api } from "@/api"
 import { Finding } from "@/components/Finding"
 import {
   ErrorNote,
-  Eyebrow,
   INPUT_CLASS,
   Muted,
   ProgramNotice,
@@ -11,13 +11,47 @@ import {
   isProgramIssue,
 } from "@/components/nocturne"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { useCountUp } from "@/hooks/useCountUp"
+import { usePrefs } from "@/i18n"
+
+/** The design's card shell: rounded-2xl surface with a strong rail. */
+function MakeCard({ children, delay = 0, className = "" }) {
+  return (
+    <div
+      className={`pp-slide-up rounded-2xl p-4 ${className}`}
+      style={{
+        background: "var(--color-surface)",
+        border: "1px solid var(--color-rail-strong)",
+        animationDelay: `${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function CardHeading({ eyebrow, title, desc }) {
+  return (
+    <div className="mb-3">
+      {eyebrow ? (
+        <div
+          className="mb-1 text-[10px] font-medium tracking-wide uppercase"
+          style={{ color: "var(--color-ink-3)" }}
+        >
+          {eyebrow}
+        </div>
+      ) : null}
+      <div className="text-[14px] font-semibold" style={{ color: "var(--color-ink)" }}>
+        {title}
+      </div>
+      {desc ? (
+        <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
+          {desc}
+        </p>
+      ) : null}
+    </div>
+  )
+}
 
 /**
  * The degree planner: self-reported record in, verdicts with citations out.
@@ -37,6 +71,7 @@ const STATE_LABEL = {
 }
 
 export default function PlannerView({ onOpenProgram }) {
+  const { t } = usePrefs()
   const [courses, setCourses] = useState(null)
   const [plan, setPlan] = useState(null)
   const [includePlanned, setIncludePlanned] = useState(false)
@@ -119,20 +154,154 @@ export default function PlannerView({ onOpenProgram }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {error ? <ErrorNote>{error.message}</ErrorNote> : null}
+    <div className="nx-scroll h-full overflow-y-auto">
+      <div className="mx-auto max-w-3xl px-6 py-6">
+        {/* Header — the design's, over the real program name. */}
+        <div className="pp-slide-up mb-6 flex items-start gap-4">
+          <GraduationCap
+            size={22}
+            style={{ color: "var(--color-violet-light)", flexShrink: 0, marginTop: 2 }}
+            aria-hidden="true"
+          />
+          <div>
+            <h1
+              className="text-[22px] leading-tight font-semibold"
+              style={{ fontFamily: "var(--font-display)", color: "var(--color-ink)" }}
+            >
+              {t("nav.planner")}
+            </h1>
+            <p className="mt-1 text-[13px]" style={{ color: "var(--color-ink-3)" }}>
+              {plan.program_name} · checked {plan.rules_verified_on}
+            </p>
+          </div>
+        </div>
 
-      <CourseEditor courses={courses} onSave={saveCourse} onRemove={removeCourse} busy={busy} />
+        {error ? (
+          <div className="mb-4">
+            <ErrorNote>{error.message}</ErrorNote>
+          </div>
+        ) : null}
 
-      <PlanCard
-        plan={plan}
-        includePlanned={includePlanned}
-        onTogglePlanned={() => setIncludePlanned((v) => !v)}
-      />
+        <RingSummary plan={plan} />
 
-      <WhatIfCard />
+        <PlanCard
+          plan={plan}
+          includePlanned={includePlanned}
+          onTogglePlanned={() => setIncludePlanned((v) => !v)}
+        />
 
-      <HandoffCard courses={courses} plan={plan} />
+        <CourseEditor courses={courses} onSave={saveCourse} onRemove={removeCourse} busy={busy} />
+
+        <WhatIfCard />
+
+        <HandoffCard courses={courses} plan={plan} />
+      </div>
+    </div>
+  )
+}
+
+/* ---------------------------------------------------------------------------------- */
+
+/**
+ * The design's ring-and-stats block, on the real plan: SVG arcs animating to the
+ * completed and in-progress shares, count-up figures, and a Planned tile where the
+ * design showed a graduation date this product does not know (the sequence page owns
+ * finish dates; inventing one here would be the exact claim the product refuses).
+ */
+function RingSummary({ plan }) {
+  const [ringAnimated, setRingAnimated] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setRingAnimated(true), 120)
+    return () => clearTimeout(timer)
+  }, [])
+
+  const TOTAL = plan.credits_required || 1
+  const completed = useCountUp(plan.credits_completed, 800, ringAnimated)
+  const inProg = useCountUp(plan.credits_in_progress, 700, ringAnimated)
+  const planned = useCountUp(plan.credits_planned, 750, ringAnimated)
+
+  const circumference = 2 * Math.PI * 52
+  const completedOffset = circumference * (1 - plan.credits_completed / TOTAL)
+  const inProgOffset =
+    circumference * (1 - (plan.credits_completed + plan.credits_in_progress) / TOTAL)
+
+  const STATS = [
+    { label: "Completed", value: completed, color: "var(--color-emerald)", bg: "var(--color-emerald-muted)" },
+    { label: "In progress", value: inProg, color: "var(--color-violet-light)", bg: "var(--color-violet-muted)" },
+    { label: "Planned", value: planned, color: "var(--color-sky)", bg: "var(--color-sky-muted)" },
+    { label: "Required", value: TOTAL, color: "var(--color-ink-2)", bg: "var(--color-surface)" },
+  ]
+
+  return (
+    <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div
+        className="pp-slide-up col-span-1 flex flex-col items-center justify-center rounded-2xl p-5"
+        style={{
+          background: "var(--color-surface)",
+          border: "1px solid var(--color-rail-strong)",
+          animationDelay: "60ms",
+        }}
+      >
+        <svg width="124" height="124" viewBox="0 0 124 124" aria-hidden="true">
+          <circle cx="62" cy="62" r="52" fill="none" stroke="var(--color-surface-2)" strokeWidth="10" />
+          <circle
+            cx="62" cy="62" r="52" fill="none"
+            stroke="var(--color-violet)" strokeWidth="10" strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={ringAnimated ? completedOffset : circumference}
+            transform="rotate(-90 62 62)"
+            style={{ transition: "stroke-dashoffset 900ms cubic-bezier(0.22,1,0.36,1)" }}
+          />
+          <circle
+            cx="62" cy="62" r="52" fill="none"
+            stroke="var(--color-violet-light)" strokeWidth="10" strokeLinecap="round"
+            strokeDasharray={
+              ringAnimated
+                ? `${circumference * (plan.credits_in_progress / TOTAL)} ${circumference}`
+                : `0 ${circumference}`
+            }
+            strokeDashoffset={ringAnimated ? inProgOffset : circumference}
+            transform="rotate(-90 62 62)"
+            style={{
+              opacity: 0.35,
+              transition:
+                "stroke-dasharray 800ms cubic-bezier(0.22,1,0.36,1) 100ms, stroke-dashoffset 800ms cubic-bezier(0.22,1,0.36,1) 100ms",
+            }}
+          />
+        </svg>
+        <div className="-mt-2 text-center">
+          <div className="text-[28px] leading-none font-bold" style={{ color: "var(--color-ink)" }}>
+            {ringAnimated ? Math.round((completed / TOTAL) * 100) : 0}%
+          </div>
+          <div className="mt-1 text-[11px]" style={{ color: "var(--color-ink-3)" }}>
+            {completed} of {TOTAL} cr
+          </div>
+        </div>
+      </div>
+
+      <div className="col-span-1 grid grid-cols-2 gap-3 sm:col-span-2">
+        {STATS.map((stat, i) => (
+          <div
+            key={stat.label}
+            className="pp-slide-up rounded-xl p-4"
+            style={{
+              background: stat.bg,
+              border: "1px solid var(--color-rail-strong)",
+              animationDelay: `${(i + 1) * 60 + 60}ms`,
+            }}
+          >
+            <div
+              className="mb-1 text-[10px] font-medium tracking-wide uppercase"
+              style={{ color: "var(--color-ink-3)" }}
+            >
+              {stat.label}
+            </div>
+            <div className="text-[20px] leading-none font-bold" style={{ color: stat.color }}>
+              {stat.value} <span className="text-[13px] font-medium">cr</span>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -167,16 +336,13 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
   const held = new Set(courses.map((c) => c.course_code))
 
   return (
-    <Card aria-labelledby="record-heading">
-      <CardHeader>
-        <Eyebrow>Your record — self-reported</Eyebrow>
-        <CardTitle id="record-heading">My courses</CardTitle>
-        <CardDescription>
-          Path Pilot cannot see Albert. Everything below is what you tell it, and the plan is only
-          as accurate as this list.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+    <MakeCard delay={260} className="mb-4" aria-labelledby="record-heading">
+      <CardHeading
+        eyebrow="Your record — self-reported"
+        title="My courses"
+        desc="Path Pilot cannot see Albert. Everything below is what you tell it, and the plan is only as accurate as this list."
+      />
+      <div className="flex flex-col gap-3">
         <input
           type="search"
           className={`${INPUT_CLASS} w-full`}
@@ -320,8 +486,8 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
             ))}
           </ul>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </MakeCard>
   )
 }
 
@@ -336,12 +502,12 @@ function PlanCard({ plan, includePlanned, onTogglePlanned }) {
   )
 
   return (
-    <Card aria-labelledby="plan-heading">
-      <CardHeader>
-        <Eyebrow>Computed from published rules · checked {plan.rules_verified_on}</Eyebrow>
-        <CardTitle id="plan-heading">{plan.program_name} — degree check</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+    <MakeCard delay={200} className="mb-4" aria-labelledby="plan-heading">
+      <CardHeading
+        eyebrow={`Computed from published rules · checked ${plan.rules_verified_on}`}
+        title={`${plan.program_name} — degree check`}
+      />
+      <div className="flex flex-col gap-3">
         <label className="flex items-center gap-2 text-body text-muted-foreground">
           <input type="checkbox" checked={includePlanned} onChange={onTogglePlanned} />
           Count planned &amp; in-progress courses
@@ -369,7 +535,9 @@ function PlanCard({ plan, includePlanned, onTogglePlanned }) {
         {forHumans.length > 0 ? (
           <>
             <div className="flex flex-col gap-1">
-              <Eyebrow>Needs a human</Eyebrow>
+              <div className="text-[10px] font-medium tracking-wide uppercase" style={{ color: "var(--color-amber)" }}>
+                Needs a human
+              </div>
               <Muted>
                 These are the parts this tool cannot settle — which is exactly what to bring
                 to your advisor.
@@ -383,9 +551,11 @@ function PlanCard({ plan, includePlanned, onTogglePlanned }) {
           </>
         ) : null}
 
-        <p className="text-meta leading-relaxed text-subtle">{plan.disclaimer}</p>
-      </CardContent>
-    </Card>
+        <p className="text-[11px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
+          {plan.disclaimer}
+        </p>
+      </div>
+    </MakeCard>
   )
 }
 
@@ -431,12 +601,9 @@ function WhatIfCard() {
   }, [result, asked])
 
   return (
-    <Card aria-labelledby="whatif-heading">
-      <CardHeader>
-        <Eyebrow>Hypothetical — nothing is saved</Eyebrow>
-        <CardTitle id="whatif-heading">What if I took…</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+    <MakeCard delay={320} className="mb-4" aria-labelledby="whatif-heading">
+      <CardHeading eyebrow="Hypothetical — nothing is saved" title="What if I took…" />
+      <div className="flex flex-col gap-3">
         <form className="flex flex-wrap items-center gap-2" onSubmit={run}>
           <input
             className={INPUT_CLASS}
@@ -467,8 +634,8 @@ function WhatIfCard() {
             </Muted>
           )
         ) : null}
-      </CardContent>
-    </Card>
+      </div>
+    </MakeCard>
   )
 }
 
@@ -549,16 +716,13 @@ function HandoffCard({ courses, plan }) {
   }
 
   return (
-    <Card aria-labelledby="handoff-heading">
-      <CardHeader>
-        <Eyebrow>For your advisor</Eyebrow>
-        <CardTitle id="handoff-heading">Advisor handoff</CardTitle>
-        <CardDescription>
-          A ready-to-send summary of your record, what the rules say, and what only your
-          advisor can answer. Copy it into an email — Path Pilot does not send anything for you.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
+    <MakeCard delay={380} aria-labelledby="handoff-heading">
+      <CardHeading
+        eyebrow="For your advisor"
+        title="Advisor handoff"
+        desc="A ready-to-send summary of your record, what the rules say, and what only your advisor can answer. Copy it into an email — Path Pilot does not send anything for you."
+      />
+      <div className="flex flex-col gap-3">
         <input
           className={INPUT_CLASS}
           value={question}
@@ -576,7 +740,7 @@ function HandoffCard({ courses, plan }) {
         <div>
           <Button onClick={copy}>{copied ? "Copied ✓" : "Copy to clipboard"}</Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </MakeCard>
   )
 }

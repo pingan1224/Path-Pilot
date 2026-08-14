@@ -1,93 +1,68 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  AlertTriangle,
+  CheckCircle,
+  ChevronDown,
+  Circle,
+  Clock,
+  Copy,
+  Sparkles,
+  User,
+} from "lucide-react"
 import { api } from "@/api"
 import { Finding } from "@/components/Finding"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import {
   ErrorNote,
-  Eyebrow,
   INPUT_CLASS,
   Muted,
   ProgramNotice,
-  Tone,
   WarnNote,
   isProgramIssue,
 } from "@/components/nocturne"
+import { usePrefs } from "@/i18n"
 
 /**
- * The registration mission: a resumable task, shown as the five steps it actually is.
+ * The registration mission in the source design's timeline language (1:1 branch):
+ * a display-face header with a term pill and a gradient progress bar, then five step
+ * cards on an icon timeline — circled status icons, a connecting line that fills for
+ * finished ground, one card expanded at a time, breathe on the active step and an
+ * amber pulse where blockers stand.
  *
- * The progress here is never computed in this file. Every mutation returns the whole
- * mission with its step states recomputed server-side, and this component renders what it
- * is given. That is deliberate — a client that derived "you are on step 4" from its own
- * copy of the data would eventually disagree with the server about whether a student is
- * ready to register, and the student would believe whichever one they were looking at.
- *
- * All five step panels stay visible rather than being revealed one at a time. A student who
- * comes back after two weeks needs to see the shape of the whole task and where they
- * stopped, and a wizard that hides the remaining work also hides how much is left.
- *
- * The assistant's suggestions render in the candidate list marked as suggestions, with
- * their reason, and they do not move the progress counter. That gap between "the assistant
- * put three courses in front of me" and "I have chosen three courses" is the product.
- *
- * First view rebuilt off the old App.css families (M-view migration, PRD §10.6 as the
- * checklist). Steps use the same row treatment and the same tones the shell's rail gives
- * this data — one representation of a mission step, wherever it appears.
+ * Everything inside the cards is PathPilot's real machinery, unchanged: progress is
+ * never computed here (every mutation returns the whole mission recomputed
+ * server-side); the assistant's suggestions render marked as suggestions and do not
+ * move the counter; accepting a risk is per finding, by key; generating the handoff is
+ * what completes the last step. The design's demo steps were hardcoded scenery — these
+ * five expand into the actual work.
  */
 
-const STEP_META = {
-  done: { tone: "good", label: "Done" },
-  active: { tone: "warn", label: "Now" },
-  blocked: { tone: "neutral", label: "Waiting" },
+const STEP_ICON = {
+  done: { icon: CheckCircle, color: "var(--color-emerald)", bg: "var(--color-emerald-muted)" },
+  active: { icon: Clock, color: "var(--color-violet-light)", bg: "var(--color-violet-muted)" },
+  blocked: { icon: AlertTriangle, color: "var(--color-amber)", bg: "var(--color-amber-muted)" },
+  pending: { icon: Circle, color: "var(--color-ink-3)", bg: "var(--color-surface-3)" },
 }
 
 const TERM_SUGGESTIONS = ["Fall 2026", "Spring 2027", "Summer 2027"]
 
-/**
- * Which step states changed since the last server answer.
- *
- * The mission's progress is derived server-side and arrives whole on every mutation, so a
- * student who confirms a course can have step 3 and step 4 both flip in one response —
- * two rows down the page from the button they pressed. Marking exactly those rows is the
- * "recompute on read" rule made visible; without it the click appears to do nothing.
- *
- * Nothing is marked on first load: an unchanged page has no news, and flashing every row
- * on arrival would teach the student to ignore the one that matters. The set clears
- * itself so a later re-render cannot replay an old change.
- */
-function useSettledSteps(steps) {
-  const [settled, setSettled] = useState(() => new Set())
-  const previous = useRef(null)
-
+/** The design's accordion body: measured max-height, 270ms. */
+function StepBody({ open, children }) {
+  const ref = useRef(null)
   useEffect(() => {
-    const now = new Map(steps.map((s) => [s.id, s.state]))
-    const before = previous.current
-    previous.current = now
-    if (!before) return
-
-    const changed = [...now]
-      .filter(([id, state]) => before.has(id) && before.get(id) !== state)
-      .map(([id]) => id)
-    if (changed.length === 0) return
-
-    setSettled(new Set(changed))
-    const timer = setTimeout(() => setSettled(new Set()), 1000)
-    return () => clearTimeout(timer)
-  }, [steps])
-
-  return settled
+    const el = ref.current
+    if (el) el.style.maxHeight = open ? `${el.scrollHeight}px` : "0px"
+  })
+  return (
+    <div ref={ref} className="pp-accordion" style={{ maxHeight: 0 }}>
+      {children}
+    </div>
+  )
 }
 
 export default function MissionView({ onOpenPlanner, onOpenProgram }) {
+  const { t } = usePrefs()
   const [missions, setMissions] = useState(null)
   const [activeId, setActiveId] = useState(null)
   const [error, setError] = useState(null)
@@ -106,7 +81,6 @@ export default function MissionView({ onOpenPlanner, onOpenProgram }) {
 
   useEffect(load, [load])
 
-  /** Every mutation hands back the full mission; replace it wholesale. */
   function replace(mission) {
     setMissions((list) => (list ?? []).map((m) => (m.id === mission.id ? mission : m)))
   }
@@ -139,27 +113,23 @@ export default function MissionView({ onOpenPlanner, onOpenProgram }) {
 
   if (error && !missions) {
     return (
-      <div className="flex flex-col items-start gap-3">
+      <div className="mx-auto max-w-2xl px-6 py-6">
         {isProgramIssue(error.code) ? (
-          <ProgramNotice
-            code={error.code}
-            message={error.message}
-            onChooseProgram={onOpenProgram}
-          />
+          <ProgramNotice code={error.code} message={error.message} onChooseProgram={onOpenProgram} />
         ) : (
-          <>
+          <div className="flex flex-col items-start gap-3">
             <ErrorNote>Could not read your missions: {error.message}</ErrorNote>
             <Button variant="outline" size="sm" onClick={load}>
               Try again
             </Button>
-          </>
+          </div>
         )}
       </div>
     )
   }
   if (!missions) {
     return (
-      <p role="status" className="text-body text-muted-foreground">
+      <p role="status" className="px-6 py-6 text-[13px]" style={{ color: "var(--color-ink-3)" }}>
         Reading your mission…
       </p>
     )
@@ -168,222 +138,366 @@ export default function MissionView({ onOpenPlanner, onOpenProgram }) {
   const mission = missions.find((m) => m.id === activeId) ?? null
 
   return (
-    <div className="flex flex-col gap-4">
-      {error ? <ErrorNote>{error.message}</ErrorNote> : null}
+    <div className="nx-scroll h-full overflow-y-auto">
+      <div className="mx-auto max-w-2xl px-6 py-6">
+      {error ? (
+        <div className="mb-4">
+          <ErrorNote>{error.message}</ErrorNote>
+        </div>
+      ) : null}
 
-      {missions.length === 0 ? (
-        <StartCard onStart={start} busy={busy} />
-      ) : (
-        <>
-          {missions.length > 1 ? (
-            <nav
-              className="flex flex-wrap gap-1 self-start rounded-[10px] border border-border p-[3px]"
-              aria-label="Your missions"
+      {missions.length > 1 ? (
+        <div className="mb-4 flex flex-wrap gap-1.5">
+          {missions.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              aria-current={m.id === activeId ? "page" : undefined}
+              onClick={() => setActiveId(m.id)}
+              className="rounded-full px-3 py-1.5 text-[12px] font-medium"
+              style={
+                m.id === activeId
+                  ? { background: "var(--color-violet-muted)", color: "var(--color-violet-light)" }
+                  : { background: "var(--color-surface-2)", color: "var(--color-ink-3)" }
+              }
             >
-              {missions.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  aria-current={m.id === activeId ? "page" : undefined}
-                  onClick={() => setActiveId(m.id)}
-                  className={`rounded-md px-2.5 py-2 text-meta transition-colors md:py-1 ${
-                    m.id === activeId
-                      ? "bg-accent font-medium text-accent-foreground"
-                      : "text-muted-foreground hover:bg-secondary active:bg-secondary/70"
-                  }`}
-                >
-                  {m.term}
-                </button>
-              ))}
-            </nav>
-          ) : null}
+              {m.term}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
-          {mission ? (
-            <Mission
-              mission={mission}
-              busy={busy}
-              act={act}
-              onMission={replace}
-              onOpenPlanner={onOpenPlanner}
-            />
-          ) : null}
+      {mission ? (
+        <Mission
+          mission={mission}
+          busy={busy}
+          act={act}
+          onMission={replace}
+          onOpenPlanner={onOpenPlanner}
+          t={t}
+        />
+      ) : null}
 
-          <StartCard onStart={start} busy={busy} compact />
-        </>
-      )}
+      <StartCard onStart={start} busy={busy} compact={missions.length > 0} />
+      </div>
     </div>
   )
 }
 
 /* ---------------------------------------------------------------------------------- */
 
-function StartCard({ onStart, busy, compact = false }) {
+function StartCard({ onStart, busy, compact }) {
   const [term, setTerm] = useState("")
-
   return (
-    <Card>
-      <CardHeader>
-        <Eyebrow>{compact ? "Another term" : "Get started"}</Eyebrow>
-        <CardTitle>
-          {compact ? "Start a mission for another term" : "Which term are you preparing for?"}
-        </CardTitle>
-        {!compact ? (
-          <CardDescription>
-            A mission walks you through getting ready to register: your record, where you
-            stand, the courses you want, what is in the way, and a summary for your advisor.
-            You can leave it half-finished and come back — nothing is lost.
-          </CardDescription>
-        ) : null}
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <form
-          className="flex flex-wrap items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (term.trim()) onStart(term.trim())
-          }}
-        >
-          <input
-            className={INPUT_CLASS}
-            value={term}
-            onChange={(e) => setTerm(e.target.value)}
-            placeholder="e.g. Spring 2027"
-            aria-label="Term"
+    <div
+      className="pp-slide-up mt-5 rounded-2xl p-4"
+      style={{ background: "var(--color-surface)", border: "1px solid var(--color-rail-strong)" }}
+    >
+      <div className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
+        {compact ? "Start a mission for another term" : "Which term are you preparing for?"}
+      </div>
+      {!compact ? (
+        <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
+          A mission walks you through getting ready to register. You can leave it
+          half-finished and come back — nothing is lost.
+        </p>
+      ) : null}
+      <form
+        className="mt-3 flex flex-wrap items-center gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (term.trim()) onStart(term.trim())
+        }}
+      >
+        <input
+          className={INPUT_CLASS}
+          value={term}
+          onChange={(e) => setTerm(e.target.value)}
+          placeholder="e.g. Spring 2027"
+          aria-label="Term"
+          disabled={busy}
+        />
+        <Button type="submit" disabled={busy || !term.trim()}>
+          Start
+        </Button>
+        {TERM_SUGGESTIONS.map((suggestion) => (
+          <button
+            key={suggestion}
+            type="button"
             disabled={busy}
-          />
-          <Button type="submit" disabled={busy || !term.trim()}>
-            Start
-          </Button>
-        </form>
-        <div className="flex flex-wrap gap-2">
-          {TERM_SUGGESTIONS.map((t) => (
-            <Button
-              key={t}
-              size="sm"
-              variant="outline"
-              className="rounded-full"
-              onClick={() => onStart(t)}
-              disabled={busy}
-            >
-              {t}
-            </Button>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            onClick={() => onStart(suggestion)}
+            className="rounded-full px-3 py-1.5 text-[12px]"
+            style={{
+              background: "var(--color-surface-2)",
+              border: "1px solid var(--color-rail-strong)",
+              color: "var(--color-ink-2)",
+            }}
+          >
+            {suggestion}
+          </button>
+        ))}
+      </form>
+    </div>
   )
 }
 
-function Mission({ mission, busy, act, onMission, onOpenPlanner }) {
+function Mission({ mission, busy, act, onMission, onOpenPlanner, t }) {
   const done = mission.steps.filter((s) => s.state === "done").length
-  const stepState = (id) => mission.steps.find((s) => s.id === id)?.state
-  const settled = useSettledSteps(mission.steps)
+  const activeStep = mission.steps.find((s) => s.state === "active")
+  const blockers = mission.open_blockers ?? []
+
+  // One card open at a time, the design's pattern; default follows the active step.
+  const [expanded, setExpanded] = useState(null)
+  const shown = expanded ?? activeStep?.id ?? null
 
   return (
     <>
-      <Card className={mission.complete ? "border-success/45" : "border-primary/30"}>
-        <CardHeader>
-          <Eyebrow>Registration mission</Eyebrow>
-          {/* Expanded, but a step below the rail's readiness verdict. The rail answers
-              "am I ready"; this only says which term — two peaks would be no peak. */}
-          <CardTitle className="nx-statement flex flex-wrap items-center gap-2 text-title">
+      {/* Header — display face, term pill, gradient progress. */}
+      <div className="pp-slide-up mb-6">
+        <div className="mb-1 flex items-center gap-2">
+          <h1
+            className="text-[22px] font-semibold"
+            style={{ fontFamily: "var(--font-display)", color: "var(--color-ink)" }}
+          >
+            {t("nav.mission")}
+          </h1>
+          <span
+            className="rounded-full px-2 py-1 text-[11px] font-medium"
+            style={{ background: "var(--color-violet-muted)", color: "var(--color-violet-light)" }}
+          >
             {mission.term}
-            {mission.complete ? <Badge>Complete</Badge> : null}
-          </CardTitle>
-          <CardDescription>
-            {mission.complete
-              ? "Every step is done. Take the handoff to your advisor, then register in Albert."
-              : mission.steps.find((s) => s.state === "active")?.what_now}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            <Progress value={(done / mission.steps.length) * 100} className="flex-1" />
-            <span className="text-meta text-muted-foreground">
-              {done}/{mission.steps.length}
+          </span>
+          {mission.complete ? (
+            <span
+              className="pp-badge-pop rounded-full px-2 py-1 text-[11px] font-medium"
+              style={{ background: "var(--color-emerald-muted)", color: "var(--color-emerald)" }}
+            >
+              Complete
+            </span>
+          ) : null}
+        </div>
+        <p className="text-[13px]" style={{ color: "var(--color-ink-3)" }}>
+          {mission.complete
+            ? "Every step is done. Take the handoff to your advisor, then register in Albert."
+            : (activeStep?.what_now ?? "")}
+        </p>
+        <div className="mt-4">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span
+              className="text-[11px] font-medium tracking-wide uppercase"
+              style={{ color: "var(--color-ink-3)" }}
+            >
+              Progress
+            </span>
+            <span className="text-[11px] font-semibold" style={{ color: "var(--color-ink-2)" }}>
+              Step {done} of {mission.steps.length} complete
             </span>
           </div>
-          <p className="text-meta leading-relaxed text-subtle">{mission.disclaimer}</p>
-        </CardContent>
-      </Card>
+          <div className="h-1.5 overflow-hidden rounded-full" style={{ background: "var(--color-surface-3)" }}>
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${(done / mission.steps.length) * 100}%`,
+                background: "linear-gradient(90deg, var(--color-violet), var(--color-violet-light))",
+                transition: "width 700ms cubic-bezier(0.22,1,0.36,1)",
+              }}
+            />
+          </div>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <Eyebrow>The steps</Eyebrow>
-          <CardTitle>What finishing means</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ol className="flex list-none flex-col gap-px overflow-hidden rounded-md bg-border">
-            {mission.steps.map((step) => {
-              const meta = STEP_META[step.state] ?? STEP_META.blocked
-              return (
-                <li
-                  key={step.id}
-                  className={`flex flex-col gap-1.5 bg-card px-3.5 py-3 ${
-                    settled.has(step.id) ? "nx-settle" : ""
-                  }`}
+      {/* The disclaimer rides the design's amber banner slot — a real claim. */}
+      <div
+        className="pp-slide-up mb-5 rounded-xl px-4 py-3"
+        style={{
+          background: "var(--color-amber-muted)",
+          border: "1px solid rgba(180,83,9,0.2)",
+          animationDelay: "80ms",
+        }}
+      >
+        <p className="text-[11px] leading-relaxed" style={{ color: "var(--color-amber)" }}>
+          {mission.disclaimer}
+        </p>
+      </div>
+
+      {/* Steps with connecting line */}
+      <div>
+        {mission.steps.map((step, i) => {
+          const isLast = i === mission.steps.length - 1
+          const isOpen = shown === step.id
+          const blocked =
+            step.state === "active" && step.id === "open_items" && blockers.length > 0
+          const status =
+            step.state === "done"
+              ? "done"
+              : blocked
+                ? "blocked"
+                : step.state === "active"
+                  ? "active"
+                  : "pending"
+          const cfg = STEP_ICON[status]
+          const Icon = cfg.icon
+          const nextDone = !isLast && mission.steps[i + 1].state === "done"
+
+          return (
+            <div
+              key={step.id}
+              className="pp-slide-up flex gap-4"
+              style={{ animationDelay: `${i * 60 + 120}ms` }}
+            >
+              {/* Left column: icon + connector */}
+              <div className="flex flex-col items-center" style={{ width: 28, flexShrink: 0 }}>
+                <div
+                  className={`z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                    status === "active" ? "pp-breathe" : ""
+                  } ${status === "blocked" ? "pp-amber-pulse" : ""}`}
+                  style={{ background: cfg.bg, border: `1.5px solid ${cfg.color}`, marginTop: 14 }}
                 >
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <span className={`nx-dot nx-dot--${meta.tone}`} aria-hidden="true" />
-                    <span className="min-w-0 flex-1 text-body leading-snug">
-                      {step.title}
-                    </span>
-                    <Tone tone={meta.tone}>{meta.label}</Tone>
+                  <Icon size={13} style={{ color: cfg.color }} aria-hidden="true" />
+                </div>
+                {!isLast ? (
+                  <div
+                    className="relative w-0.5 flex-1 overflow-hidden"
+                    style={{ background: "var(--color-surface-3)", minHeight: 16, marginTop: 4 }}
+                  >
+                    {step.state === "done" ? (
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          background: nextDone
+                            ? "var(--color-emerald)"
+                            : "linear-gradient(to bottom, var(--color-emerald) 60%, var(--color-surface-3))",
+                          transformOrigin: "top",
+                          animation: "pp-line-fill 500ms cubic-bezier(0.22,1,0.36,1) both",
+                          animationDelay: `${i * 80 + 400}ms`,
+                        }}
+                      />
+                    ) : null}
                   </div>
-                  <p className="text-meta leading-relaxed text-muted-foreground">
-                    {step.criterion}
-                  </p>
-                  {step.evidence.map((line, i) => (
-                    <p key={i} className="text-meta leading-relaxed text-subtle">
-                      {line}
-                    </p>
-                  ))}
-                  {step.what_now ? (
-                    <p className="text-meta leading-relaxed">→ {step.what_now}</p>
-                  ) : null}
-                  {step.note ? <WarnNote>{step.note}</WarnNote> : null}
-                </li>
-              )
-            })}
-          </ol>
-        </CardContent>
-      </Card>
+                ) : null}
+              </div>
 
-      <GapsCard
-        mission={mission}
-        state={stepState("gaps")}
-        busy={busy}
-        act={act}
-        onOpenPlanner={onOpenPlanner}
-      />
-      <CandidatesCard mission={mission} state={stepState("candidates")} busy={busy} act={act} />
-      <OpenItemsCard mission={mission} state={stepState("open_items")} busy={busy} act={act} />
-      <HandoffCard
-        mission={mission}
-        state={stepState("handoff")}
-        busy={busy}
-        onMission={onMission}
-      />
+              {/* Right: step card */}
+              <div className="mb-2 min-w-0 flex-1">
+                <div
+                  className="overflow-hidden rounded-2xl"
+                  style={{
+                    border: `1px solid ${
+                      isOpen && status === "active"
+                        ? "rgba(124,58,237,0.3)"
+                        : isOpen && status === "blocked"
+                          ? "rgba(180,83,9,0.25)"
+                          : isOpen && status === "done"
+                            ? "rgba(4,120,87,0.2)"
+                            : "var(--color-rail)"
+                    }`,
+                    background: "var(--color-surface)",
+                  }}
+                >
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    onClick={() => setExpanded(isOpen ? "" : step.id)}
+                    className="flex w-full items-start gap-3 px-4 py-3.5 text-left"
+                    style={{ transition: "background 140ms ease" }}
+                    onMouseEnter={(e) => {
+                      if (!isOpen) e.currentTarget.style.background = "rgba(124,58,237,0.02)"
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = ""
+                    }}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span
+                          className="text-[11px] font-semibold"
+                          style={{ fontFamily: "var(--font-mono)", color: "var(--color-ink-3)" }}
+                        >
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <span className="text-[13px] font-medium" style={{ color: "var(--color-ink)" }}>
+                          {step.title}
+                        </span>
+                        <span
+                          className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                          style={{ background: cfg.bg, color: cfg.color }}
+                        >
+                          {status === "done"
+                            ? "Complete"
+                            : status === "blocked"
+                              ? "Blocked"
+                              : status === "active"
+                                ? "In progress"
+                                : "Pending"}
+                        </span>
+                      </div>
+                      {!isOpen ? (
+                        <div className="mt-0.5 text-[11px]" style={{ color: "var(--color-ink-3)" }}>
+                          {step.criterion}
+                        </div>
+                      ) : null}
+                    </div>
+                    <div
+                      style={{
+                        transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+                        transition: "transform 220ms cubic-bezier(0.22,1,0.36,1)",
+                        color: "var(--color-ink-3)",
+                        flexShrink: 0,
+                        marginTop: 2,
+                      }}
+                    >
+                      <ChevronDown size={13} aria-hidden="true" />
+                    </div>
+                  </button>
+
+                  <StepBody open={isOpen}>
+                    <div className="px-4 pb-4" style={{ borderTop: "1px solid var(--color-rail)" }}>
+                      <p className="mt-3 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-2)" }}>
+                        {step.criterion}
+                      </p>
+                      {step.evidence.map((line, j) => (
+                        <p key={j} className="mt-1 text-[11px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
+                          {line}
+                        </p>
+                      ))}
+                      {step.what_now ? (
+                        <p className="mt-1.5 text-[12px]" style={{ color: "var(--color-ink)" }}>
+                          → {step.what_now}
+                        </p>
+                      ) : null}
+                      {step.note ? (
+                        <div className="mt-2">
+                          <WarnNote>{step.note}</WarnNote>
+                        </div>
+                      ) : null}
+
+                      {/* The real work each step expands into. */}
+                      {step.id === "gaps" ? (
+                        <GapsBody mission={mission} state={step.state} busy={busy} act={act} onOpenPlanner={onOpenPlanner} />
+                      ) : step.id === "candidates" ? (
+                        <CandidatesBody mission={mission} busy={busy} act={act} />
+                      ) : step.id === "open_items" ? (
+                        <OpenItemsBody mission={mission} busy={busy} act={act} />
+                      ) : step.id === "handoff" ? (
+                        <HandoffBody mission={mission} busy={busy} onMission={onMission} />
+                      ) : null}
+                    </div>
+                  </StepBody>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </>
   )
 }
 
-/** One step panel. The active step carries the accent border the chat cards use. */
-function Panel({ state, eyebrow, title, children }) {
-  return (
-    <Card className={state === "active" ? "border-primary/45" : undefined}>
-      <CardHeader>
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">{children}</CardContent>
-    </Card>
-  )
-}
+/* ── Step bodies: the unchanged machinery, in the design's inner-card language ────── */
 
-function GapsCard({ mission, state, busy, act, onOpenPlanner }) {
+function GapsBody({ mission, state, busy, act, onOpenPlanner }) {
   return (
-    <Panel state={state} eyebrow="Step 2" title="Where you stand on the degree">
+    <div className="mt-3 space-y-2.5">
       <Muted>
         These are about your degree overall, not about next term. None of them stops you
         registering — you just need to have seen them.
@@ -397,35 +511,37 @@ function GapsCard({ mission, state, busy, act, onOpenPlanner }) {
           ))}
         </ul>
       )}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 pt-1">
         {state === "done" ? (
-          <Tone tone="good">Reviewed</Tone>
-        ) : (
-          <Button
-            disabled={busy}
-            onClick={() => act(() => api.missionAcknowledgeGaps(mission.id))}
+          <span
+            className="flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium"
+            style={{ background: "var(--color-emerald-muted)", color: "var(--color-emerald)" }}
           >
+            <CheckCircle size={10} aria-hidden="true" /> Reviewed
+          </span>
+        ) : (
+          <Button size="sm" disabled={busy} onClick={() => act(() => api.missionAcknowledgeGaps(mission.id))}>
             I have read these
           </Button>
         )}
         {onOpenPlanner ? (
-          <Button variant="outline" onClick={onOpenPlanner}>
+          <Button size="sm" variant="outline" onClick={onOpenPlanner}>
             Edit my record →
           </Button>
         ) : null}
       </div>
-    </Panel>
+    </div>
   )
 }
 
-function CandidatesCard({ mission, state, busy, act }) {
+function CandidatesBody({ mission, busy, act }) {
   const [code, setCode] = useState("")
   const chosen = mission.candidates.filter((c) => c.state === "confirmed")
   const proposed = mission.candidates.filter((c) => c.state === "proposed")
   const declined = mission.candidates.filter((c) => c.state === "declined")
 
   return (
-    <Panel state={state} eyebrow="Step 3" title={`Courses for ${mission.term}`}>
+    <div className="mt-3 space-y-2.5">
       <form
         className="flex flex-wrap items-center gap-2"
         onSubmit={(e) => {
@@ -443,95 +559,91 @@ function CandidatesCard({ mission, state, busy, act }) {
           aria-label="Course code"
           disabled={busy}
         />
-        <Button type="submit" disabled={busy || !code.trim()}>
+        <Button type="submit" size="sm" disabled={busy || !code.trim()}>
           Add
         </Button>
       </form>
 
       {proposed.length > 0 ? (
-        <>
-          <Eyebrow>Suggested by the assistant — your call</Eyebrow>
-          <ul className="flex list-none flex-col gap-2">
-            {proposed.map((c) => (
-              <li
-                key={c.id}
-                className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/40 p-2.5"
-              >
-                <span className="font-mono text-sm">{c.course_code}</span>
-                <Badge variant="outline">Suggestion</Badge>
-                {c.rationale ? (
-                  <span className="min-w-0 flex-1 basis-full text-body leading-relaxed text-muted-foreground sm:basis-auto">
-                    {c.rationale}
-                  </span>
-                ) : null}
-                <span className="flex gap-1.5">
-                  <Button
-                    size="xs"
-                    disabled={busy}
-                    onClick={() => act(() => api.missionDecideCandidate(mission.id, c.id, true))}
-                  >
-                    Add to my plan
-                  </Button>
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => act(() => api.missionDecideCandidate(mission.id, c.id, false))}
-                  >
-                    No thanks
-                  </Button>
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium" style={{ color: "var(--color-violet-light)" }}>
+            <Sparkles size={11} aria-hidden="true" /> Suggested by the assistant — your call
+          </div>
+          {proposed.map((c, i) => (
+            <div
+              key={c.id}
+              className="pp-slide-up rounded-xl p-3"
+              style={{
+                background: "var(--color-violet-muted)",
+                border: "1px solid rgba(124,58,237,0.25)",
+                animationDelay: `${i * 60}ms`,
+              }}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-medium" style={{ fontFamily: "var(--font-mono)", color: "var(--color-violet-light)" }}>
+                  {c.course_code}
                 </span>
-              </li>
-            ))}
-          </ul>
+                <Badge variant="outline">Suggestion</Badge>
+              </div>
+              {c.rationale ? (
+                <p className="mt-1 text-[11px] leading-relaxed" style={{ color: "var(--color-ink-2)" }}>
+                  {c.rationale}
+                </p>
+              ) : null}
+              <div className="mt-2 flex gap-1.5">
+                <Button size="xs" disabled={busy} onClick={() => act(() => api.missionDecideCandidate(mission.id, c.id, true))}>
+                  Add to my plan
+                </Button>
+                <Button size="xs" variant="outline" disabled={busy} onClick={() => act(() => api.missionDecideCandidate(mission.id, c.id, false))}>
+                  No thanks
+                </Button>
+              </div>
+            </div>
+          ))}
           <Muted>Suggestions do not count toward this step until you add one.</Muted>
-        </>
+        </div>
       ) : null}
 
-      <Eyebrow>Chosen ({chosen.length})</Eyebrow>
+      <div className="text-[11px] font-medium tracking-wide uppercase" style={{ color: "var(--color-ink-3)" }}>
+        Chosen ({chosen.length})
+      </div>
       {chosen.length === 0 ? (
         <Muted>Nothing chosen yet.</Muted>
       ) : (
-        <ul className="flex list-none flex-col gap-2">
+        <div className="space-y-1.5">
           {chosen.map((c) => (
-            <li
+            <div
               key={c.id}
-              className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2.5"
+              className="flex flex-wrap items-center gap-2 rounded-xl px-3 py-2.5"
+              style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-rail)" }}
             >
-              <span className="font-mono text-sm">{c.course_code}</span>
-              {c.proposed_by === "ai" ? (
-                <Badge variant="outline">You accepted a suggestion</Badge>
-              ) : null}
+              <span className="text-[11px] font-medium" style={{ fontFamily: "var(--font-mono)", color: "var(--color-violet-light)" }}>
+                {c.course_code}
+              </span>
+              {c.proposed_by === "ai" ? <Badge variant="outline">You accepted a suggestion</Badge> : null}
               <span className="ml-auto">
-                <Button
-                  size="xs"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => act(() => api.missionRemoveCandidate(mission.id, c.id))}
-                >
+                <Button size="xs" variant="outline" disabled={busy} onClick={() => act(() => api.missionRemoveCandidate(mission.id, c.id))}>
                   Remove
                 </Button>
               </span>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
       {declined.length > 0 ? (
         <Muted>
-          Declined: {declined.map((c) => c.course_code).join(", ")}. The assistant cannot
-          re-add these.
+          Declined: {declined.map((c) => c.course_code).join(", ")}. The assistant cannot re-add these.
         </Muted>
       ) : null}
-    </Panel>
+    </div>
   )
 }
 
-function OpenItemsCard({ mission, state, busy, act }) {
+function OpenItemsBody({ mission, busy, act }) {
   const [notes, setNotes] = useState({})
-
   return (
-    <Panel state={state} eyebrow="Step 4" title="Open items on your chosen courses">
+    <div className="mt-3 space-y-2.5">
       {mission.open_blockers.length === 0 && mission.accepted_risks.length === 0 ? (
         <Muted>
           Nothing in the way of the courses you chose — as far as the published rules and
@@ -542,8 +654,6 @@ function OpenItemsCard({ mission, state, busy, act }) {
       {mission.open_blockers.length > 0 ? (
         <ul className="findings">
           {mission.open_blockers.map((f) => (
-            /* A blocker is a `not_satisfied` verdict — it was written as a hardcoded red
-               border and a ✕, which is the same statement with the label left off. */
             <Finding key={f.key} finding={f} verdict="not_satisfied">
               <label className="visually-hidden" htmlFor={`note-${f.key}`}>
                 Why you are accepting this
@@ -579,12 +689,11 @@ function OpenItemsCard({ mission, state, busy, act }) {
 
       {mission.accepted_risks.length > 0 ? (
         <>
-          <Eyebrow>Accepted knowingly</Eyebrow>
+          <div className="text-[11px] font-medium tracking-wide uppercase" style={{ color: "var(--color-ink-3)" }}>
+            Accepted knowingly
+          </div>
           <ul className="findings">
             {mission.accepted_risks.map((r) => (
-              /* Label overridden because the section heading above already says "Accepted
-                 knowingly" — the default "Holds if…" would describe the blocker rather than
-                 the student's decision about it. */
               <Finding
                 key={r.finding_key}
                 verdict="conditional"
@@ -594,16 +703,11 @@ function OpenItemsCard({ mission, state, busy, act }) {
               >
                 {r.reads_differently_now ? (
                   <WarnNote>
-                    This now reads differently than when you accepted it. Worth a second
-                    look — your acceptance still stands, but it was for the earlier version.
+                    This now reads differently than when you accepted it. Worth a second look —
+                    your acceptance still stands, but it was for the earlier version.
                   </WarnNote>
                 ) : null}
-                <Button
-                  size="xs"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={() => act(() => api.missionWithdrawRisk(mission.id, r.finding_key))}
-                >
+                <Button size="xs" variant="outline" disabled={busy} onClick={() => act(() => api.missionWithdrawRisk(mission.id, r.finding_key))}>
                   Undo
                 </Button>
               </Finding>
@@ -611,11 +715,11 @@ function OpenItemsCard({ mission, state, busy, act }) {
           </ul>
         </>
       ) : null}
-    </Panel>
+    </div>
   )
 }
 
-function HandoffCard({ mission, state, busy, onMission }) {
+function HandoffBody({ mission, busy, onMission }) {
   const [question, setQuestion] = useState("")
   const [text, setText] = useState("")
   const [copied, setCopied] = useState(false)
@@ -628,10 +732,6 @@ function HandoffCard({ mission, state, busy, onMission }) {
     try {
       const result = await api.missionHandoff(mission.id, question)
       setText(result.text)
-      // Generating the handoff is what completes the last step, so the response carries
-      // the recomputed mission. Dropping it left the page showing step 5 as outstanding
-      // after it had been satisfied — the same "your click worked and the screen says it
-      // did not" failure the service layer had.
       if (result.mission) onMission(result.mission)
     } catch (err) {
       setError(err.message)
@@ -651,12 +751,18 @@ function HandoffCard({ mission, state, busy, onMission }) {
   }
 
   return (
-    <Panel state={state} eyebrow="Step 5" title="Summary for your advisor">
-      <Muted>
-        Everything you reported, what the rules say about it, what could not be confirmed,
-        and the risks you decided to carry. Copy it into an email — Path Pilot does not send
-        anything for you.
-      </Muted>
+    <div
+      className="mt-3 rounded-xl px-4 py-3"
+      style={{ background: "var(--color-surface-3)", border: "1px solid var(--color-rail)" }}
+    >
+      <div className="mb-2 flex items-center gap-2">
+        <User size={13} style={{ color: "var(--color-ink-3)" }} aria-hidden="true" />
+        <span className="text-[12px] font-medium" style={{ color: "var(--color-ink-2)" }}>
+          Everything you reported, what the rules say, what could not be confirmed, and the
+          risks you decided to carry. Copy it into an email — Path Pilot does not send
+          anything for you.
+        </span>
+      </div>
       <input
         className={INPUT_CLASS}
         value={question}
@@ -665,26 +771,38 @@ function HandoffCard({ mission, state, busy, onMission }) {
         aria-label="Your question for the advisor"
         disabled={busy || working}
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={generate} disabled={busy || working}>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Button size="sm" onClick={generate} disabled={busy || working}>
+          <Sparkles size={12} aria-hidden="true" />
           {working ? "Building…" : text ? "Rebuild" : "Generate the summary"}
         </Button>
         {text ? (
-          <Button variant="outline" onClick={copy}>
+          <Button size="sm" variant="outline" onClick={copy}>
+            <Copy size={12} aria-hidden="true" />
             {copied ? "Copied ✓" : "Copy to clipboard"}
           </Button>
         ) : null}
       </div>
-      {error ? <ErrorNote>{error}</ErrorNote> : null}
+      {error ? (
+        <div className="mt-2">
+          <ErrorNote>{error}</ErrorNote>
+        </div>
+      ) : null}
       {text ? (
         <textarea
-          className="nx-scroll w-full rounded-md border border-border bg-card p-3 font-mono text-meta leading-relaxed outline-none"
+          className="nx-scroll mt-2 w-full rounded-md p-3 text-[11px] leading-relaxed outline-none"
+          style={{
+            background: "var(--color-code-bg)",
+            border: "1px solid var(--color-rail)",
+            color: "var(--color-ink-2)",
+            fontFamily: "var(--font-mono)",
+          }}
           readOnly
           value={text}
           rows={16}
           aria-label="Generated advisor email"
         />
       ) : null}
-    </Panel>
+    </div>
   )
 }

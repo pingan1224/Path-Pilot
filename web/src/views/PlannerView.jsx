@@ -1,12 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react"
-import {
-  AlertTriangle,
-  CheckCircle,
-  ChevronDown,
-  Clock,
-  GraduationCap,
-  XCircle,
-} from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { AlertTriangle, CheckCircle, Clock, GraduationCap, XCircle } from "lucide-react"
 import { api } from "@/api"
 import { Finding } from "@/components/Finding"
 import {
@@ -18,58 +11,17 @@ import {
   isProgramIssue,
 } from "@/components/nocturne"
 import { Button } from "@/components/ui/button"
+import {
+  Accordion,
+  CardHeading,
+  Chip,
+  MakeCard,
+  Sources,
+  tone,
+  useDisclosure,
+} from "@/components/make"
 import { useCountUp } from "@/hooks/useCountUp"
 import { usePrefs } from "@/i18n"
-
-/** The design's card shell: rounded-2xl surface with a strong rail. */
-function MakeCard({ children, delay = 0, className = "" }) {
-  return (
-    <div
-      className={`pp-slide-up rounded-2xl p-4 ${className}`}
-      style={{
-        background: "var(--color-surface)",
-        border: "1px solid var(--color-rail-strong)",
-        animationDelay: `${delay}ms`,
-      }}
-    >
-      {children}
-    </div>
-  )
-}
-
-function CardHeading({ eyebrow, title, desc }) {
-  return (
-    <div className="mb-3">
-      {eyebrow ? (
-        <div
-          className="mb-1 text-[10px] font-medium tracking-wide uppercase"
-          style={{ color: "var(--color-ink-3)" }}
-        >
-          {eyebrow}
-        </div>
-      ) : null}
-      <div className="text-[14px] font-semibold" style={{ color: "var(--color-ink)" }}>
-        {title}
-      </div>
-      {desc ? (
-        <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
-          {desc}
-        </p>
-      ) : null}
-    </div>
-  )
-}
-
-/**
- * The degree planner: self-reported record in, verdicts with citations out.
- *
- * Layout follows the trust model. The record editor sits first because everything below
- * is derived from it; the plan is labelled as computed from published rules; and the
- * verdicts a human must resolve are visually separated from the ones the engine settled.
- * The handoff generator is a pure template over the plan data — deterministic, instant,
- * and faithful, which matters more than prose polish in a document a student sends to
- * their advisor.
- */
 
 const STATE_LABEL = {
   completed: "Completed",
@@ -620,116 +572,51 @@ function PlanCard({ plan, includePlanned, onTogglePlanned }) {
 /* ---------------------------------------------------------------------------------- */
 
 /**
- * The design's requirement-group accordion, one per finding. The verdict maps onto the
- * design's status vocabulary; the body holds what the engine actually said — detail,
- * next step, and the citations rule 2 requires. The design's per-course dot strip is
- * absent because the plan's findings carry no per-course rows to draw.
+ * One requirement finding as the shared accordion: verdict icon, summary, state word in
+ * the header; detail, next step and the rule-2 citations in the body. The design's
+ * per-course dot strip is absent because the plan's findings carry no per-course rows
+ * to draw.
  */
-const GROUP_ICON = {
-  satisfied: { icon: CheckCircle, color: "var(--color-emerald)", label: "Met" },
-  not_satisfied: { icon: XCircle, color: "var(--color-rose)", label: "Not met" },
-  conditional: { icon: AlertTriangle, color: "var(--color-amber)", label: "Ask a human" },
-  unverifiable: { icon: AlertTriangle, color: "var(--color-amber)", label: "Ask a human" },
+const GROUP_TONE = {
+  satisfied: { toneName: "good", icon: CheckCircle, label: "Met" },
+  not_satisfied: { toneName: "danger", icon: XCircle, label: "Not met" },
+  conditional: { toneName: "warn", icon: AlertTriangle, label: "Ask a human" },
+  unverifiable: { toneName: "warn", icon: AlertTriangle, label: "Ask a human" },
 }
 
 function GroupSection({ finding, defaultOpen, delay }) {
-  const [open, setOpen] = useState(defaultOpen)
-  const bodyRef = useRef(null)
-  const cfg = GROUP_ICON[finding.verdict] ?? GROUP_ICON.unverifiable
+  const [open, toggle] = useDisclosure(defaultOpen)
+  const cfg = GROUP_TONE[finding.verdict] ?? GROUP_TONE.unverifiable
   const Icon = cfg.icon
 
-  useEffect(() => {
-    const el = bodyRef.current
-    if (el) el.style.maxHeight = open ? `${el.scrollHeight}px` : "0px"
-  })
-
   return (
-    <div
-      className="pp-slide-up overflow-hidden rounded-xl"
-      style={{
-        border: "1px solid var(--color-rail-strong)",
-        background: "var(--color-surface)",
-        animationDelay: `${delay}ms`,
-      }}
-    >
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-3 px-4 py-3.5 text-left"
-        style={{ transition: "background 140ms ease" }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = "rgba(124,58,237,0.03)"
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = ""
-        }}
-      >
-        <Icon size={14} style={{ color: cfg.color, flexShrink: 0 }} aria-hidden="true" />
-        <div className="min-w-0 flex-1">
-          <span className="text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
+    <Accordion
+      open={open}
+      onToggle={toggle}
+      delay={delay}
+      header={
+        <>
+          <Icon size={14} style={{ color: tone(cfg.toneName).color, flexShrink: 0 }} aria-hidden="true" />
+          <span
+            className="min-w-0 flex-1 text-[13px] font-semibold"
+            style={{ color: "var(--color-ink)" }}
+          >
             {finding.summary}
           </span>
-        </div>
-        <span className="shrink-0 text-[11px] font-medium" style={{ color: cfg.color }}>
-          {cfg.label}
-        </span>
-        <div
-          style={{
-            transform: open ? "rotate(0deg)" : "rotate(-90deg)",
-            transition: "transform 220ms cubic-bezier(0.22,1,0.36,1)",
-            color: "var(--color-ink-3)",
-            flexShrink: 0,
-          }}
-        >
-          <ChevronDown size={13} aria-hidden="true" />
-        </div>
-      </button>
-
-      <div
-        ref={bodyRef}
-        className="overflow-hidden"
-        style={{ maxHeight: 0, transition: "max-height 270ms cubic-bezier(0.22,1,0.36,1)" }}
-      >
-        <div className="px-4 pb-3.5" style={{ borderTop: "1px solid var(--color-rail)" }}>
-          <p className="mt-3 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-2)" }}>
-            {finding.detail}
-          </p>
-          {finding.next_step ? (
-            <p className="mt-1.5 text-[12px]" style={{ color: "var(--color-ink)" }}>
-              → {finding.next_step}
-            </p>
-          ) : null}
-          {finding.citations?.length ? (
-            <details className="mt-2 text-[11px]" style={{ color: "var(--color-ink-3)" }}>
-              <summary className="cursor-pointer">Source</summary>
-              <ul className="mt-1 space-y-1">
-                {finding.citations.map((c, i) => (
-                  <li key={i}>
-                    {c.url ? (
-                      <a href={c.url} target="_blank" rel="noreferrer" className="underline">
-                        {c.label}
-                      </a>
-                    ) : (
-                      c.label
-                    )}
-                    {c.verified_on ? ` · checked ${c.verified_on}` : ""}
-                    {c.quote ? (
-                      <span
-                        className="mt-0.5 block rounded px-2 py-1"
-                        style={{ background: "var(--color-code-bg)", fontFamily: "var(--font-mono)" }}
-                      >
-                        {c.quote}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          ) : null}
-        </div>
-      </div>
-    </div>
+          <Chip toneName={cfg.toneName}>{cfg.label}</Chip>
+        </>
+      }
+    >
+      <p className="mt-3 text-[12px] leading-relaxed" style={{ color: "var(--color-ink-2)" }}>
+        {finding.detail}
+      </p>
+      {finding.next_step ? (
+        <p className="mt-1.5 text-[12px]" style={{ color: "var(--color-ink)" }}>
+          → {finding.next_step}
+        </p>
+      ) : null}
+      <Sources citations={finding.citations} />
+    </Accordion>
   )
 }
 

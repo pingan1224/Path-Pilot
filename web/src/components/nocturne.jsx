@@ -1,49 +1,46 @@
+import { Banner, Chip } from "@/components/make"
+
 /**
- * The small shared vocabulary of the migrated views: an eyebrow, a toned chip, an error
- * note, muted copy, and the one input style. Extracted the moment a second view needed
- * them — the finding card taught this codebase what a copied object literal does to a
- * verdict, and these are the same kind of thing one size smaller.
+ * The small shared vocabulary of the views: an eyebrow, a toned chip, the notes, and the
+ * one input style. Each is now a thin naming layer over the card language in make.jsx —
+ * the shapes live there so every surface changes together, and these keep the names the
+ * views already read by.
  *
  * `Tone` never decides meaning: callers pass the tone *and* the words, and the words must
- * carry the statement on their own — same rule as everywhere else, no colour-only signals.
+ * carry the statement on their own — no colour-only signals, anywhere.
  */
 
-/** Names the thing that follows. Condensed and tracked — the label width of the scale. */
+/** Names the thing that follows. */
 export function Eyebrow({ children }) {
-  return <p className="nx-label">{children}</p>
-}
-
-
-const TONE_TEXT = {
-  good: "text-success",
-  warn: "text-warning",
-  danger: "text-destructive",
-  neutral: "text-subtle",
-}
-
-const TONE_BORDER = {
-  good: "border-success",
-  warn: "border-warning",
-  danger: "border-destructive",
-  neutral: "border-border",
+  return (
+    <p
+      className="text-[10px] font-medium tracking-wide uppercase"
+      style={{ color: "var(--color-ink-3)" }}
+    >
+      {children}
+    </p>
+  )
 }
 
 export function Tone({ tone = "neutral", children }) {
-  return (
-    <span
-      className={`rounded border px-2 py-0.5 text-micro ${TONE_TEXT[tone]} ${TONE_BORDER[tone]}`}
-    >
-      {children}
-    </span>
-  )
+  return <Chip toneName={tone}>{children}</Chip>
 }
 
 export function ErrorNote({ children }) {
   return (
-    <p
-      role="alert"
-      className="rounded-md border border-destructive/45 px-3.5 py-2.5 text-meta leading-relaxed text-destructive"
-    >
+    <Banner toneName="danger" role="alert">
+      {children}
+    </Banner>
+  )
+}
+
+export function WarnNote({ children }) {
+  return <Banner toneName="warn">{children}</Banner>
+}
+
+export function Muted({ children }) {
+  return (
+    <p className="text-[12px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
       {children}
     </p>
   )
@@ -73,21 +70,32 @@ export function ProgramNotice({ code, message, onChooseProgram }) {
 
   const stated = code === "program_not_stated"
   return (
-    <div className="flex flex-col items-start gap-3 rounded-md border border-warning/45 px-4 py-3.5">
+    <div
+      className="pp-slide-up flex flex-col items-start gap-3 rounded-2xl px-4 py-3.5"
+      style={{ background: "var(--color-amber-muted)", border: "1px solid rgba(180,83,9,0.2)" }}
+    >
       <div>
-        <p className="text-body">
+        <p className="text-[13px] font-semibold" style={{ color: "var(--color-amber)" }}>
           {stated
             ? "Path Pilot does not know which program you are in."
             : "This is not available for your program."}
         </p>
-        <p className="mt-1 max-w-[62ch] text-meta leading-relaxed text-muted-foreground">
+        <p
+          className="mt-1 max-w-[62ch] text-[12px] leading-relaxed"
+          style={{ color: "var(--color-ink-2)" }}
+        >
           {message}
         </p>
       </div>
       {onChooseProgram ? (
         <button
           type="button"
-          className="rounded-md border border-border px-3 py-1.5 text-meta hover:bg-secondary"
+          className="rounded-xl px-3 py-2 text-[12px] font-medium"
+          style={{
+            background: "var(--color-surface-2)",
+            color: "var(--color-ink-2)",
+            border: "1px solid var(--color-rail-strong)",
+          }}
           onClick={onChooseProgram}
         >
           {stated ? "Choose your program" : "Change your program"}
@@ -97,19 +105,8 @@ export function ProgramNotice({ code, message, onChooseProgram }) {
   )
 }
 
-export function WarnNote({ children }) {
-  return (
-    <p className="rounded-md border border-warning/45 px-3 py-2 text-meta leading-relaxed text-muted-foreground">
-      {children}
-    </p>
-  )
-}
-
-export function Muted({ children }) {
-  return <p className="text-body leading-relaxed text-muted-foreground">{children}</p>
-}
-
 export const INPUT_CLASS =
-  "min-w-0 flex-1 rounded-md border border-border bg-card px-3 py-2 text-lead " +
-  "outline-none transition-colors placeholder:text-subtle hover:border-subtle " +
-  "focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
+  "min-w-0 flex-1 rounded-xl border px-3 py-2 text-[13px] outline-none transition-colors " +
+  "border-[var(--color-rail-strong)] bg-[var(--color-surface-2)] text-[var(--color-ink)] " +
+  "placeholder:text-[var(--color-ink-3)] focus-visible:border-[var(--color-violet)] " +
+  "disabled:opacity-50"

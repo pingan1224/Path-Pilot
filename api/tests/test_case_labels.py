@@ -16,6 +16,8 @@ banned by default across the whole set, so a rename that broke it would quietly 
 write tools everywhere at once.
 """
 
+import pathlib
+
 from app.services.agent_tools import TOOL_IMPLS
 from eval.golden import BEHAVIOR_CASES, RETRIEVAL_CASES, WRITE_TOOLS, forbidden_tools_for
 
@@ -64,4 +66,45 @@ def test_the_write_tools_are_actually_banned_somewhere():
     assert banned > len(BEHAVIOR_CASES) // 2, (
         f"write tools banned on only {banned}/{len(BEHAVIOR_CASES)} cases; the default is "
         "supposed to be banned-unless-opted-in"
+    )
+
+
+# ---- citation prefixes -------------------------------------------------------------
+#
+# The same class of bug as a tool name, found the expensive way. Two `must_cite_prefix`
+# labels named prefixes no tool emits: `plan:` (real: `selfreport:plan:`) and
+# `record:progress`, orphaned when its tool was deleted. The first failed a case outright;
+# the second had been passing by falling through to its second prefix, which is worse — a
+# label that looks satisfied. Neither could fail anywhere but in a paid eval run.
+
+from app.services.agent_tools import SOURCE_ID_PREFIXES  # noqa: E402
+
+
+def _is_usable(label: str) -> bool:
+    """The scorer keeps a citation whose source_id `startswith` the label, so a label is
+    usable when some real prefix begins with it. `policy:chunk` is legitimate for
+    `policy:chunk:41`; `plan:` matches nothing, because the real id is `selfreport:plan:7`.
+    """
+    return any(p.startswith(label) for p in SOURCE_ID_PREFIXES)
+
+
+def test_every_citation_prefix_is_one_a_tool_emits():
+    broken = sorted(
+        {(c.id, p) for c in BEHAVIOR_CASES for p in c.must_cite_prefix if not _is_usable(p)}
+    )
+    assert not broken, (
+        f"must_cite_prefix names a prefix no tool emits: {broken}. "
+        f"Known prefixes: {sorted(SOURCE_ID_PREFIXES)}"
+    )
+
+
+def test_every_declared_prefix_still_appears_in_the_tool_layer():
+    """The other direction. A prefix left in the declaration after its tool was deleted
+    would keep validating labels that can never be satisfied."""
+    import app.services.agent_tools as tools
+
+    source = pathlib.Path(tools.__file__).read_text(encoding="utf-8")
+    orphaned = sorted(p for p in SOURCE_ID_PREFIXES if p not in source)
+    assert not orphaned, (
+        f"SOURCE_ID_PREFIXES declares prefixes agent_tools.py no longer builds: {orphaned}"
     )

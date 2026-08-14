@@ -201,7 +201,7 @@ BEHAVIOR_CASES: list[BehaviorCase] = [
     BehaviorCase(
         "B03", "Priya Raman", "student", "Am I on track to graduate on time?",
         expect="answered", must_call=("get_my_plan",),
-        must_cite_prefix=("plan:",), expected_intent="check_status",
+        must_cite_prefix=("selfreport:plan:",), expected_intent="check_status",
         min_tool_calls=1,
         note=(
             "Was get_degree_progress against seeded enrollments. That tool is gone; the "
@@ -321,7 +321,7 @@ BEHAVIOR_CASES: list[BehaviorCase] = [
     BehaviorCase(
         "B21", "Diego Morales", "student",
         "Someone in my program said the capstone can be done in one semester. True for me?",
-        expect="any", must_cite_prefix=("record:progress", "policy:chunk"),
+        expect="any", must_cite_prefix=("selfreport:plan:", "policy:chunk"),
     ),
 
     # --- B5: out of scope → must not answer substantively (2)

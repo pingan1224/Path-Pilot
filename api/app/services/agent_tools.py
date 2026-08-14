@@ -39,6 +39,28 @@ from app.services.retrieval import (
 
 MAX_SECTIONS = 6
 
+# Every prefix a tool in this module puts in front of a source id.
+#
+# Declared rather than inferred so `tests/test_case_labels.py` can check the golden set's
+# `must_cite_prefix` labels against something. On 2026-08-13 two of those labels named
+# prefixes nothing emits — `plan:` (the real one is `selfreport:plan:`) and
+# `record:progress`, left behind when its tool was deleted — and the only thing that could
+# catch either was a fourteen-minute paid eval run. One of them had been passing by falling
+# through to its second prefix, which is the worse kind: a label that looks satisfied.
+#
+# Hand-maintained, with the same limitation as WRITE_TOOLS and the same answer: the test
+# checks both directions, so a prefix declared here that no longer appears in this file
+# fails too. What it cannot catch is a *new* prefix nobody added — that check is this
+# comment.
+SOURCE_ID_PREFIXES: frozenset[str] = frozenset({
+    "policy:chunk:",
+    "record:course:",
+    "selfreport:plan:",
+    "checklist:",
+    "decode:",
+    "mission:",
+})
+
 
 @dataclass
 class ToolContext:

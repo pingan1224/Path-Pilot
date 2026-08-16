@@ -19,6 +19,7 @@ from app.services.auth import Identity, require_roles
 from app.missions import service
 from app.services.profile import (
     UNSET,
+    elective_options_for,
     get_preferences,
     list_profile,
     list_record,
@@ -83,6 +84,10 @@ class FindingOut(BaseModel):
     next_step: str | None
     check_in_albert: bool
     citations: list[CitationOut]
+    # Courses that could fill this gap, on a `credits` requirement that is short. Empty
+    # everywhere else. Not a recommendation and not an eligibility ruling — see
+    # planning/electives.py — which is why the caveat travels in `detail` beside them.
+    options: list[dict] = []
 
 
 class PlanOut(BaseModel):
@@ -120,7 +125,8 @@ def _to_out(entry) -> CourseOut:
     )
 
 
-def _plan_response(result, meta) -> PlanOut:
+def _plan_response(result, meta, options_by_key: dict | None = None) -> PlanOut:
+    options_by_key = options_by_key or {}
     return PlanOut(
         program_name=meta["program_name"],
         program_source_url=meta["program_source_url"],
@@ -136,6 +142,19 @@ def _plan_response(result, meta) -> PlanOut:
         counts=result.summary_counts(),
         findings=[
             FindingOut(
+                options=[
+                    {
+                        "code": o.code,
+                        "title": o.title,
+                        "credits": o.credits,
+                        "typically_offered": o.typically_offered,
+                        "source": o.source,
+                        "counts_automatically": o.counts_automatically,
+                        "prerequisites_met": o.prerequisites_met,
+                        "prerequisite_text": o.prerequisite_text,
+                    }
+                    for o in options_by_key.get(f.key, ())
+                ],
                 verdict=f.verdict,
                 key=f.key,
                 subject=f.subject,
@@ -405,7 +424,9 @@ def get_plan(
     result, meta = plan_for_user(
         session, identity.user.id, include_planned=include_planned
     )
-    return _plan_response(result, meta)
+    return _plan_response(
+        result, meta, elective_options_for(session, identity.user.id, result)
+    )
 
 
 class WhatIfIn(BaseModel):

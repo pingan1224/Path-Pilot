@@ -203,6 +203,8 @@ export default function PlannerView({ onOpenProgram, onOpenMission }) {
           plan={plan}
           includePlanned={includePlanned}
           onTogglePlanned={() => setIncludePlanned((v) => !v)}
+          busy={busy}
+          onAdd={(code) => saveCourse({ course_code: code, state: "planned" })}
         />
 
         <CourseEditor
@@ -582,7 +584,7 @@ function CourseRow({ course: c, busy, onSave, onRemove, onOpenMission }) {
 
 /* ---------------------------------------------------------------------------------- */
 
-function PlanCard({ plan, includePlanned, onTogglePlanned }) {
+function PlanCard({ plan, includePlanned, onTogglePlanned, onAdd, busy }) {
   const settled = plan.findings.filter(
     (f) => f.verdict === "satisfied" || f.verdict === "not_satisfied",
   )
@@ -615,7 +617,7 @@ function PlanCard({ plan, includePlanned, onTogglePlanned }) {
 
       <div className="space-y-3">
         {settled.map((f, i) => (
-          <GroupSection key={f.key} finding={f} defaultOpen={f.verdict !== "satisfied"} delay={400 + i * 70} />
+          <GroupSection key={f.key} finding={f} defaultOpen={f.verdict !== "satisfied"} delay={400 + i * 70} onAdd={onAdd} busy={busy} />
         ))}
         {forHumans.length > 0 ? (
           <div
@@ -626,7 +628,7 @@ function PlanCard({ plan, includePlanned, onTogglePlanned }) {
           </div>
         ) : null}
         {forHumans.map((f, i) => (
-          <GroupSection key={f.key} finding={f} defaultOpen delay={500 + i * 70} />
+          <GroupSection key={f.key} finding={f} defaultOpen delay={500 + i * 70} onAdd={onAdd} busy={busy} />
         ))}
       </div>
     </div>
@@ -648,7 +650,7 @@ const GROUP_TONE = {
   unverifiable: { toneName: "warn", icon: AlertTriangle, label: "Ask a human" },
 }
 
-function GroupSection({ finding, defaultOpen, delay }) {
+function GroupSection({ finding, defaultOpen, delay, onAdd, busy }) {
   const [open, toggle] = useDisclosure(defaultOpen)
   const cfg = GROUP_TONE[finding.verdict] ?? GROUP_TONE.unverifiable
   const Icon = cfg.icon
@@ -679,8 +681,100 @@ function GroupSection({ finding, defaultOpen, delay }) {
           → {finding.next_step}
         </p>
       ) : null}
+      {finding.options?.length ? (
+        <ElectiveOptions options={finding.options} onAdd={onAdd} busy={busy} />
+      ) : null}
       <Sources citations={finding.citations} />
     </Accordion>
+  )
+}
+
+/**
+ * Courses that could fill a credits gap.
+ *
+ * The disclaimer sits with the list rather than in a page footer, because it is the
+ * sentence that stops the list being read as "these count". Whether any of them counts is
+ * the bulletin's judgement and the advisor's; every row here rests on something already
+ * encoded — named by the requirement, or belonging to a concentration the student is not
+ * taking — and says only what this tool can check.
+ *
+ * Sorted by code, which is not laziness: soonest-offered or fewest-prerequisites would
+ * both read as a ranking, and there is no basis for one. Which elective to take is a
+ * question about what the student wants to study.
+ */
+function ElectiveOptions({ options, onAdd, busy }) {
+  const [open, toggle] = useDisclosure(false)
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="text-[11px] font-medium"
+        style={{ color: "var(--color-violet-light)" }}
+      >
+        {open ? "Hide" : `Courses you could consider (${options.length})`}
+      </button>
+      {open ? (
+        <div className="mt-2">
+          <Muted>
+            Courses this programme names for this requirement, plus the concentrations you
+            are not taking. The bulletin allows more than this — other graduate programmes
+            in the division, for instance — and whether any of them counts is a question
+            for your advisor. Path Pilot only checked that you have not taken it and
+            whether its prerequisites are met.
+          </Muted>
+          <ul className="mt-2 flex list-none flex-col gap-1.5">
+            {options.map((o) => (
+              <li
+                key={o.code}
+                className="flex flex-wrap items-center gap-2 rounded-xl px-3 py-2"
+                style={{
+                  background: "var(--color-surface-2)",
+                  border: "1px solid var(--color-rail)",
+                }}
+              >
+                <Code>{o.code}</Code>
+                <span
+                  className="min-w-0 flex-1 text-[12px] leading-snug"
+                  style={{ color: "var(--color-ink)" }}
+                >
+                  {o.title}
+                  <span style={{ color: "var(--color-ink-3)" }}>
+                    {" · "}
+                    {o.credits}cr
+                    {o.source === "listed" ? " · listed elective" : ` · from ${o.source}`}
+                    {o.typically_offered ? ` · ${o.typically_offered}` : " · term not stated"}
+                  </span>
+                </span>
+                {/* A course whose prerequisites are unmet stays on the list, marked. It
+                    may be exactly what they take next year, and dropping it silently is
+                    the failure this product treats as worse than an unhelpful answer. */}
+                {/* The audit counts a credits requirement from the courses it lists, and
+                    nothing else. The bulletin's other allowances are prose the rule engine
+                    cannot execute, so a course from another concentration is permitted and
+                    will not move the total until an advisor confirms it. Said here, or a
+                    student adds what this list suggested and watches the gap not move. */}
+                {o.counts_automatically === false ? (
+                  <Tone tone="warn">advisor confirms — won't count here</Tone>
+                ) : null}
+                {o.prerequisites_met === false ? (
+                  <Tone tone="warn">needs {o.prerequisite_text ?? "prerequisites"}</Tone>
+                ) : null}
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => onAdd(o.code)}
+                >
+                  Add as planned
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   )
 }
 

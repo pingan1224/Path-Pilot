@@ -1311,6 +1311,11 @@ def write_report(
     # Complete: writing one part and nulling the rest looked harmless until
     # `--only-decoder` erased the retrieval and behavior numbers from the only file that
     # held them; merging instead would be worse, presenting an old measurement as current.
+    # `--only` is the same hole one level down: all three parts are present, so the
+    # not-None check waves it through, but the behavior part measures the three cases
+    # somebody happened to name. That overwrote a 35-case baseline with a 3-case one
+    # during a debugging session, and the next full run would have compared against it
+    # and reported 32 cases as newly missing.
     #
     # Passing: now that this file is the regression baseline, a failing run that became it
     # would let the failure define the new normal — the next run compares against a
@@ -1324,6 +1329,8 @@ def write_report(
     # read — it just does not get to say what "before" looked like.
     if gate_problems:
         print(f"  (gate failed — latest.json left at the last passing run)")
+    elif subset:
+        print("  (subset run — latest.json left as the last complete run)")
     elif all(part is not None for part in (retrieval, behavior, decoder)):
         (RESULTS_DIR / "latest.json").write_text(
             json.dumps(

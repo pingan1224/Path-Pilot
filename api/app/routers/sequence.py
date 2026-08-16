@@ -94,6 +94,11 @@ class SequenceOut(BaseModel):
     preferences_updated_at: str | None
     chosen_track: str | None
     rejected_tracks: list[dict]
+    # Concentrations that fit but finish later. Summaries, not boards: the first question
+    # is "does it still work for me", and `?track=` returns the full schedule for the one
+    # they want to look at properly rather than shipping every board on every request.
+    alternatives: list[dict]
+    track_requested: str | None
     terms: list[TermOut]
     finish_term: str | None
     terms_needed: int
@@ -132,6 +137,15 @@ def get_sequence(
         max_length=24,
         description="Hold this course out of the starting term and re-solve around it",
     ),
+    track: str | None = Query(
+        default=None,
+        max_length=80,
+        description=(
+            "Solve for this concentration instead of the soonest-finishing one. Looking "
+            "is not choosing: nothing is written, and the student still declares their "
+            "concentration to the university, not here."
+        ),
+    ),
     identity: Identity = Depends(student_only),
     session: Session = Depends(get_session),
 ) -> SequenceOut:
@@ -152,6 +166,7 @@ def get_sequence(
         deadline=finish_by,
         max_credits_per_term=max_credits_per_term,
         defer=defer,
+        track=track,
     )
 
     terms_out: list[TermOut] = []
@@ -189,6 +204,17 @@ def get_sequence(
         start_was_assumed=meta["start_was_assumed"],
         preferences_updated_at=meta["preferences_updated_at"],
         chosen_track=plan.chosen_track,
+        alternatives=[
+            {
+                "track": a.track,
+                "finish_term": str(a.finish_term),
+                "guesses": a.guesses,
+                "terms_later": a.terms_later_than_chosen,
+                "meets_deadline": a.meets_deadline,
+            }
+            for a in plan.alternatives
+        ],
+        track_requested=meta["track_requested"],
         rejected_tracks=[
             {"track": name, "why": why} for name, why in plan.rejected_tracks
         ],

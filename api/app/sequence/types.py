@@ -94,6 +94,32 @@ class Infeasibility:
 
 
 @dataclass(frozen=True)
+class TrackOption:
+    """A concentration that fits, summarised against the one being recommended.
+
+    A `one_track` requirement is a choice, not a constraint: the solver sequences each
+    concentration separately and picks by finish date, but "soonest" is the product's
+    tiebreak, not necessarily the student's reason. Business Analytics a term later may
+    still be the one they want. Reporting only the winner makes that decision for them.
+
+    A summary rather than the whole schedule, because the question a student asks first is
+    "does it still fit", not "show me every term". `terms_later_than_chosen` answers it in
+    the unit they think in, and `GET /sequence?track=` returns the full board for the one
+    they want to look at properly.
+    """
+
+    track: str
+    finish_term: Term
+    # Placements resting on a term the bulletin does not state. Two plans finishing
+    # together are not equally solid, and this is the difference.
+    guesses: int
+    terms_later_than_chosen: int
+    # None when the student has stated no target. False means this track finishes after a
+    # deadline the chosen one meets — the sharpest thing the comparison can say.
+    meets_deadline: bool | None = None
+
+
+@dataclass(frozen=True)
 class SequencePlan:
     feasible: bool
     # In term order. Empty when infeasible.
@@ -102,6 +128,10 @@ class SequencePlan:
     chosen_track: str | None = None
     # Tracks that were considered and could not be sequenced, with the reason.
     rejected_tracks: tuple[tuple[str, str], ...] = ()
+    # Tracks that *can* be sequenced but lost the tiebreak. Kept because losing on finish
+    # date is not the same as not fitting, and the student is the one who gets to weigh a
+    # term against a subject they would rather study.
+    alternatives: tuple[TrackOption, ...] = ()
     assumptions: tuple[Assumption, ...] = ()
     infeasibility: Infeasibility | None = None
     # Terms actually used, so the caller can say "three more terms" without recomputing.

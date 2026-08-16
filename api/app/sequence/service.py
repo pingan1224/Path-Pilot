@@ -53,6 +53,7 @@ def sequence_for_user(
     horizon: int = DEFAULT_HORIZON,
     program_code: str | None = None,
     defer: str | None = None,
+    track: str | None = None,
 ) -> tuple[SequencePlan, dict]:
     if program_code is None:
         program_code = program_for_user(session, user_id).code
@@ -97,8 +98,9 @@ def sequence_for_user(
         deadline=deadline,
         max_credits_per_term=cap,
         horizon=horizon,
-        credit_cap_was_assumed=max_credits_per_term is None,
+        credit_cap_was_assumed=cap_source == "assumed",
         defer=defer,
+        track=track,
     )
 
     # What each of next term's courses costs if it waits. Computed alongside the plan
@@ -141,6 +143,9 @@ def sequence_for_user(
         # asked, never a plan saved — and the UI has to be able to say which it is
         # looking at.
         "deferred": defer,
+        # Echoed so the UI can tell "the solver recommended this" from "I asked to see
+        # this one" — the same distinction the deferral echo exists for.
+        "track_requested": track,
     }
     return plan, meta
 

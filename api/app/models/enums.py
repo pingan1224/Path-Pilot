@@ -76,39 +76,6 @@ class FailureReason(str, enum.Enum):
     other = "other"
 
 
-class CaseCategory(str, enum.Enum):
-    financial_hold = "financial_hold"
-    prerequisite_conflict = "prerequisite_conflict"
-    degree_planning = "degree_planning"
-    overload_risk = "overload_risk"
-    registration_issue = "registration_issue"
-    aid_dispute = "aid_dispute"
-    general_support = "general_support"
-
-
-class CaseStatus(str, enum.Enum):
-    new = "new"
-    in_review = "in_review"
-    waiting_on_student = "waiting_on_student"
-    resolved = "resolved"
-
-
-class CasePriority(str, enum.Enum):
-    routine = "routine"
-    elevated = "elevated"
-    urgent = "urgent"
-
-
-class ActorKind(str, enum.Enum):
-    """Who performed an action. `ai` is distinct from `staff` on purpose — the audit log
-    has to make it unambiguous whether a human or the model moved a case."""
-
-    student = "student"
-    staff = "staff"
-    ai = "ai"
-    system = "system"
-
-
 class Intent(str, enum.Enum):
     """The five intent categories the assistant routes on.
 
@@ -127,12 +94,22 @@ class Intent(str, enum.Enum):
 class InteractionDecision(str, enum.Enum):
     """What the assistant did with a question.
 
-    `refused` means it declined without escalating (out of scope, e.g. legal advice).
-    `escalated` means it opened a path to a human. The distinction matters for the P4
-    escalation metrics — refusals must not be counted as successful escalations.
+    `deferred` means it named who owns the question and what to bring them. It was called
+    `escalated` while the assistant opened a Case row with a quotable number; Path Pilot
+    is a third-party planning tool that submits nothing to anyone, so the word promised a
+    queue that never existed. The behaviour it names is unchanged and still gated — what
+    went is the ticket, not the refusal.
+
+    `refused` is the narrower thing: declined with nowhere to send them. Kept distinct
+    because a deferral that cannot name an office is worse than one that can, and the
+    metrics have to be able to see the difference.
+
+    Rows written before 2026-08-16 carry the literal `escalated`; readers of historical
+    audit data have to accept both, the same way the trajectory scorer accepts the old
+    tool-call key.
     """
 
     answered = "answered"
     answered_with_caveat = "answered_with_caveat"
-    escalated = "escalated"
+    deferred = "deferred"
     refused = "refused"

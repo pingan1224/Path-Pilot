@@ -27,13 +27,7 @@ from app.config import settings
 from app.db.session import get_sessionmaker
 from app.services.auth import hash_password
 from app.models import (
-    ActorKind,
     AiInteraction,
-    Case,
-    CaseCategory,
-    CaseEvent,
-    CasePriority,
-    CaseStatus,
     Course,
     CoursePrerequisite,
     Document,
@@ -812,134 +806,6 @@ RAW_ERRORS = {
 }
 
 
-def seed_cases(
-    session: Session, heroes: dict[str, Student], advisors: dict[str, User]
-) -> None:
-    alex_case = Case(
-        case_number="PP-1001",
-        student_id=heroes["alex"].id,
-        owner_user_id=advisors["maya.patel"].id,
-        category=CaseCategory.financial_hold,
-        status=CaseStatus.in_review,
-        priority=CasePriority.urgent,
-        title="Aid verification hold blocking Fall 2026 registration",
-        student_message=(
-            "My registration window opens Aug 10 and the aid hold is still there. "
-            "I uploaded something last week. Can someone confirm what is still missing?"
-        ),
-        ai_summary=(
-            "Student has an active aid_document_missing hold, last verified against Financial "
-            "Aid 19 hours ago. The hold deadline falls two days before the student's "
-            "registration window opens, so clearing it late still costs them their window. "
-            "The student reports uploading a document; receipt was not retrievable from an "
-            "authorized source, so the assistant asserted nothing either way."
-        ),
-        opened_by=ActorKind.ai,
-        opened_at=NOW - timedelta(days=1, hours=2),
-    )
-    session.add(alex_case)
-    session.flush()
-
-    session.add_all([
-        CaseEvent(
-            case_id=alex_case.id,
-            actor_kind=ActorKind.ai,
-            action="Opened case after failing to verify document receipt",
-            note="Escalated rather than answering: aid document status was not retrievable "
-                 "from an authorized source, and the question is high-stakes.",
-            to_status=CaseStatus.new,
-            occurred_at=NOW - timedelta(days=1, hours=2),
-        ),
-        CaseEvent(
-            case_id=alex_case.id,
-            actor_kind=ActorKind.staff,
-            actor_user_id=advisors["maya.patel"].id,
-            action="Picked up for review",
-            note="Chasing Financial Aid for an upload logged under this student number.",
-            from_status=CaseStatus.new,
-            to_status=CaseStatus.in_review,
-            occurred_at=NOW - timedelta(hours=20),
-        ),
-    ])
-
-    priya_case = Case(
-        case_number="PP-1002",
-        student_id=heroes["priya"].id,
-        owner_user_id=advisors["maya.patel"].id,
-        category=CaseCategory.prerequisite_conflict,
-        status=CaseStatus.resolved,
-        priority=CasePriority.routine,
-        title="Prerequisite ordering for Machine Learning Applications",
-        student_message="I tried to add ML Applications and it rejected me. What do I take instead?",
-        ai_summary=(
-            "MASY-GC 2200 requires MASY-GC 1800 with a minimum grade of B-. Student has not "
-            "completed 1800. Answered directly with citation; no escalation needed for the "
-            "explanation itself, but the substitution question was routed to advising."
-        ),
-        opened_by=ActorKind.student,
-        opened_at=NOW - timedelta(days=4),
-        resolved_at=NOW - timedelta(days=3, hours=6),
-    )
-    session.add(priya_case)
-    session.flush()
-
-    session.add_all([
-        CaseEvent(
-            case_id=priya_case.id,
-            actor_kind=ActorKind.student,
-            action="Submitted case",
-            note="I tried to add ML Applications and it rejected me. What do I take instead?",
-            to_status=CaseStatus.new,
-            occurred_at=NOW - timedelta(days=4),
-        ),
-        CaseEvent(
-            case_id=priya_case.id,
-            actor_kind=ActorKind.staff,
-            actor_user_id=advisors["maya.patel"].id,
-            action="Resolved case",
-            note="Take MASY-GC 1800 this fall and 2200 in spring. Graduation term unaffected.",
-            from_status=CaseStatus.new,
-            to_status=CaseStatus.resolved,
-            occurred_at=NOW - timedelta(days=3, hours=6),
-        ),
-    ])
-
-    diego_case = Case(
-        case_number="PP-1003",
-        student_id=heroes["diego"].id,
-        owner_user_id=advisors["tom.becker"].id,
-        category=CaseCategory.degree_planning,
-        status=CaseStatus.new,
-        priority=CasePriority.elevated,
-        title="Expected graduation term not achievable with remaining requirements",
-        student_message="I have 27 credits out of 36. Why does it say I am at risk?",
-        ai_summary=(
-            "Student has 27 earned credits but only 9 apply to core and 12 to electives, with "
-            "6 elective credits beyond the 12-credit cap. Three core courses and both capstone "
-            "courses remain — 15 applicable credits — against a recorded graduation term of "
-            "Fall 2026. Capstone I and II must be taken in consecutive terms, so Fall 2026 is "
-            "not reachable. Routed to advising rather than stating a revised graduation date."
-        ),
-        opened_by=ActorKind.ai,
-        opened_at=NOW - timedelta(days=2, hours=1),
-    )
-    session.add(diego_case)
-    session.flush()
-
-    session.add(
-        CaseEvent(
-            case_id=diego_case.id,
-            actor_kind=ActorKind.ai,
-            action="Opened case for advisor review",
-            note="Graduation timing is a high-stakes category; the assistant explained the "
-                 "requirement gap but did not assert a revised graduation term.",
-            to_status=CaseStatus.new,
-            occurred_at=NOW - timedelta(days=2, hours=1),
-        )
-    )
-    session.flush()
-
-
 def seed_interactions(session: Session, heroes: dict[str, Student]) -> None:
     """A couple of audit rows so the log is not empty before P3 exists."""
     alex_user_id = heroes["alex"].user_id
@@ -984,12 +850,13 @@ def seed_interactions(session: Session, heroes: dict[str, Student]) -> None:
             tool_calls=[{"name": "get_aid_document_status", "args": {"student_id": "self"}}],
             response_text=(
                 "I can confirm the hold is still active as of 19 hours ago, but I cannot verify "
-                "whether your upload was received — document receipt is not available to me from "
-                "an authorized source. I have opened case PP-1001 with Financial Aid."
+                "whether your upload was received — document receipt is not something Path Pilot "
+                "can see. Ask Financial Aid whether the worksheet arrived, and bring the date you "
+                "uploaded it."
             ),
             citations=[],
-            decision=InteractionDecision.escalated,
-            escalation_reason="document_receipt_unverifiable",
+            decision=InteractionDecision.deferred,
+            escalation_reason="financial_aid: did my verification worksheet arrive",
             degraded_modes=[],
             model="pending-p3",
             latency_ms=2210,
@@ -1122,7 +989,7 @@ def seed_documents(session: Session) -> None:
 # Tables this script owns outright: every row in them is a fixture, so a bare DELETE is
 # correct and the id sequence can restart from 1.
 TABLES_IN_DELETE_ORDER = [
-    "case_events", "ai_interactions", "cases", "enrollments",
+    "ai_interactions", "enrollments",
     "sections", "students", "users", "terms",
     "source_freshness_policy",
 ]
@@ -1162,8 +1029,6 @@ def reset(session: Session) -> None:
     """
     from sqlalchemy import text
 
-    # cases and ai_interactions reference each other, so break the link before deleting.
-    session.execute(text("UPDATE cases SET origin_interaction_id = NULL"))
     for table in TABLES_IN_DELETE_ORDER:
         session.execute(text(f"DELETE FROM {table}"))
         session.execute(text(f"ALTER SEQUENCE IF EXISTS {table}_id_seq RESTART WITH 1"))
@@ -1221,7 +1086,6 @@ def main() -> None:
         seed_hero_selfreports(session, heroes)
         background = seed_background_students(session, program, advisors, terms)
         seed_background_enrollments(session, background, sections)
-        seed_cases(session, heroes, advisors)
         seed_interactions(session, heroes)
         seed_documents(session)
         session.commit()

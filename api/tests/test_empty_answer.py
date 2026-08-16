@@ -62,7 +62,7 @@ def _answer_call(**overrides):
         "intent": "explain_blocker",
         "citations": [],
         "confidence": "high",
-        "escalate": False,
+        "defer": False,
     }
     args.update(overrides)
     return FakeMessage([FakeToolCall("submit_answer", args)])
@@ -119,12 +119,12 @@ def test_a_missing_answer_field_gets_one_retry(scripted, session):
     scripted([
         FakeMessage([FakeToolCall("submit_answer", {"intent": "explain_blocker",
                                                     "citations": [], "confidence": "high",
-                                                    "escalate": False})]),
+                                                    "defer": False})]),
         _answer_call(answer="Recovered: here is the real answer."),
     ])
     result, _ = _run(session)
     assert result.answer == "Recovered: here is the real answer."
-    assert result.decision is not InteractionDecision.escalated
+    assert result.decision is not InteractionDecision.deferred
 
 
 def test_a_blank_string_answer_counts_as_empty(scripted, session):
@@ -136,12 +136,12 @@ def test_a_blank_string_answer_counts_as_empty(scripted, session):
     assert result.answer == "Recovered."
 
 
-def test_twice_empty_becomes_an_escalation_not_a_blank_reply(scripted, session):
+def test_twice_empty_becomes_a_deferral_not_a_blank_reply(scripted, session):
     """The outcome that matters: the student never receives nothing."""
     scripted([_answer_call(answer=""), _answer_call(answer="")])
     result, _ = _run(session)
     assert result.answer.strip()
-    assert result.decision is InteractionDecision.escalated
+    assert result.decision is InteractionDecision.deferred
     assert "empty_answer" in result.degraded_modes
 
 
@@ -151,7 +151,7 @@ def test_the_audit_row_never_records_an_empty_answer_as_answered(scripted, sessi
     result, captured = _run(session)
     row = captured["row"]
     assert (row.response_text or "").strip()
-    assert row.decision is InteractionDecision.escalated
+    assert row.decision is InteractionDecision.deferred
 
 
 # --------------------------------------------------------------------------------------
@@ -167,14 +167,21 @@ def test_a_normal_answer_is_unaffected(scripted, session):
     assert "empty_answer" not in result.degraded_modes
 
 
-def test_an_escalation_with_real_text_is_unaffected(scripted, session):
+def test_a_deferral_with_real_text_is_unaffected(scripted, session):
     scripted([
         _answer_call(
-            answer="Routing this to a human.",
-            escalate=True,
-            escalation={"category": "general_support", "title": "t", "summary": "s"},
+            answer="Advising owns this one.",
+            defer=True,
+            referral={
+                "office": "advising",
+                "question": "can 1800 be waived",
+                "bring": "transcript",
+            },
         )
     ])
     result, _ = _run(session)
-    assert result.decision is InteractionDecision.escalated
-    assert result.answer == "Routing this to a human."
+    assert result.decision is InteractionDecision.deferred
+    assert result.answer == "Advising owns this one."
+    # The referral reaches the caller: without it a deferral is a dead end, which is
+    # what removing the case number would otherwise have made every one of them.
+    assert result.referral["office"] == "advising"

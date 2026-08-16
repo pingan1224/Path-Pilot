@@ -74,6 +74,11 @@ class ToolContext:
     user_id: int | None = None
     # Every source id handed to the model this turn; citations are validated against it.
     seen_source_ids: set[str] = field(default_factory=set)
+    # Missions this turn actually created, not merely reopened. The agent loop undoes them
+    # when the turn ends in a deferral — a question you had to refuse must not leave a
+    # container behind. Reopened missions are deliberately absent: they are the student's
+    # own work and predate the turn.
+    missions_opened: list[int] = field(default_factory=list)
     # Degradations that occurred while serving tools (e.g. keyword_fallback).
     degraded_modes: set[str] = field(default_factory=set)
     # Raw retrieval hits for the audit log.
@@ -688,12 +693,32 @@ def tool_get_mission_state(ctx: ToolContext) -> dict[str, Any]:
 
     mission = _mission_for_tools(ctx)
     if mission is None:
+        # "No mission" is a fact about the student's record, so it carries a source id like
+        # any other. Without one this branch handed back an uncitable answer: the model had
+        # nothing valid to cite, cited the tool's own name instead, failed validation twice
+        # and lost the whole turn to the fallback. A tool that can only be quoted when it
+        # finds something is a tool that punishes the empty case.
+        source_id = "mission:none"
+        ctx.seen_source_ids.add(source_id)
         return {
+            "source_id": source_id,
             "has_mission": False,
+            # Two things this text must not do, both learned the hard way.
+            #
+            # It must not lie about the surface: it used to say "you cannot create it for
+            # them", which stopped being true on 2026-08-07 when start_mission was
+            # approved, and the model reasoned correctly from it and stopped.
+            #
+            # And it must not tell the model to write. The replacement said "if they asked
+            # for help preparing to register, open one with start_mission" — and the case
+            # whose entire question is the word "help" started opening missions and
+            # proposing courses. A tool result is read fresh and lands closer than the
+            # system prompt, so an instruction here quietly outranks the rule that governs
+            # writes. State the fact and point at the right tool for the question; whether
+            # this turn may write at all is rule 8's business, not this dict's.
             "instruction": (
-                "The student has no open registration mission. If they want help preparing "
-                "for a term, tell them to start one on the Registration mission page — you "
-                "cannot create it for them."
+                "The student has no open registration mission. This tool reports mission "
+                "progress only — for what they still need for the degree, use get_my_plan."
             ),
         }
 
@@ -767,7 +792,7 @@ def tool_start_mission(ctx: ToolContext, term: str | None = None) -> dict[str, A
     Idempotent by way of the service: an existing mission for that term is returned rather
     than duplicated, and a reopened one keeps its original `created_by`.
     """
-    from app.missions.service import create_mission, mission_state
+    from app.missions.service import create_mission, mission_id_for_term, mission_state
     from app.sequence.service import next_registerable_term
     from app.sequence.terms import parse_or_none
 
@@ -791,7 +816,14 @@ def tool_start_mission(ctx: ToolContext, term: str | None = None) -> dict[str, A
     assumed = parsed is None
 
     existing = _mission_for_tools(ctx)
+    # Asked before the write, because afterwards the two cases are indistinguishable:
+    # create_mission returns a reopened mission exactly as it returns a new one. Only a
+    # genuinely new container is recorded as this turn's, so that undoing a deferred turn
+    # can never delete a mission the student already had.
+    pre_existing_id = mission_id_for_term(ctx.session, ctx.user_id, str(target))
     mission = create_mission(ctx.session, ctx.user_id, term=str(target), created_by="ai")
+    if pre_existing_id is None:
+        ctx.missions_opened.append(mission.id)
     _, _, state, _ = mission_state(ctx.session, ctx.user_id, mission.id)
 
     source_id = f"mission:{mission.id}"

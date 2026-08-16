@@ -69,7 +69,6 @@ def main() -> None:
     # --- unauthenticated
     for path in (
         f"/api/v1/students/{alex_id}/readiness",
-        "/api/v1/cases",
     ):
         r = anon.get(path)
         check(f"anon GET {path}", r.status_code == 401, f"got {r.status_code}")
@@ -140,36 +139,6 @@ def main() -> None:
         detail = "answered without leaking the other student" if ok else "LEAKED other student"
     check("role/student_id in body are ignored (privilege escalation)", ok, detail)
 
-    # --- cases
-    r = student.post(
-        "/api/v1/cases",
-        json={"category": "general_support", "title": "Probe case", "message": "from authz_probe"},
-    )
-    ok = r.status_code == 201
-    probe_case_id = r.json()["id"] if ok else None
-    check("student opens a case about self", ok, f"got {r.status_code}")
-
-    if probe_case_id:
-        r = student.get(f"/api/v1/cases/{probe_case_id}")
-        check("student reads own case", r.status_code == 200, f"got {r.status_code}")
-
-        # 404, not 403. Whether case 812 exists is itself information about another
-        # student's record, so a case that is not yours reads exactly like one that is not
-        # there — the same answer an id plucked out of the air gets.
-        r = other.get(f"/api/v1/cases/{probe_case_id}")
-        check(
-            "another student's case is indistinguishable from a missing one",
-            r.status_code == 404,
-            f"got {r.status_code}",
-        )
-
-        leaked = any(c["id"] == probe_case_id for c in other.get("/api/v1/cases").json())
-        check("case list is scoped to the caller", not leaked, "scoped" if not leaked else "LEAKED")
-
-        # Status transitions were staff-only; with no staff there is no writer at all, so
-        # the route is gone rather than forbidden.
-        r = student.patch(f"/api/v1/cases/{probe_case_id}", json={"status": "resolved"})
-        check("nobody can move a case status", r.status_code == 405, f"got {r.status_code}")
 
     # --- error decoder. It reads the pasted message and the caller's own self-reported
     # courses, so the boundary that matters is whose record it reaches — never a path

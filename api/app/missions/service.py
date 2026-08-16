@@ -147,6 +147,41 @@ def create_mission(
     return get_mission(session, user_id, mission.id)
 
 
+def mission_id_for_term(session: Session, user_id: int, term: str) -> int | None:
+    """The id of this user's mission for a term, closed ones included, or None.
+
+    Exists so a caller can tell whether `create_mission` is about to create or to reopen.
+    That distinction is invisible in its return value and matters to anything that may
+    need to undo the call: reopening returns work the student already did.
+    """
+    term = " ".join(term.strip().split())
+    return session.scalar(
+        select(Mission.id).where(Mission.user_id == user_id, Mission.term == term)
+    )
+
+
+def discard_missions(session: Session, mission_ids: list[int]) -> int:
+    """Delete missions that a single turn created and then had to take back.
+
+    The agent loop calls this when a turn ends in a deferral: a question the assistant had
+    to refuse must not leave a container behind on the student's record. Deleting rather
+    than closing is deliberate — a closed mission is a thing the student did and can see
+    in their history, and a refusal is not that. Nothing here was ever theirs.
+
+    The caller is responsible for passing only ids it created this turn. `create_mission`
+    is idempotent, so a mission the student already had comes back through the same call,
+    and deleting one of those would destroy real work over a question they asked badly.
+    Cascade takes any candidates the same turn proposed into the container.
+    """
+    if not mission_ids:
+        return 0
+    rows = session.scalars(select(Mission).where(Mission.id.in_(mission_ids))).all()
+    for row in rows:
+        session.delete(row)
+    session.commit()
+    return len(rows)
+
+
 def close_mission(
     session: Session, user_id: int, mission_id: int, *, reason: str | None = None
 ) -> Mission:
@@ -444,8 +479,10 @@ __all__ = [
     "close_mission",
     "create_mission",
     "decide_candidate",
+    "discard_missions",
     "generate_handoff",
     "get_mission",
+    "mission_id_for_term",
     "mission_state",
     "open_missions",
     "record_decision",

@@ -101,12 +101,28 @@ These come from the source RFP. Violating one breaks the project's whole premise
    (financial balance 15 min, degree audit 24 h, policy docs 30 days). Past that threshold
    the answer says so explicitly rather than presenting stale data as current.
 
-5. **Uncertainty escalates to a human.** When evidence is missing, conflicting, stale, or
-   the intent is high-stakes (graduation timing, substitutions, appeals, holds, financial
-   posting, academic standing), the bot does not guess. It states what it can and cannot
-   verify, then routes to the responsible office with a case number. *Holds stay on this
-   list, but as of 2026-08-13 the product no longer reads hold status at all — see Persona
-   and the product question for why that is a scope decision and what replaced it.*
+5. **Uncertainty defers to a human — by naming one, not by filing anything.** When
+   evidence is missing, conflicting, stale, or the intent is high-stakes (graduation
+   timing, substitutions, appeals, holds, financial posting, academic standing), the bot
+   does not guess. It states what it can and cannot verify, then names the office that
+   owns the question, the question in the student's words, and what to bring.
+
+   **It used to end with a case number, and that was theatre (removed 2026-08-16).**
+   Path Pilot is a third-party planning tool for students: nothing it produces is
+   submitted to Albert or to any queue. The number said somebody had received the
+   question, and nobody had — live mode had already stopped creating cases for exactly
+   that reason, and the demo's rows had no PATCH route, no staff login and no read path
+   in the UI. What went is the ticket. The behaviour is unchanged and gated harder,
+   because a third-party tool has *less* standing to answer a visa or aid question, not
+   more. `InteractionDecision.deferred` is what `escalated` was called; rows written
+   before that date still carry the old literal, and readers of historical audit data
+   accept both.
+
+   The consequence to design for: without a number there is no implied follow-up, so the
+   deferral itself has to be the exit. "Ask your advisor" is a shrug; the office, the
+   question and what to bring is a deferral. *Holds stay on this list, but as of
+   2026-08-13 the product no longer reads hold status at all — see Persona and the
+   product question for why that is a scope decision and what replaced it.*
 
 6. **No silent failures.** Every external dependency has a defined degradation path, and
    degraded mode is visible to the user. Embedding service down → keyword fallback with a
@@ -114,7 +130,7 @@ These come from the source RFP. Violating one breaks the project's whole premise
    explicit note about what is unavailable.
 
 7. **Every AI interaction is logged replayably.** Query, retrieved chunks with scores,
-   assembled prompt, response, citations, escalation decision, and acting role. The audit
+   assembled prompt, response, citations, deferral decision, and acting role. The audit
    log doubles as the eval dataset source.
 
 8. **The AI never mutates official records.** It can create support cases and draft
@@ -175,7 +191,7 @@ one surface of nine tools for demo and live alike. The parallel to the one-perso
 exact: a second surface costs a second place to be wrong, and this one was wrong by
 construction.
 
-**Rule 5 does not change.** A hold question is still high-stakes and still escalates. What
+**Rule 5 does not change.** A hold question is still high-stakes and still defers. What
 changes is where the claim comes from — two honest shapes survive, and no third:
 
 - a **static pre-registration reminder** ("check Albert for holds before your window opens"),
@@ -571,7 +587,7 @@ invocation, so narrowing the probe with `--only` cannot reset it to zero.
    ambiguous function in Postgres, so the whole fallback raised on its first statement —
    the documented degraded path for an embeddings outage would itself have failed, in the
    one situation it exists for.
-2. **A failed tool poisoned the transaction, so the escalation failed too.** The safety net
+2. **A failed tool poisoned the transaction, so the deferral failed too.** The safety net
    broke in exactly the case it exists for; the student would have got a 500 instead of a
    case number. `session.rollback()` in the tool-error handler, which is safe because the
    write tools commit as they go.

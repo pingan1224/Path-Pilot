@@ -5,9 +5,6 @@ from datetime import date, datetime
 from pydantic import BaseModel, Field
 
 from app.models.enums import (
-    CaseCategory,
-    CasePriority,
-    CaseStatus,
     ReadinessStatus,
     RequirementKind,
 )
@@ -89,55 +86,6 @@ class ReadinessResponse(BaseModel):
 
     requirements: list[RequirementProgress]
     provenance: Provenance
-
-
-# --------------------------------------------------------------------------------------
-# Cases
-# --------------------------------------------------------------------------------------
-
-
-class CaseEventOut(BaseModel):
-    id: int
-    actor_kind: str
-    actor_name: str | None
-    action: str
-    note: str | None
-    from_status: CaseStatus | None
-    to_status: CaseStatus | None
-    occurred_at: datetime
-
-
-class CaseOut(BaseModel):
-    id: int
-    case_number: str
-    student_id: int
-    student_name: str
-    owner_name: str | None
-    category: CaseCategory
-    status: CaseStatus
-    status_label: str
-    priority: CasePriority
-    title: str
-    student_message: str | None
-    ai_summary: str | None
-    opened_by: str
-    opened_at: datetime
-    resolved_at: datetime | None
-    events: list[CaseEventOut] = []
-
-
-class CaseCreate(BaseModel):
-    # No student_id: a student opens cases about themselves, and the subject comes from
-    # the session, never from the body.
-    category: CaseCategory
-    title: str = Field(min_length=4, max_length=200)
-    message: str = Field(min_length=1)
-    priority: CasePriority = CasePriority.routine
-
-
-# --------------------------------------------------------------------------------------
-# Errors
-# --------------------------------------------------------------------------------------
 
 
 class ErrorDetail(BaseModel):

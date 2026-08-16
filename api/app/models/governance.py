@@ -89,8 +89,10 @@ class AiInteraction(Base):
     decision: Mapped[InteractionDecision] = mapped_column(
         SAEnum(InteractionDecision, name="interaction_decision"), nullable=False, index=True
     )
+    # Who the turn sent the student to, and what for — "advising: can 1800 be waived".
+    # Named for the decision it accompanies; it holds a referral now that a deferral no
+    # longer opens a case. Rows before 2026-08-16 hold the old case title instead.
     escalation_reason: Mapped[str | None] = mapped_column(String(200))
-    case_id: Mapped[int | None] = mapped_column(ForeignKey("cases.id", ondelete="SET NULL"))
 
     # Which degradation paths were active, e.g. ["keyword_fallback"]. Empty means the full
     # pipeline ran; evaluation must be able to exclude degraded turns from headline metrics.
@@ -106,8 +108,3 @@ class AiInteraction(Base):
     # — and loop length is the headline number for whether a change made the agent wander.
     # An audit row that promises to be replayable should not make it a subtraction.
     iterations: Mapped[int | None] = mapped_column(Integer)
-
-    case: Mapped[Case | None] = relationship(foreign_keys=[case_id])
-
-
-from app.models.cases import Case  # noqa: E402

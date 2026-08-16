@@ -13,8 +13,15 @@ constrained by the server:
   tools this turn and rejects any citation outside it. A fabricated source id gets one
   correction round; a second failure forces escalation. Schema forces the *shape*,
   validation forces the *truth* of citations.
-- **Escalation is a first-class outcome.** When the model cannot verify an answer, it
-  escalates: a real Case row with a case number the student can quote, never a shrug.
+- **Deferral is a first-class outcome.** When the model cannot verify an answer, or the
+  question belongs to someone else, it defers: it says so, names the office that owns the
+  question, and hands over what to bring them. Never a shrug — but never a ticket either.
+  This used to open a `Case` row with a quotable number. Path Pilot is a third-party
+  planning tool for students; nothing it produces is submitted to Albert or to any queue,
+  so a case number promised a workflow that did not exist behind it. Live mode had
+  already stopped creating them for exactly that reason, and the demo's rows were worked
+  by nobody: no PATCH route, no staff login, no read path in the UI. The deferral is the
+  product; the ticket was scenery.
 
 Every turn is written to ai_interactions with the retrieval trace, tool calls, prompt
 snapshot, citations, decision, and degradations — the replayable audit rule.
@@ -32,15 +39,10 @@ from sqlalchemy.orm import Session
 from app import faults
 from app.config import settings
 from app.models import (
-    ActorKind,
     AiInteraction,
-    Case,
-    CaseCategory,
-    CaseEvent,
-    CasePriority,
-    CaseStatus,
     Intent,
     InteractionDecision,
+    Office,
     Student,
     UserRole,
 )
@@ -80,27 +82,42 @@ SUBMIT_ANSWER_SCHEMA: dict[str, Any] = {
                         },
                         "required": ["claim", "source_id"],
                     },
-                    "description": "One entry per factual claim. Empty only when escalating without asserting facts.",
+                    "description": "One entry per factual claim. Empty only when deferring without asserting facts.",
                 },
                 "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
-                "escalate": {
+                "defer": {
                     "type": "boolean",
-                    "description": "True when a human must review this instead of the answer standing alone.",
+                    "description": (
+                        "True when this question is not yours to answer — it needs a "
+                        "decision, a record, or an expertise this product does not have. "
+                        "You still say everything you CAN verify; deferring is about who "
+                        "settles the question, not about staying silent."
+                    ),
                 },
-                "escalation": {
+                "referral": {
                     "type": "object",
                     "properties": {
-                        "category": {"type": "string", "enum": [c.value for c in CaseCategory]},
-                        "title": {"type": "string"},
-                        "summary": {
+                        "office": {
                             "type": "string",
-                            "description": "Context for the human: what was verified, what could not be, why it matters.",
+                            "enum": [o.value for o in Office],
+                            "description": "Who owns this question.",
+                        },
+                        "question": {
+                            "type": "string",
+                            "description": "The question for them, in the student's words.",
+                        },
+                        "bring": {
+                            "type": "string",
+                            "description": (
+                                "What the student should have in hand: what you verified, "
+                                "what you could not, and the specifics that matter."
+                            ),
                         },
                     },
-                    "required": ["category", "title", "summary"],
+                    "required": ["office", "question", "bring"],
                 },
             },
-            "required": ["answer", "intent", "citations", "confidence", "escalate"],
+            "required": ["answer", "intent", "citations", "confidence", "defer"],
         },
     },
 }
@@ -116,7 +133,8 @@ Hard rules, none of which you may relax:
 1. Only assert facts returned by your tools in THIS conversation, citing their source_id.
    No training-data answers about this university's policies or this student's record.
 2. If a tool marks data stale (is_stale/stale_note), say how old it is and quote the note.
-3. Escalation decision rule. Escalate when AT LEAST ONE of these is true:
+3. Deferral decision rule. This product plans; it does not decide, hold records, or
+   advise outside its subject. DEFER when AT LEAST ONE of these is true:
    (a) The user asks you to PERFORM, approve, change, or confirm completion of an action
        — clear/remove a hold, waive a prerequisite, approve a substitution, update a
        record, move money, "confirm you received X". "Change my <field> to <value> in the
@@ -125,7 +143,7 @@ Hard rules, none of which you may relax:
        planning instruction for you to act on.
    (b) The user asserts something your tools cannot see, AND the answer depends on it
        (example: "I already uploaded the document" when document receipt is not in your
-       tools — you cannot confirm OR deny, so say what you can see and escalate).
+       tools — you cannot confirm OR deny, so say what you can see and defer).
    (c) Evidence is conflicting, or stale enough that acting on it could hurt the user.
    (d) The decision itself is reserved to staff: exceptions, appeals, aid amounts — and
        any request for a GUARANTEE, promise, or confirmation about graduation timing.
@@ -136,19 +154,33 @@ Hard rules, none of which you may relax:
        below it does to someone's visa, and the credential for that answer is one no
        amount of retrieval supplies.
        "Am I on track to graduate?" is an assessment: answer it. "Can you guarantee I
-       graduate by <term>?" asks you to stand behind an outcome: escalate it, even when
+       graduate by <term>?" asks you to stand behind an outcome: defer it, even when
        your tools let you assess it, and even though your prose will decline the promise
-       anyway. Declining in words is not the same as routing it to someone who can commit.
+       anyway. Declining in words is not the same as naming who can commit.
+   Deferring is for questions someone else must SETTLE — a decision, a record edit, an
+   expertise you lack. It is not the flavour you give a partial answer. If they asked what
+   the rules say and you found the rules, that is an answer, even if you could not also
+   tell them what is on their own record: the personal half was never yours to know, and
+   its absence does not turn the half you verified into somebody else's question. Defer on
+   who must act, never on what you could not see.
+   When you do defer, it is still not stopping. Say everything you DID verify, with
+   citations, then set defer=true and fill `referral`: which office owns the question, the question in the
+   student's own words, and what to bring — what you checked, what you could not, and the
+   specifics that matter. There is no ticket and no case number behind this: nothing is
+   submitted anywhere, and the student is the one who will carry the question. So the
+   referral has to be usable by them, on their own, today. "Ask your advisor" alone is a
+   shrug; "Ask advising whether MASY1-GC 1800 can be waived given you passed 1700 with an
+   A-, and bring your transcript" is a deferral.
    Otherwise ANSWER. Explaining verified facts, required steps, deadlines, and processes
-   is answering — the topic being a hold or money does not make it an escalation.
+   is answering — the topic being a hold or money does not make it a deferral.
    Not being able to see the student's record is the NORMAL state of this product, not a
-   reason to escalate. When the fact lives only in Albert (a hold, a seat count, a
+   reason to defer. When the fact lives only in Albert (a hold, a seat count, a
    registration error, an enrollment appointment, an aid balance), the complete answer is:
    what the published policy says about that kind of thing, plus where in Albert to look,
    plus an offer to decode the exact error text if they paste it. That is an answer even
    when they asked "what exactly is on my record, and by when" and you can supply neither
    the specific nor the date. Clause (b) is for something the USER asserts that changes
-   your answer — not for the record access this product is built without. Escalate here
+   your answer — not for the record access this product is built without. Defer here
    only when a human must act on their record.
    These two sources are not interchangeable, and which one carries a claim matters:
    albert_checklist is Path Pilot's own signpost — it can support "this lives in Albert
@@ -159,17 +191,18 @@ Hard rules, none of which you may relax:
    vouching for itself, which is the one thing a cited answer is supposed to prevent — so
    when a question mixes the two, search the policy and cite both.
    Never promise an outcome either way.
-4. You cannot modify any record. You explain and escalate; offices act. On a registration
+4. You cannot modify any record. You explain and refer; offices act. On a registration
    mission you may open an empty container (start_mission) and propose courses, never
    decide: confirming a course, accepting a risk, and finishing the mission are the
    student's actions, and a suggestion you made is not a choice they made. Never describe a
    mission as further along than get_mission_state says it is.
-   If you are escalating, WRITE NOTHING on that turn. A request you have to refuse is not
+   If you are deferring, WRITE NOTHING on that turn. A request you have to refuse is not
    a request to start work on: "change my graduation term to Spring 2027" is a record edit
-   you must route to a human, and opening a Spring 2027 mission is not a partial way of
+   only the registrar can make, and opening a Spring 2027 mission is not a partial way of
    granting it — it acts on an intent the student never expressed, in the one direction
    you are not allowed to move. A term appearing in a refused request is not a planning
-   instruction.
+   instruction. (The server enforces this too: a deferred turn's writes are undone. Do not
+   rely on that — it is a backstop, not a permission.)
 
 8. When a student asks for help preparing to register, do the whole job in this turn rather
    than one step per reply: read their plan, open a mission if there is none, propose the
@@ -183,8 +216,9 @@ Hard rules, none of which you may relax:
    write, and a student who typed one vague word has not asked you to start anything on
    their record. Reading tools are always fine; when in doubt, look and report, never open.
 5. When 3(b) applies, never confirm or deny the user's unverified claim — state what your
-   tools do show, what they cannot show, and open the escalation.
-6. No legal, medical, immigration, or mental-health advice; those go to a human.
+   tools do show, what they cannot show, and defer.
+6. No legal, medical, immigration, or mental-health advice; those go to the office that
+   owns them, named.
 7. Answer in the user's language; keep source quotes in their original language.
 
 9. Policy search always returns its five nearest passages, so results coming back is not
@@ -232,9 +266,11 @@ returned nothing" — you have no access at all.
 11. When the planner marks a finding unverifiable or conditional, keep it that way. Those
    are the parts a human has to settle, and smoothing them into a confident answer is the
    most damaging thing you can do here.
-12. Escalation does not open a case in live mode — there is no staff queue behind this
-   product. Instead, tell the student to take it to their advisor, and point them at the
-   handoff summary on the planner page, which they can copy into an email."""
+12. Nothing you do is submitted anywhere. Path Pilot is a third-party planning tool: it
+   has no queue, no ticket, and no way to reach Albert or any office. A deferral names who
+   the student should ask and what to bring; the handoff summary on the planner page is
+   the document they can copy into that email. Never imply anyone has received the
+   question, and never invent a reference number for it."""
 
 
 @dataclass
@@ -244,7 +280,9 @@ class AgentResult:
     decision: InteractionDecision
     intent: str | None
     confidence: str | None
-    case_number: str | None
+    # Who owns the question when this turn deferred, and what to bring them. It replaces
+    # `case_number`: a number implied somebody had received the question, and nobody had.
+    referral: dict[str, Any] | None
     degraded_modes: list[str]
     iterations: int
     tool_trace: list[dict[str, Any]]
@@ -252,11 +290,14 @@ class AgentResult:
     interaction_id: int
 
 
-def _next_case_number(session: Session) -> str:
-    highest = session.scalar(
-        select(func.max(func.split_part(Case.case_number, "-", 2).cast(Integer)))
-    )
-    return f"PP-{(highest or 1000) + 1}"
+def _referral_note(payload: dict[str, Any]) -> str | None:
+    """One line for the audit row: who this went to, and what for."""
+    referral = payload.get("referral") or {}
+    office = referral.get("office")
+    question = (referral.get("question") or "").strip()
+    if not office and not question:
+        return None
+    return f"{office or 'unstated'}: {question[:180]}" if question else str(office)
 
 
 def _validate_citations(payload: dict[str, Any], seen: set[str]) -> list[str]:
@@ -369,18 +410,20 @@ def run_agent(
             payload = {
                 "answer": (
                     "The assistant hit a technical problem and could not finish this "
-                    "request. It has been routed to a human instead."
+                    "request. Take it to your advisor rather than relying on anything "
+                    "I might have said here."
                 ),
                 "intent": Intent.high_stakes.value,
                 "citations": [],
                 "confidence": "low",
-                "escalate": True,
-                "escalation": {
-                    "category": CaseCategory.general_support.value,
-                    "title": "Assistant failed mid-conversation",
-                    "summary": (
-                        f"Question: {question!r}. The model call failed on iteration "
-                        f"{iterations}: {type(exc).__name__}: {str(exc)[:300]}"
+                "defer": True,
+                "referral": {
+                    "office": Office.advising.value,
+                    "question": question,
+                    "bring": (
+                        f"Path Pilot could not finish this request (model call failed on "
+                        f"iteration {iterations}: {type(exc).__name__}). Nothing was "
+                        f"verified, so treat the question as unanswered."
                     ),
                 },
             }
@@ -466,14 +509,14 @@ def run_agent(
                         "intent": args.get("intent", Intent.high_stakes.value),
                         "citations": [],
                         "confidence": "low",
-                        "escalate": True,
-                        "escalation": {
-                            "category": CaseCategory.general_support.value,
-                            "title": "Assistant returned an empty answer",
-                            "summary": (
-                                f"Question: {question!r}. The assistant twice called "
-                                "submit_answer with no answer text, so the turn was routed "
-                                "to a human rather than shown as an empty reply."
+                        "defer": True,
+                        "referral": {
+                            "office": Office.advising.value,
+                            "question": question,
+                            "bring": (
+                                "Path Pilot produced no answer text twice running, so it "
+                                "showed nothing rather than an empty reply. Nothing here "
+                                "was verified."
                             ),
                         },
                     }
@@ -494,7 +537,7 @@ def run_agent(
                                     "error": "invalid_citations",
                                     "unknown_source_ids": bad,
                                     "valid_source_ids": sorted(ctx.seen_source_ids),
-                                    "instruction": "Cite only source_ids listed above, or escalate.",
+                                    "instruction": "Cite only source_ids listed above, or defer.",
                                 }
                             ),
                         }
@@ -504,20 +547,21 @@ def run_agent(
                     # Second fabrication: the answer cannot be trusted; force escalation.
                     args = {
                         "answer": (
-                            "I could not produce a verifiable answer to this question, so I am "
-                            "routing it to a human who can review your record directly."
+                            "I could not produce an answer I can stand behind for this "
+                            "question. Take it to your advisor rather than relying on "
+                            "anything I might have said here."
                         ),
                         "intent": args.get("intent", Intent.high_stakes.value),
                         "citations": [],
                         "confidence": "low",
-                        "escalate": True,
-                        "escalation": {
-                            "category": CaseCategory.general_support.value,
-                            "title": "Assistant answer failed citation validation",
-                            "summary": (
-                                f"Question: {question!r}. The assistant twice cited sources that "
-                                "were not returned by any tool, so its draft answer was discarded "
-                                "rather than shown."
+                        "defer": True,
+                        "referral": {
+                            "office": Office.advising.value,
+                            "question": question,
+                            "bring": (
+                                "Path Pilot twice cited sources no tool had returned, so its "
+                                "draft was discarded rather than shown. Nothing here was "
+                                "verified."
                             ),
                         },
                     }
@@ -544,7 +588,7 @@ def run_agent(
                 except PermissionError as exc:
                     result = {"error": str(exc)}
                 except Exception as exc:  # noqa: BLE001 — the model gets a named failure, not a crash
-                    result = {"error": f"{name} failed: {type(exc).__name__}. Try another approach or escalate."}
+                    result = {"error": f"{name} failed: {type(exc).__name__}. Try another approach or defer."}
                     ctx.degraded_modes.add(f"tool_error:{name}")
                     # A tool that failed on a database error leaves the transaction
                     # aborted, and every statement after it fails too — including the
@@ -589,63 +633,45 @@ def run_agent(
         # Loop exhausted without a submit_answer call even under forcing — treat as an
         # outage of the assistant, not a silent nothing.
         payload = {
-            "answer": "The assistant could not complete this request. It has been routed to a human.",
+            "answer": "Path Pilot could not complete this request. Nothing here was verified.",
             "intent": Intent.high_stakes.value,
             "citations": [],
             "confidence": "low",
-            "escalate": True,
-            "escalation": {
-                "category": CaseCategory.general_support.value,
-                "title": "Assistant failed to produce an answer",
-                "summary": f"Question: {question!r}. The agent loop ended without a structured answer.",
+            "defer": True,
+            "referral": {
+                "office": Office.advising.value,
+                "question": question,
+                "bring": (
+                    "Path Pilot ended without producing a structured answer. Nothing here "
+                    "was verified."
+                ),
             },
         }
 
-    # ---- Escalation → a real case with a quotable number.
-    case_number: str | None = None
-    case_id: int | None = None
     now = datetime.now(UTC)
-    # Live mode escalates to the student's own advisor, not into a queue. Opening a case
-    # here would promise a staff workflow that does not exist behind this product — the
-    # student would wait for a reply that is never coming.
-    if payload.get("escalate") and subject_student_id is not None and not ctx.is_live:
-        escalation = payload.get("escalation") or {
-            "category": CaseCategory.general_support.value,
-            "title": "Assistant escalation",
-            "summary": f"Question: {question!r}",
-        }
-        student = session.get(Student, subject_student_id)
-        case = Case(
-            case_number=_next_case_number(session),
-            student_id=subject_student_id,
-            owner_user_id=student.advisor_id if student else None,
-            category=CaseCategory(escalation["category"]),
-            status=CaseStatus.new,
-            priority=CasePriority.elevated,
-            title=escalation["title"][:200],
-            student_message=question,
-            ai_summary=escalation["summary"],
-            opened_by=ActorKind.ai,
-            opened_at=now,
-        )
-        session.add(case)
-        session.flush()
-        session.add(
-            CaseEvent(
-                case_id=case.id,
-                actor_kind=ActorKind.ai,
-                action="Opened case from assistant escalation",
-                note=escalation["summary"],
-                to_status=CaseStatus.new,
-                occurred_at=now,
-            )
-        )
-        case_number = case.case_number
-        case_id = case.id
+    deferred = bool(payload.get("defer"))
+
+    # ---- A deferred turn leaves nothing behind.
+    #
+    # Enforced here rather than asked for in the prompt, because it is a hard-zero
+    # invariant and the prompt could not hold it: told five different ways not to write
+    # while refusing, the model still opened a mission on roughly one turn in five — once
+    # while refusing correctly in the same breath. Rule 2's principle generalises: a claim
+    # you must never emit has to be structurally impossible, not instructed against.
+    #
+    # Only missions this turn actually created are undone. start_mission is idempotent, so
+    # a student's existing mission for that term comes back through the same call, and
+    # deleting that would destroy real work over a question they merely asked badly.
+    if deferred and ctx.missions_opened:
+        from app.missions.service import discard_missions
+
+        discarded = discard_missions(session, ctx.missions_opened)
+        if discarded:
+            ctx.degraded_modes.add("deferred_turn_rolled_back")
 
     # ---- Decision classification for the audit row.
-    if payload.get("escalate"):
-        decision = InteractionDecision.escalated
+    if deferred:
+        decision = InteractionDecision.deferred
     elif ctx.degraded_modes or payload.get("confidence") == "low":
         decision = InteractionDecision.answered_with_caveat
     else:
@@ -671,8 +697,9 @@ def run_agent(
         response_text=payload.get("answer"),
         citations=payload.get("citations") or None,
         decision=decision,
-        escalation_reason=(payload.get("escalation") or {}).get("title") if payload.get("escalate") else None,
-        case_id=case_id,
+        # The office and the question, kept together: the audit row is where a later
+        # reader asks "who did we send this student to, and with what".
+        escalation_reason=_referral_note(payload) if deferred else None,
         degraded_modes=sorted(ctx.degraded_modes) or None,
         model=settings.chat_model,
         input_tokens=tokens["input_tokens"] or None,
@@ -689,7 +716,7 @@ def run_agent(
         decision=decision,
         intent=intent.value if intent else None,
         confidence=payload.get("confidence"),
-        case_number=case_number,
+        referral=(payload.get("referral") if deferred else None),
         degraded_modes=sorted(ctx.degraded_modes),
         iterations=iterations,
         tool_trace=tool_trace,

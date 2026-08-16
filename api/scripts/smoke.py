@@ -55,21 +55,6 @@ def main() -> None:
         ["status", "status_reason", "credits_applied", "percent_complete"],
     )
     show("own blockers", student.get(f"/api/v1/students/{student_id}/blockers"))
-    show("own cases", student.get("/api/v1/cases"))
-
-    created = student.post(
-        "/api/v1/cases",
-        json={"category": "registration_issue", "title": "Smoke test case", "message": "from smoke.py"},
-    )
-    show("create case (self)", created, ["case_number", "status_label"], expect=201)
-
-    if created.status_code == 201:
-        show(
-            "read the new case back",
-            student.get(f"/api/v1/cases/{created.json()['id']}"),
-            ["case_number", "status_label", "owner_name"],
-        )
-
     show("own profile courses", student.get("/api/v1/profile/courses"))
     show("own missions", student.get("/api/v1/missions"))
     show(

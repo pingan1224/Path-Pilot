@@ -56,8 +56,9 @@ def main() -> None:
             print(f"decision   : {result.decision.value}   intent={result.intent}   confidence={result.confidence}")
             print(f"iterations : {result.iterations}   latency={result.latency_ms}ms   degraded={result.degraded_modes}")
             print(f"tools      : {[t['tool'] for t in result.tool_trace]}")
-            if result.case_number:
-                print(f"case       : {result.case_number}")
+            if result.referral:
+                r = result.referral
+                print(f"referred   : {r.get('office')} — {r.get('question')}")
             print(f"\n{result.answer}\n")
             if result.citations:
                 print("citations:")

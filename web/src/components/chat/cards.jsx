@@ -184,9 +184,15 @@ export function MissionCard({ mission: initial, onOpenView }) {
                 disabled={busy}
                 onClick={() =>
                   act(async () => {
+                    // Commit each confirmation as it lands. Returning only after the whole
+                    // loop meant one rejection partway through threw past `setMission`, so
+                    // every candidate already recorded server-side kept rendering as a live
+                    // proposal — the card showing a snapshot that contradicts the mission,
+                    // which is the one thing these cards are not allowed to do.
                     let latest = mission
                     for (const c of proposals) {
                       latest = await api.missionDecideCandidate(mission.id, c.id, true)
+                      setMission(latest)
                     }
                     return latest
                   })

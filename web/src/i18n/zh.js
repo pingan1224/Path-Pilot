@@ -123,7 +123,8 @@ export const zh = {
   "chat.ready": "就绪",
   "chat.sources": "来源",
   "chat.sourcesUsed": "已引用 {count} 个来源",
-  "chat.footer": "回答均注明来源——任何影响注册的事项请先在 Albert 核实。",
+  "chat.footer":
+    "这不是 NYU 系统，也看不到 Albert。回答均注明来源——任何影响注册的事项请先在 Albert 核实。",
 
   // Chat — waiting
   "chat.thinking": "正在按需核查你的记录、政策与规划 · ",

@@ -69,6 +69,7 @@ export default function MakeSidebar({
   onSignOut,
   program,
   programUnknown,
+  programFailed,
   mission,
   blockers,
   subs,
@@ -140,7 +141,9 @@ export default function MakeSidebar({
               background: "linear-gradient(135deg, var(--color-violet) 0%, var(--color-violet-dim) 100%)",
             }}
           >
-            <Compass size={15} className="text-white" aria-hidden="true" />
+            {/* --on-accent, not text-white: a stock Tailwind colour is invisible to the
+                theme, which is the rule the palette is built on. */}
+            <Compass size={15} style={{ color: "var(--on-accent)" }} aria-hidden="true" />
           </div>
           <div>
             <div
@@ -173,12 +176,25 @@ export default function MakeSidebar({
             {t("rail.program.eyebrow")}
           </div>
           <div className="text-[12px] leading-snug font-medium" style={{ color: "var(--color-ink)" }}>
-            {programUnknown
-              ? t("rail.program.unset")
-              : (program?.program_name ?? "…")}
+            {/* Three states, and the failed one is not the unset one. Without it a failed
+                read fell to the "…" placeholder and sat there forever, which reads as
+                still loading — no access rendering as no result, in the one chip that
+                says which rules apply to this student. */}
+            {programFailed
+              ? t("rail.failed")
+              : programUnknown
+                ? t("rail.program.unset")
+                : (program?.program_name ?? "…")}
           </div>
           <div className="mt-1.5 flex items-center gap-2">
-            {programUnknown ? (
+            {programFailed ? (
+              <span
+                className="rounded px-1.5 py-0.5 text-[10px]"
+                style={{ background: "var(--color-rose-muted)", color: "var(--color-rose)" }}
+              >
+                {t("rail.program.unset.action")}
+              </span>
+            ) : programUnknown ? (
               <span
                 className="rounded px-1.5 py-0.5 text-[10px]"
                 style={{ background: "var(--color-amber-muted)", color: "var(--color-amber)" }}
@@ -311,8 +327,11 @@ export default function MakeSidebar({
         {/* Student chip + sign out */}
         <div className="mb-3 flex items-center gap-2.5 px-1 py-1.5">
           <div
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
-            style={{ background: "linear-gradient(135deg, var(--color-violet), var(--color-violet-dim))" }}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold"
+            style={{
+              background: "linear-gradient(135deg, var(--color-violet), var(--color-violet-dim))",
+              color: "var(--on-accent)",
+            }}
             aria-hidden="true"
           >
             {initials}

@@ -43,8 +43,14 @@ export default function CommandPalette({ open, onClose, onNavigate, subs }) {
   }, [open])
 
   useEffect(() => {
+    if (!open) return undefined
     const onKey = (e) => {
-      if (!open) return
+      // An IME drives Enter and the arrow keys itself while a candidate window is up:
+      // the Enter that commits 拼音 would otherwise navigate and close the palette, so
+      // Chinese could never be typed into it at all — in a build that ships a zh locale.
+      // The chat composer guards the same way. keyCode 229 is the legacy signal for
+      // engines that leave isComposing unset on the commit keystroke.
+      if (e.isComposing || e.keyCode === 229) return
       if (e.key === "Escape") {
         onClose()
         return

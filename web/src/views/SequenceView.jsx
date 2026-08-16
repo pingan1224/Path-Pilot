@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   AlertTriangle,
   ArrowRight,
@@ -75,27 +75,52 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
   const [maxCredits, setMaxCredits] = useState("")
   const [deferred, setDeferred] = useState(null)
   const [plan, setPlan] = useState(null)
+  // `{ key, plan }` — the un-deferred answer plus the constraints it was solved under.
+  // The ref mirrors it so `load` can read the current value without taking it as a
+  // dependency and re-creating itself after every solve.
   const [baseline, setBaseline] = useState(null)
+  const baselineRef = useRef(null)
+  const rememberBaseline = (b) => {
+    baselineRef.current = b
+    setBaseline(b)
+  }
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [showAssumptions, setShowAssumptions] = useState(false)
   const [dragging, setDragging] = useState(null)
   const [dragOver, setDragOver] = useState(false)
 
-  /** One solve. `keepBaseline` holds the un-deferred answer so the header can price the
-   *  what-if against it — the student needs the comparison, not just the new date. */
+  /** One solve. `baseline` holds the un-deferred answer so the header can price the
+   *  what-if against it — the student needs the comparison, not just the new date.
+   *
+   *  The baseline is tagged with the constraints it was solved under, and re-solved when
+   *  they change. Keeping whatever the last un-deferred solve returned looked cheaper and
+   *  priced the wrong thing: the credit-cap buttons and the deadline field carry an active
+   *  deferral forward, so after "defer this, now try 12 credits" the banner was comparing
+   *  a 12-credit deferred plan against a 9-credit un-deferred one and attributing the
+   *  whole difference to the deferred course. When the larger cap pulled the finish date
+   *  back it could read "this one can wait for free", which is the opposite of the truth,
+   *  on the single question the screen exists to answer. The extra solve only happens when
+   *  a constraint moves while a deferral is up. */
   const load = useCallback(async (overrides = {}) => {
     const next = {
       deadline: overrides.deadline ?? deadline,
       maxCredits: overrides.maxCredits ?? maxCredits,
       defer: "defer" in overrides ? overrides.defer : deferred,
     }
+    const key = `${next.deadline}|${next.maxCredits}`
     setBusy(true)
     setError(null)
     try {
       const result = await api.sequence(next)
       setPlan(result)
-      if (!next.defer) setBaseline(result)
+      if (!next.defer) {
+        rememberBaseline({ key, plan: result })
+      } else if (baselineRef.current?.key !== key) {
+        // Constraints moved under an active deferral, so the stored comparison is no
+        // longer like-for-like. Re-solve it rather than quoting a stale price.
+        rememberBaseline({ key, plan: await api.sequence({ ...next, defer: null }) })
+      }
       return result
     } catch (err) {
       setError(err)
@@ -147,8 +172,10 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
   const cap = plan.max_credits_per_term
   // The what-if's price, against the answer without it.
   const movedBy =
-    plan.deferred && baseline?.finish_term && plan.finish_term !== baseline.finish_term
-      ? { from: baseline.finish_term, to: plan.finish_term }
+    plan.deferred &&
+    baseline?.plan?.finish_term &&
+    plan.finish_term !== baseline.plan.finish_term
+      ? { from: baseline.plan.finish_term, to: plan.finish_term }
       : null
 
   return (
@@ -504,6 +531,45 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
           </div>
         </div>
       )}
+
+      {/* The concentrations that were tried and did not fit. A one_track requirement is a
+          choice, not a constraint: the solver sequences each track separately, and naming
+          only the winner hands the student a decision already made for them. "Risk
+          Analytics fits your deadline and Business Analytics does not" is the sentence
+          they need, and it is the one the API has been sending all along. */}
+      {plan.rejected_tracks?.length ? (
+        <div className="shrink-0 px-6 pb-3">
+          <div
+            className="pp-slide-up rounded-xl px-4 py-3"
+            style={{ background: "var(--color-surface)", border: "1px solid var(--color-rail-strong)" }}
+          >
+            <div
+              className="text-[10px] font-medium tracking-wide uppercase"
+              style={{ color: "var(--color-ink-3)" }}
+            >
+              Concentrations that do not fit
+            </div>
+            <ul className="mt-2 space-y-1.5">
+              {plan.rejected_tracks.map((r) => (
+                <li
+                  key={r.track}
+                  className="text-[12px] leading-relaxed"
+                  style={{ color: "var(--color-ink-2)" }}
+                >
+                  <span className="font-medium">{r.track}</span>
+                  {r.why ? <span style={{ color: "var(--color-ink-3)" }}> — {r.why}</span> : null}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2">
+              <Muted>
+                You are free to change concentration, so each one was sequenced on its own.
+                Which to take is your decision.
+              </Muted>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <p className="shrink-0 px-6 pb-4 text-[10px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
         {plan.disclaimer}

@@ -92,7 +92,14 @@ export function MakeCard({
 }
 
 /** Eyebrow / title / description, the design's card header stack. */
-export function CardHeading({ eyebrow, title, desc, right }) {
+/**
+ * `titleId` exists because the cards that use this are labelled by their own heading.
+ * Extracting the heading out of shadcn's CardTitle dropped the id it used to carry while
+ * the aria-labelledby attributes stayed behind, so three cards pointed at elements that
+ * no longer existed — which is worse than no attribute, because a dangling reference
+ * suppresses the fallback naming instead of falling back to it.
+ */
+export function CardHeading({ eyebrow, title, titleId, desc, right }) {
   return (
     <div className="mb-3 flex items-start justify-between gap-3">
       <div className="min-w-0">
@@ -105,7 +112,11 @@ export function CardHeading({ eyebrow, title, desc, right }) {
           </div>
         ) : null}
         {title ? (
-          <div className="text-[14px] font-semibold" style={{ color: "var(--color-ink)" }}>
+          <div
+            id={titleId}
+            className="text-[14px] font-semibold"
+            style={{ color: "var(--color-ink)" }}
+          >
             {title}
           </div>
         ) : null}
@@ -185,15 +196,30 @@ export function Code({ children }) {
 
 /**
  * The design's accordion: a header row that toggles, a body measured to its content.
- * Height is measured on every render, not only when `open` flips, because the body
- * re-wraps when the locale or the viewport changes.
+ *
+ * The body is watched rather than measured per render. Measuring in a dep-less effect
+ * looked like it covered everything and covered less: a render is not what makes the body
+ * taller. A native <details> opening inside it, a generated handoff summary arriving, or
+ * the window being narrowed all change the height with no React render to notice, and the
+ * frozen max-height clipped exactly the content the reader had just asked for — citations,
+ * next steps. It also forced a synchronous reflow on every render of every instance.
  */
 export function Accordion({ open, onToggle, header, children, toneName, delay = 0 }) {
   const bodyRef = useRef(null)
   useEffect(() => {
     const el = bodyRef.current
-    if (el) el.style.maxHeight = open ? `${el.scrollHeight}px` : "0px"
-  })
+    if (!el) return undefined
+    const measure = () => {
+      el.style.maxHeight = open ? `${el.scrollHeight}px` : "0px"
+    }
+    measure()
+    if (!open || typeof ResizeObserver === "undefined") return undefined
+    const observer = new ResizeObserver(measure)
+    // The inner wrapper is what grows; the observed element must not be the one whose
+    // max-height we set, or the observer feeds itself.
+    if (el.firstElementChild) observer.observe(el.firstElementChild)
+    return () => observer.disconnect()
+  }, [open, children])
 
   return (
     <div
@@ -229,10 +255,16 @@ export function Accordion({ open, onToggle, header, children, toneName, delay = 
           <ChevronDown size={13} aria-hidden="true" />
         </div>
       </button>
+      {/* `inert` while collapsed: max-height hides pixels, not focus. Without it every
+          step body stays in the tab order and the accessibility tree, so a keyboard user
+          tabs from a header straight into a course-code input they cannot see, and a
+          screen reader reads every section as though it were expanded — contradicting the
+          aria-expanded="false" on the header directly above. */}
       <div
         ref={bodyRef}
         className="pp-accordion"
         style={{ maxHeight: 0 }}
+        inert={!open}
       >
         <div className="px-4 pb-3.5" style={{ borderTop: "1px solid var(--color-rail)" }}>
           {children}
@@ -285,8 +317,20 @@ export function Muted({ children }) {
   )
 }
 
-/** Open state that follows a prop until the reader overrides it. */
+/**
+ * Open state that follows a prop until the reader overrides it, then follows it again the
+ * next time the prop actually changes.
+ *
+ * `useState(defaultOpen)` read the prop once, which is not what the callers assume. The
+ * planner keys each section on the finding key, which is deliberately stable across
+ * re-evaluations and independent of the verdict, so nothing ever remounts: a requirement
+ * that read "Met" (and therefore rendered collapsed) stayed collapsed after a refetch
+ * flipped it to not met, hiding the new failure's detail, its next step and its citations
+ * behind a closed row. Status hierarchy inverted exactly when a requirement broke.
+ */
 export function useDisclosure(defaultOpen) {
-  const [open, setOpen] = useState(defaultOpen)
-  return [open, () => setOpen((o) => !o)]
+  const [state, setState] = useState({ open: defaultOpen, seen: defaultOpen })
+  if (state.seen !== defaultOpen) setState({ open: defaultOpen, seen: defaultOpen })
+  const open = state.seen === defaultOpen ? state.open : defaultOpen
+  return [open, () => setState((s) => ({ ...s, open: !s.open }))]
 }

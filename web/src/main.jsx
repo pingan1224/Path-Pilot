@@ -18,14 +18,21 @@ import { PrefsProvider } from './i18n'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <PrefsProvider>
-      {/* The shell has its own boundary around the view area, which is the one a
-          student should ever meet. This is the backstop for a throw in the shell
-          itself — without it that case is still a blank page. */}
-      <ErrorBoundary>
+    {/* The shell has its own boundaries around the panes, which are the ones a student
+        should ever meet. This is the backstop for a throw in the shell itself — without
+        it that case is still a blank page.
+
+        It wraps the provider rather than sitting inside it, because a boundary cannot
+        catch a throw from its own ancestor. PrefsProvider reads localStorage as it
+        initialises, and that access throws outright where site data is blocked, so with
+        the old nesting the very failure this boundary exists to prevent was the one it
+        could not see. The boundary is deliberately context-free — its copy is hardcoded
+        English — so it does not need the provider it now encloses. */}
+    <ErrorBoundary>
+      <PrefsProvider>
         <App />
-      </ErrorBoundary>
-    </PrefsProvider>
+      </PrefsProvider>
+    </ErrorBoundary>
     <Analytics />
     <SpeedInsights />
   </StrictMode>,

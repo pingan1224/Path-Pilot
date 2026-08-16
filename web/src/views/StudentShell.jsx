@@ -106,9 +106,24 @@ export default function StudentShell({ me, onSignOut }) {
   // sidebar's live figures show.
   useEffect(refresh, [refresh, view])
 
-  const failed = missions === LOAD_FAILED || courses === LOAD_FAILED
+  // `program` is one of three things: a program object, null ("not stated yet", which is
+  // a real answer and what a new account looks like), or the LOAD_FAILED sentinel. Only
+  // the object can say anything about encoding, and the sentinel is truthy — so testing
+  // `program && !program.is_encoded` read a failed fetch as "your degree is not encoded"
+  // and printed `undefined` where the name goes. Derive the three cases once, here.
+  const programFailed = program === LOAD_FAILED
+  const programUnknown = program === null
+  const programUnencoded = !programFailed && !programUnknown && !program.is_encoded
+
+  const failed = missions === LOAD_FAILED || courses === LOAD_FAILED || programFailed
   const ready = Array.isArray(missions) && Array.isArray(courses)
-  const mission = ready ? (missions.find((m) => !m.complete) ?? null) : null
+  // Prefer a mission still in progress, but fall back to the newest one rather than to
+  // nothing. Selecting only on `!complete` made `mission.complete` false by construction,
+  // so the "Ready · <term>" sub-line below was unreachable and a student who finished
+  // their only mission watched the whole mission card disappear from the rail — the one
+  // moment the product exists to confirm, rendering as if nothing had ever been started.
+  // `open_missions` already excludes closed ones and returns newest first.
+  const mission = ready ? (missions.find((m) => !m.complete) ?? missions[0] ?? null) : null
   const blockers = mission?.open_blockers ?? []
   const inChat = view === "chat"
 
@@ -180,8 +195,9 @@ export default function StudentShell({ me, onSignOut }) {
           onNavigate={setView}
           me={me}
           onSignOut={onSignOut}
-          program={program === LOAD_FAILED ? null : program}
-          programUnknown={program === null}
+          program={programFailed ? null : program}
+          programUnknown={programUnknown}
+          programFailed={programFailed}
           mission={mission}
           blockers={blockers}
           subs={subs}
@@ -219,34 +235,41 @@ export default function StudentShell({ me, onSignOut }) {
             </div>
           ) : null}
 
-          {/* Scoped to the view, not the shell: a screen that throws leaves the sidebar
-              standing, so the way out is a click rather than a refresh. Keyed on the
-              view so navigating away clears the error. */}
-          <ErrorBoundary resetKey={view}>
+          {/* Two boundaries, one per pane, not one around both.
+              A single boundary renders its fallback *instead of* its children, so a throw
+              anywhere under it unmounted the chat as well — and the thread is local state,
+              so the conversation went with it. It failed in both directions: a fault in
+              the hidden chat replaced the tool page the student was actually looking at,
+              and `resetKey` could not clear that, because navigating re-rendered the same
+              throwing chat and re-latched immediately.
+              Scoped to the panes rather than the shell either way: a screen that throws
+              leaves the sidebar standing, so the way out is a click, not a refresh. */}
           {/* `hidden`, not unmount: the thread survives a trip to a tool page. */}
           <div className={inChat ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
-            <ChatHome
-              me={me}
-              active={inChat}
-              missions={missions}
-              courses={courses}
-              ready={ready}
-              loadFailed={failed}
-              railVisible
-              onOpenView={setView}
-              onTurn={refresh}
-            />
+            <ErrorBoundary>
+              <ChatHome
+                me={me}
+                active={inChat}
+                missions={missions}
+                courses={courses}
+                ready={ready}
+                loadFailed={failed}
+                onOpenView={setView}
+                onTurn={refresh}
+              />
+            </ErrorBoundary>
           </div>
 
           {!inChat ? (
-            // Keyed so switching tools re-runs the design's page-enter. The chat pane is
-            // exempt: it is revealed, not re-created. Views not yet rebuilt to the
-            // design's own full-height layouts ride in a scroll container the old shell
-            // used to provide.
+          <ErrorBoundary resetKey={view}>
+            {/* Keyed so switching tools re-runs the design's page-enter. The chat pane is
+                exempt: it is revealed, not re-created. Views not yet rebuilt to the
+                design's own full-height layouts ride in a scroll container the old shell
+                used to provide. */}
             <div key={view} className="pp-page-enter min-h-0 flex-1 overflow-hidden">
               {/* Views rebuilt to the design's full-height layouts own their scroll;
                   the rest ride in the scroll container the old shell used to provide. */}
-              {view === "mission" && !(program && !program.is_encoded) ? (
+              {view === "mission" && !programUnencoded ? (
                 <MissionView
                   onOpenPlanner={() => setView("planner")}
                   onOpenProgram={() => setView("program")}
@@ -273,7 +296,7 @@ export default function StudentShell({ me, onSignOut }) {
                     />
                   ) : view === "program" ? (
                     <ProgramView
-                      current={program === LOAD_FAILED ? null : program}
+                      current={programFailed ? null : program}
                       onChanged={async (updated) => {
                         setProgram(updated)
                         refresh()
@@ -288,8 +311,8 @@ export default function StudentShell({ me, onSignOut }) {
               </div>
               )}
             </div>
-          ) : null}
           </ErrorBoundary>
+          ) : null}
         </main>
       </div>
 

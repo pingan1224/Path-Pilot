@@ -984,6 +984,20 @@ def tool_get_course_sequence(
         # a rule — the ingested corpus has per-term caps for Stern's MBA only, and reading
         # one at an SPS student is the mistake the home-school retrieval boost exists to
         # prevent.
+        # Concentrations that fit but finish later. The model is told these exist so it
+        # can say "Risk Analytics also fits, one term later" instead of presenting the
+        # solver's tiebreak as the only option — a one_track requirement is a choice, and
+        # the student is the one who weighs a term against a subject.
+        "concentrations_that_also_fit": [
+            {
+                "track": a.track,
+                "finish_term": str(a.finish_term),
+                "terms_later": a.terms_later_than_chosen,
+                "meets_your_deadline": a.meets_deadline,
+                "placements_resting_on_a_guess": a.guesses,
+            }
+            for a in plan.alternatives
+        ],
         "credits_per_term_source": meta["credit_cap_source"],
         "deadline_source": meta["deadline_source"],
         "start_term_was_assumed": meta["start_was_assumed"],

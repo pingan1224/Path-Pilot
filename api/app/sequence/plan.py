@@ -34,6 +34,7 @@ from app.sequence.types import (
     CourseNeed,
     Infeasibility,
     SequencePlan,
+    TrackOption,
 )
 
 # How far ahead to look when no deadline is given. Eight terms is a little under three
@@ -195,6 +196,7 @@ def build_sequence(
     horizon: int = DEFAULT_HORIZON,
     credit_cap_was_assumed: bool = True,
     defer: str | None = None,
+    track: str | None = None,
 ) -> SequencePlan:
     """`defer` holds one course out of `start_term` and re-plans around it.
 
@@ -234,7 +236,18 @@ def build_sequence(
 
     attempts: list[tuple[str | None, SequencePlan]] = []
 
-    for track in _candidate_tracks(program, held):
+    # `track` narrows the search to the concentration the student asked to look at. The
+    # ranking below is unchanged: it still picks the soonest, and with one candidate that
+    # is the one they named. Filtering here rather than solving everything and discarding
+    # keeps a "show me Business Analytics" request from paying for four searches.
+    candidates = _candidate_tracks(program, held)
+    if track is not None:
+        narrowed = [t for t in candidates if t == track]
+        # An unknown name falls back to the full search rather than returning nothing:
+        # a stale bookmark should show the plan, not an empty screen.
+        candidates = narrowed or candidates
+
+    for track in candidates:
         needs: list[CourseNeed] = []
         unplaceable: list[str] = []
         assumptions = list(base_assumptions)
@@ -364,11 +377,38 @@ def build_sequence(
         for name, other in attempts
         if name != track and not other.feasible
     )
+
+    # The tracks that fit and simply finished later. `rejected` above covers the ones that
+    # do not fit; until now everything else was dropped on the floor, so a student whose
+    # second choice finishes one term later was told only about the first. This module's
+    # own docstring has promised the comparison since it was written — "Risk Analytics
+    # fits your deadline and Business Analytics does not" is a decision only the student
+    # can make — and this is the half of it that was missing.
+    alternatives = tuple(
+        TrackOption(
+            track=name or "—",
+            finish_term=other.finish_term,
+            guesses=sum(1 for p in other.placements if p.rests_on_assumption),
+            terms_later_than_chosen=(
+                best.finish_term.distance_to(other.finish_term) - 1
+                if best.finish_term and other.finish_term
+                else 0
+            ),
+            meets_deadline=(
+                None if deadline is None
+                else (other.finish_term is not None and other.finish_term <= deadline)
+            ),
+        )
+        for name, other in sorted(feasible, key=rank)
+        if name != track and other.feasible and other.finish_term is not None
+    )
+
     return SequencePlan(
         feasible=True,
         placements=best.placements,
         chosen_track=track,
         rejected_tracks=rejected,
+        alternatives=alternatives,
         assumptions=best.assumptions,
         terms_used=best.terms_used,
         unplaceable=best.unplaceable,

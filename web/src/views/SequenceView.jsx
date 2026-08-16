@@ -80,6 +80,13 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
   const [terms, setTerms] = useState([])
   const [prefs, setPrefs] = useState(null)
   const [deferred, setDeferred] = useState(null)
+  // Which concentration the student asked to look at, or null for the solver's own pick.
+  const [track, setTrack] = useState(null)
+  // Every concentration that fits, remembered from the last unnarrowed solve. Asking for
+  // one narrows the search, so that response reports no alternatives — rendering the
+  // chips from it would make the row vanish the moment a student used it, with no way
+  // back. Same shape as `baseline` above: the comparison outlives the question.
+  const [trackOptions, setTrackOptions] = useState(null)
   const [plan, setPlan] = useState(null)
   // `{ key, plan }` — the un-deferred answer plus the constraints it was solved under.
   // The ref mirrors it so `load` can read the current value without taking it as a
@@ -114,6 +121,7 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
       deadline: overrides.deadline ?? deadline,
       maxCredits: overrides.maxCredits ?? maxCredits,
       defer: "defer" in overrides ? overrides.defer : deferred,
+      track: "track" in overrides ? overrides.track : track,
     }
     const key = `${next.startTerm}|${next.deadline}|${next.maxCredits}`
     setBusy(true)
@@ -121,6 +129,13 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
     try {
       const result = await api.sequence(next)
       setPlan(result)
+      if (!next.track && result.chosen_track) {
+        setTrackOptions({
+          chosen: result.chosen_track,
+          chosenFinish: result.finish_term,
+          alternatives: result.alternatives ?? [],
+        })
+      }
       if (!next.defer) {
         rememberBaseline({ key, plan: result })
       } else if (baselineRef.current?.key !== key) {
@@ -135,7 +150,7 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
     } finally {
       setBusy(false)
     }
-  }, [startTerm, deadline, maxCredits, deferred])
+  }, [startTerm, deadline, maxCredits, deferred, track])
 
   useEffect(() => {
     // Preferences first: the picker's options come from the server, and a saved target
@@ -155,6 +170,7 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
     if ("defer" in overrides) setDeferred(overrides.defer)
     if ("maxCredits" in overrides) setMaxCredits(overrides.maxCredits)
     if ("startTerm" in overrides) setStartTerm(overrides.startTerm)
+    if ("track" in overrides) setTrack(overrides.track)
     if ("deadline" in overrides) setDeadline(overrides.deadline)
     await load(overrides)
   }
@@ -373,6 +389,77 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
           </div>
         </div>
       </div>
+
+      {/* Concentrations. A one_track requirement is a choice, not a constraint: the
+          solver picks the soonest, but "soonest" is this product's tiebreak, not
+          necessarily the student's reason. Each chip says what that choice costs in the
+          unit they think in — terms — and, once they have stated a target, whether it
+          still fits at all. Selecting one is a question, not a declaration: nothing is
+          written, and the concentration is declared to the university, not here. */}
+      {trackOptions && trackOptions.alternatives.length > 0 ? (
+        <div className="shrink-0 px-6 pt-4">
+          <div
+            className="mb-1.5 text-[10px] font-medium tracking-wide uppercase"
+            style={{ color: "var(--color-ink-3)" }}
+          >
+            Concentration · yours to choose
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { track: trackOptions.chosen, chosen: true },
+              ...trackOptions.alternatives,
+            ].map((option) => {
+              const active = plan.track_requested
+                ? plan.track_requested === option.track
+                : option.chosen
+              return (
+                <button
+                  key={option.track}
+                  type="button"
+                  aria-pressed={active}
+                  disabled={busy}
+                  onClick={() => ask({ track: option.chosen ? null : option.track })}
+                  className="rounded-xl px-3 py-2 text-left"
+                  style={{
+                    background: active ? "var(--color-violet-muted)" : "var(--color-surface-2)",
+                    border: `1px solid ${active ? "rgba(124,58,237,0.35)" : "var(--color-rail-strong)"}`,
+                    transition: "background 200ms ease, border-color 200ms ease",
+                  }}
+                >
+                  <div
+                    className="text-[12px] font-medium"
+                    style={{ color: active ? "var(--color-violet-light)" : "var(--color-ink)" }}
+                  >
+                    {option.track}
+                  </div>
+                  <div className="mt-0.5 text-[10px]" style={{ color: "var(--color-ink-3)" }}>
+                    {option.chosen ? (
+                      `Finishes ${trackOptions.chosenFinish ?? plan.finish_term ?? "—"} · soonest`
+                    ) : (
+                      <>
+                        {`Finishes ${option.finish_term}`}
+                        {option.terms_later > 0
+                          ? ` · ${option.terms_later} term${option.terms_later === 1 ? "" : "s"} later`
+                          : " · no later"}
+                        {/* Only sayable once they have said when they want to finish. */}
+                        {option.meets_deadline === false ? " · misses your target" : ""}
+                        {option.meets_deadline === true ? " · still meets your target" : ""}
+                      </>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+          {plan.track_requested ? (
+            <div className="mt-1.5 text-[10px]" style={{ color: "var(--color-ink-3)" }}>
+              Showing {plan.track_requested} because you asked. The solver would pick{" "}
+              {trackOptions.chosen}, which finishes soonest — but soonest is a tiebreak,
+              not a recommendation about what to study. Nothing here is saved.
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {/* What-if banner: what was asked, what it costs, and the way back. */}
       <div className="shrink-0 space-y-2 px-6 pt-4">

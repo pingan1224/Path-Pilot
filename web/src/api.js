@@ -133,12 +133,16 @@ export const api = {
   // `defer` asks the counterfactual — hold this course out of the starting term and
   // re-solve around it, concentration choice included. It writes nothing: a deferral is
   // a question the student asked, not a plan they saved.
-  sequence: ({ startTerm, deadline, maxCredits, defer } = {}) => {
+  // `track` asks to see a concentration other than the soonest-finishing one. Looking is
+  // not choosing: nothing is written, and the student still declares their concentration
+  // to the university rather than here.
+  sequence: ({ startTerm, deadline, maxCredits, defer, track } = {}) => {
     const params = new URLSearchParams();
     if (startTerm) params.set("start_term", startTerm);
     if (deadline) params.set("deadline", deadline);
     if (maxCredits) params.set("max_credits_per_term", String(maxCredits));
     if (defer) params.set("defer", defer);
+    if (track) params.set("track", track);
     const query = params.toString();
     return request(`/sequence${query ? `?${query}` : ""}`);
   },

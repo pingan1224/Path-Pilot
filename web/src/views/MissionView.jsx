@@ -21,6 +21,7 @@ import {
   isProgramIssue,
 } from "@/components/nocturne"
 import { Accordion } from "@/components/make"
+import { useCourseSearch } from "@/hooks/useCourseSearch"
 import { usePrefs } from "@/i18n"
 
 /**
@@ -76,6 +77,23 @@ export default function MissionView({ onOpenPlanner, onOpenProgram }) {
     setError(null)
     try {
       replace(await fn())
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Close, then re-read: a closed mission drops out of `open_missions`, so the list this
+   *  view holds is stale the moment the request lands. */
+  async function closeMission(mission) {
+    setBusy(true)
+    setError(null)
+    try {
+      await api.missionClose(mission.id, null)
+      const list = await api.missions()
+      setMissions(list)
+      setActiveId(list.length > 0 ? list[0].id : null)
     } catch (err) {
       setError(err)
     } finally {
@@ -155,10 +173,12 @@ export default function MissionView({ onOpenPlanner, onOpenProgram }) {
 
       {mission ? (
         <Mission
+          key={mission.id}
           mission={mission}
           busy={busy}
           act={act}
           onMission={replace}
+          onClose={closeMission}
           onOpenPlanner={onOpenPlanner}
           t={t}
         />
@@ -227,7 +247,7 @@ function StartCard({ onStart, busy, compact }) {
   )
 }
 
-function Mission({ mission, busy, act, onMission, onOpenPlanner, t }) {
+function Mission({ mission, busy, act, onMission, onClose, onOpenPlanner, t }) {
   const done = mission.steps.filter((s) => s.state === "done").length
   const activeStep = mission.steps.find((s) => s.state === "active")
   const blockers = mission.open_blockers ?? []
@@ -235,6 +255,7 @@ function Mission({ mission, busy, act, onMission, onOpenPlanner, t }) {
   // One card open at a time, the design's pattern; default follows the active step.
   const [expanded, setExpanded] = useState(null)
   const shown = expanded ?? activeStep?.id ?? null
+  const [confirmClose, setConfirmClose] = useState(false)
 
   return (
     <>
@@ -247,12 +268,20 @@ function Mission({ mission, busy, act, onMission, onOpenPlanner, t }) {
           >
             {t("nav.mission")}
           </h1>
+          {/* Term *and* programme. A mission records the programme it was opened for and
+              is evaluated against that one forever, so after a programme change the term
+              alone cannot tell a student which set of rules they are looking at. */}
           <span
             className="rounded-full px-2 py-1 text-[11px] font-medium"
             style={{ background: "var(--color-violet-muted)", color: "var(--color-violet-light)" }}
           >
             {mission.term}
           </span>
+          {mission.program_name ? (
+            <span className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>
+              {mission.program_name}
+            </span>
+          ) : null}
           {mission.complete ? (
             <span
               className="pp-badge-pop rounded-full px-2 py-1 text-[11px] font-medium"
@@ -445,6 +474,36 @@ function Mission({ mission, busy, act, onMission, onOpenPlanner, t }) {
           )
         })}
       </div>
+
+      {/* Closing has existed on the API since missions shipped and had no control at all,
+          so a term the student abandoned — or opened under a programme they have since
+          left — stayed in the rail forever with no way out but finishing it. Two-step
+          rather than a dialog: it is reversible only by opening a new mission, and the
+          decisions recorded inside it do not come back. */}
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        {confirmClose ? (
+          <>
+            <span className="text-[11px]" style={{ color: "var(--color-ink-2)" }}>
+              Close {mission.term}? The steps and decisions on it stop being tracked.
+            </span>
+            <Button size="xs" variant="outline" disabled={busy} onClick={() => onClose(mission)}>
+              Close it
+            </Button>
+            <Button size="xs" variant="outline" disabled={busy} onClick={() => setConfirmClose(false)}>
+              Keep it
+            </Button>
+          </>
+        ) : (
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={busy}
+            onClick={() => setConfirmClose(true)}
+          >
+            Close this mission
+          </Button>
+        )}
+      </div>
     </>
   )
 }
@@ -492,12 +551,16 @@ function GapsBody({ mission, state, busy, act, onOpenPlanner }) {
 
 function CandidatesBody({ mission, busy, act }) {
   const [code, setCode] = useState("")
+  const search = useCourseSearch({ limit: 6 })
   const chosen = mission.candidates.filter((c) => c.state === "confirmed")
   const proposed = mission.candidates.filter((c) => c.state === "proposed")
   const declined = mission.candidates.filter((c) => c.state === "declined")
 
   return (
     <div className="mt-3 space-y-2.5">
+      {/* Search first, raw code second. The field used to take only a typed code with
+          nothing checking it, so a typo became a candidate that looked exactly like a real
+          course — and a mission candidate is what the handoff email ends up quoting. */}
       <form
         className="flex flex-wrap items-center gap-2"
         onSubmit={(e) => {
@@ -505,20 +568,56 @@ function CandidatesBody({ mission, busy, act }) {
           if (!code.trim()) return
           act(() => api.missionAddCandidate(mission.id, code.trim()))
           setCode("")
+          search.clear()
         }}
       >
         <input
           className={INPUT_CLASS}
           value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="Add a course by code, e.g. MASY1-GC 2100"
-          aria-label="Course code"
+          onChange={(e) => {
+            setCode(e.target.value)
+            search.setQuery(e.target.value)
+          }}
+          placeholder="Search by code or title, e.g. MASY1-GC 2100"
+          aria-label="Course code or title"
           disabled={busy}
         />
         <Button type="submit" size="sm" disabled={busy || !code.trim()}>
           Add
         </Button>
       </form>
+      {search.results.length > 0 ? (
+        <ul className="flex list-none flex-col gap-1.5">
+          {search.results.map((r) => (
+            <li key={r.code}>
+              <button
+                type="button"
+                disabled={busy}
+                className="w-full rounded-xl px-3 py-2 text-left text-[12px] leading-snug"
+                style={{
+                  background: "var(--color-surface-2)",
+                  border: "1px solid var(--color-rail)",
+                  color: "var(--color-ink)",
+                }}
+                onClick={() => {
+                  act(() => api.missionAddCandidate(mission.id, r.code))
+                  setCode("")
+                  search.clear()
+                }}
+              >
+                <span
+                  className="font-medium"
+                  style={{ fontFamily: "var(--font-mono)", color: "var(--color-violet-light)" }}
+                >
+                  {r.code}
+                </span>{" "}
+                {r.title}
+                <span style={{ color: "var(--color-ink-3)" }}> · {r.credits}cr</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {proposed.length > 0 ? (
         <div className="space-y-1.5">
@@ -575,6 +674,12 @@ function CandidatesBody({ mission, busy, act }) {
             >
               <span className="text-[11px] font-medium" style={{ fontFamily: "var(--font-mono)", color: "var(--color-violet-light)" }}>
                 {c.course_code}
+              </span>
+              {/* The title is what tells a student they typed the code they meant. When the
+                  catalogue does not hold it the course is kept and marked, not refused — a
+                  code from another school is legitimate and simply cannot be checked here. */}
+              <span className="min-w-0 flex-1 text-[11px] leading-snug" style={{ color: "var(--color-ink-2)" }}>
+                {c.title ?? (c.in_catalog ? null : <WarnNote>not in this catalog — check the code</WarnNote>)}
               </span>
               {c.proposed_by === "ai" ? <Badge variant="outline">You accepted a suggestion</Badge> : null}
               <span className="ml-auto">

@@ -42,17 +42,17 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
-      - key: MOONSHOT_API_KEY
-        sync: false
       - key: OPENAI_API_KEY
         sync: false
 
-      - key: MOONSHOT_BASE_URL
-        value: https://api.moonshot.cn/v1
-      - key: CHAT_MODEL
-        value: kimi-k2.7-code-highspeed
-      - key: EMBEDDING_MODEL
-        value: text-embedding-3-small
+      # CHAT_MODEL and EMBEDDING_MODEL are deliberately absent. They used to be pinned
+      # here as literal values, which made this file a second source of truth for the
+      # model names — and when the chat moved off Moonshot onto OpenAI, app/config.py
+      # was updated and this file was not. The stale value won, because a blueprint
+      # `value:` beats the code default, so every deployed turn asked OpenAI for a Kimi
+      # model and 404'd into the generic degradation path. Leaving them unset means the
+      # defaults in app/config.py are the only place a model name is written down.
+      # Override in the dashboard for a one-off comparison; do not re-pin them here.
 
       # Public by design — /demo prints it — but set here so a deployed instance can
       # rotate it without a code change.

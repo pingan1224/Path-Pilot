@@ -579,6 +579,39 @@ def seed_hero_students(
     return heroes
 
 
+# Invented names for the background population. These were deleted by f1efbf7 alongside
+# the holds tables that commit was actually about — an over-deletion nothing caught,
+# because `seed_background_students` is only reached by `--reset`, and nobody ran a reset
+# between that commit and the eval's `--reseed` blowing up on the missing name. The seed
+# is the one script whose failure leaves the demo database half-built, so its own
+# dependencies staying in this file matters more than the dead-code sweep that took them.
+FIRST_NAMES = [
+    "Amara", "Nikhil", "Sofia", "Wei", "Leila", "Marcus", "Yuki", "Tomas", "Hana", "Idris",
+    "Camila", "Arjun", "Noor", "Elena", "Kwame", "Mei", "Rafael", "Zara", "Oscar", "Ingrid",
+    "Dmitri", "Aisha", "Felipe", "Naomi", "Hugo", "Anya", "Kenji", "Lucia", "Omar", "Freya",
+    "Santiago", "Divya", "Mateo", "Rin", "Ayo", "Clara", "Viktor", "Priyanka", "Andre", "Suki",
+    "Bilal", "Greta", "Nadia", "Emeka", "Isabel",
+]
+
+LAST_NAMES = [
+    "Okonkwo", "Sharma", "Rossi", "Zhang", "Haddad", "Bennett", "Tanaka", "Silva", "Kim",
+    "Abdi", "Torres", "Menon", "Rahman", "Petrova", "Mensah", "Chen", "Duarte", "Malik",
+    "Lindqvist", "Novak", "Volkov", "Diallo", "Costa", "Watanabe", "Muller", "Sokolov",
+    "Ito", "Ramirez", "Farah", "Olsen", "Vega", "Iyer", "Guzman", "Sato", "Adeyemi",
+    "Fischer", "Popov", "Nair", "Laurent", "Park", "Yilmaz", "Berg", "Hassan", "Eze", "Moreau",
+]
+
+# How far along a background student is, and which graduation terms that makes plausible.
+# The spread is deliberate rather than uniform: a population that is all at one level would
+# fill every section in the same term and leave the others empty, and seat pressure is the
+# thing these records exist to make real.
+PROGRESS_LEVELS = {
+    1: (3, ["2027SP", "2027FA"]),  # 9 credits
+    2: (6, ["2027SP", "2027FA"]),  # 18 credits
+    3: (8, ["2026FA", "2027SP", "2027FA"]),  # 24 credits
+}
+
+
 def seed_background_students(
     session: Session,
     program: Program,
@@ -992,11 +1025,32 @@ def seed_documents(session: Session) -> None:
 # Entry point
 # --------------------------------------------------------------------------------------
 
+# Tables this script owns outright: every row in them is a fixture, so a bare DELETE is
+# correct and the id sequence can restart from 1.
 TABLES_IN_DELETE_ORDER = [
     "case_events", "ai_interactions", "cases", "enrollments",
-    "sections", "requirement_courses", "course_prerequisites", "requirements",
-    "students", "users", "courses", "programs", "terms",
+    "sections", "students", "users", "terms",
     "source_freshness_policy",
+]
+
+# Tables this script *shares* with the ingest pipeline. The catalog rows in them — 23
+# programs, 749 courses, the prerequisite edges and every encoded degree rule — are not
+# fixtures, and a bare DELETE here is how a reseed wiped the entire real catalog once:
+# the docstring below promised "only the fixtures this script created" while the SQL
+# deleted everything. Same failure shape as the corpus wipe the documents guard exists
+# for, one table family over. Rebuilt via `python -m ingest.catalog / .programs /
+# .requirements` if it ever happens again — but it should not happen again.
+SHARED_TABLE_DEMO_FILTERS = [
+    ("requirement_courses",
+     "requirement_id IN (SELECT r.id FROM requirements r"
+     " JOIN programs p ON p.id = r.program_id WHERE p.source = 'demo')"),
+    ("course_prerequisites",
+     "course_id IN (SELECT id FROM courses WHERE source = 'demo')"
+     " OR prerequisite_id IN (SELECT id FROM courses WHERE source = 'demo')"),
+    ("requirements",
+     "program_id IN (SELECT id FROM programs WHERE source = 'demo')"),
+    ("courses", "source = 'demo'"),
+    ("programs", "source = 'demo'"),
 ]
 
 
@@ -1006,8 +1060,11 @@ def reset(session: Session) -> None:
     `documents` and `document_chunks` are deliberately absent from the delete list. They
     hold the ingested NYU corpus, which costs a full re-embed of ~2,800 chunks to rebuild;
     wiping it as a side effect of reseeding students is an expensive surprise, and it
-    happened once before this guard existed. Only the synthetic fixtures this script
-    created are removed, matched on is_synthetic.
+    happened once before this guard existed. The catalog tables get the same protection
+    with a filter instead of an absence: seed and ingest write into the same tables,
+    separated by `source`, so the reset deletes the demo side and leaves the catalog
+    standing. Sequences on the shared tables are re-pointed past the surviving ids rather
+    than restarted — a restart would hand out primary keys the catalog rows already hold.
     """
     from sqlalchemy import text
 
@@ -1016,6 +1073,20 @@ def reset(session: Session) -> None:
     for table in TABLES_IN_DELETE_ORDER:
         session.execute(text(f"DELETE FROM {table}"))
         session.execute(text(f"ALTER SEQUENCE IF EXISTS {table}_id_seq RESTART WITH 1"))
+    for table, where in SHARED_TABLE_DEMO_FILTERS:
+        session.execute(text(f"DELETE FROM {table} WHERE {where}"))
+        # requirement_courses has a composite key and no sequence; skip setval where no
+        # sequence exists, or the reset dies on the join table and rolls the wipe back.
+        has_seq = session.execute(
+            text(f"SELECT to_regclass('{table}_id_seq') IS NOT NULL")
+        ).scalar()
+        if has_seq:
+            session.execute(
+                text(
+                    f"SELECT setval('{table}_id_seq',"
+                    f" (SELECT COALESCE(MAX(id), 1) FROM {table}))"
+                )
+            )
 
     session.execute(
         text(
@@ -1037,7 +1108,13 @@ def main() -> None:
             print("resetting ...")
             reset(session)
 
-        if session.scalar(select(Program).limit(1)) is not None:
+        # Demo rows only: the reset now leaves the ingested catalog standing, so "any
+        # program exists" would read a correctly-guarded reset as already-seeded and
+        # skip the seeding it just cleared the way for.
+        if (
+            session.scalar(select(Program).where(Program.source == "demo").limit(1))
+            is not None
+        ):
             raise SystemExit("Database already seeded. Re-run with --reset to rebuild.")
 
         print("seeding ...")

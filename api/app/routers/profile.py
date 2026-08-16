@@ -16,9 +16,11 @@ from app.db.session import get_session
 from app.models import Program, UserRole
 from app.planning.types import CourseState, Verdict
 from app.services.auth import Identity, require_roles
+from app.missions import service
 from app.services.profile import (
     UNSET,
     list_profile,
+    list_record,
     plan_for_user,
     program_for_user,
     remove_course,
@@ -56,6 +58,9 @@ class CourseOut(BaseModel):
     # electives, and something the UI must show rather than hide.
     in_catalog: bool
     updated_at: datetime
+    # The mission term this course was confirmed on; null when the student typed it. The
+    # UI renders a set value read-only — the mission page owns it.
+    from_mission: str | None = None
 
 
 class CitationOut(BaseModel):
@@ -109,6 +114,7 @@ def _to_out(entry) -> CourseOut:
         credits=entry.credits,
         in_catalog=entry.in_catalog,
         updated_at=entry.updated_at,
+        from_mission=entry.from_mission,
     )
 
 
@@ -210,8 +216,28 @@ def put_program(
             detail=f"No program with code {payload.program_code!r}.",
         )
 
+    # Missions opened under the programme being left are closed, not carried across. A
+    # mission is evaluated against the programme it was opened for, so one that survives a
+    # programme change is a live task measuring the student against rules they have left —
+    # and the rail shows only its term, so nothing on screen would say which. Closing is
+    # recorded with a reason the mission page can show; the candidates and decisions stay
+    # readable in it, they simply stop counting as the current plan.
+    previous_id = identity.user.program_id
     identity.user.program_id = program.id
     session.commit()
+
+    if previous_id is not None and previous_id != program.id:
+        previous = session.get(Program, previous_id)
+        if previous is not None:
+            for mission in service.open_missions(session, identity.user.id):
+                if mission.program_code != program.code:
+                    service.close_mission(
+                        session,
+                        identity.user.id,
+                        mission.id,
+                        reason=f"Programme changed from {previous.name}",
+                    )
+
     return _program_out(program_for_user(session, identity.user.id))
 
 
@@ -220,7 +246,7 @@ def get_courses(
     identity: Identity = Depends(student_only),
     session: Session = Depends(get_session),
 ) -> list[CourseOut]:
-    return [_to_out(e) for e in list_profile(session, identity.user.id)]
+    return [_to_out(e) for e in list_record(session, identity.user.id)]
 
 
 @router.put("/courses", response_model=CourseOut)

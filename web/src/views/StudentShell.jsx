@@ -275,7 +275,10 @@ export default function StudentShell({ me, onSignOut }) {
                   onOpenProgram={() => setView("program")}
                 />
               ) : view === "planner" ? (
-                <PlannerView onOpenProgram={() => setView("program")} />
+                <PlannerView
+                  onOpenProgram={() => setView("program")}
+                  onOpenMission={() => setView("mission")}
+                />
               ) : view === "sequence" ? (
                 <SequenceView
                   onOpenPlanner={() => setView("planner")}
@@ -305,7 +308,10 @@ export default function StudentShell({ me, onSignOut }) {
                   ) : view === "dashboard" && me.student_id ? (
                     <StudentView studentId={me.student_id} />
                   ) : (
-                    <PlannerView onOpenProgram={() => setView("program")} />
+                    <PlannerView
+                  onOpenProgram={() => setView("program")}
+                  onOpenMission={() => setView("mission")}
+                />
                   )}
                 </div>
               </div>

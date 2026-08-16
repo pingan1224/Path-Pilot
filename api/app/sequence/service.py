@@ -20,7 +20,7 @@ from app.sequence.delay import delay_costs
 from app.sequence.plan import ASSUMED_CREDIT_CAP, DEFAULT_HORIZON, build_sequence
 from app.sequence.terms import Season, Term
 from app.sequence.types import SequencePlan
-from app.services.profile import list_profile, program_for_user
+from app.services.profile import program_for_user, stated_record
 
 # Roughly when each term starts, for picking a sensible default start term. Approximate on
 # purpose: this only decides which term the form is pre-filled with, and the alternative —
@@ -57,11 +57,10 @@ def sequence_for_user(
     if program_code is None:
         program_code = program_for_user(session, user_id).code
     program = load_program_rules(session, program_code)
-    entries = list_profile(session, user_id)
-    stated = [
-        StatedCourse(code=e.course_code, state=e.state, term=e.term, grade=e.grade)
-        for e in entries
-    ]
+    # The same record the planner evaluates, mission-confirmed courses included: a course
+    # the student confirmed for next term is one the sequence must place, not one it gets
+    # to rediscover as still outstanding.
+    stated = stated_record(session, user_id)
 
     start = start_term or next_registerable_term()
     cap = max_credits_per_term or ASSUMED_CREDIT_CAP

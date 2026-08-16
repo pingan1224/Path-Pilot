@@ -14,6 +14,7 @@ function it would have to call is not exposed to it.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy import select
@@ -110,21 +111,12 @@ def create_mission(
     the assistant's to overwrite.
     """
     term = " ".join(term.strip().split())
-    existing = session.scalars(
-        select(Mission).where(Mission.user_id == user_id, Mission.term == term)
-    ).first()
-    if existing is not None:
-        # Reopen rather than duplicate. A student coming back to a term they abandoned
-        # wants their candidate list, not a clean slate that silently discards it.
-        if existing.closed_at is not None:
-            existing.closed_at = None
-            existing.close_reason = None
-            session.commit()
-        return get_mission(session, user_id, existing.id)
 
-    # Resolved here rather than at the top of the function so reopening an existing mission
-    # never depends on the user's *current* program: the mission records the program it was
-    # opened for, and that is the one its steps must keep being evaluated against.
+    # Programme before lookup, because it is half of what identifies a mission. This
+    # resolution used to sit *after* the search, so "one mission per term" matched on term
+    # alone and a student who had changed programme was handed back the mission they
+    # opened under the old one — evaluated against its rules, and labelled on screen with
+    # nothing but the term.
     if program_code is None:
         program = program_for_user(session, user_id)
         if not program.is_encoded:
@@ -139,6 +131,25 @@ def create_mission(
             )
         program_code = program.code
 
+    existing = session.scalars(
+        select(Mission).where(
+            Mission.user_id == user_id,
+            Mission.term == term,
+            Mission.program_code == program_code,
+        )
+    ).first()
+    if existing is not None:
+        # Reopen rather than duplicate. A student coming back to a term they abandoned
+        # wants their candidate list, not a clean slate that silently discards it. Scoping
+        # the search by programme is what keeps the row's own `program_code` authoritative
+        # — the mission is still evaluated against the programme it was opened for, which
+        # is now guaranteed to be the one being asked about.
+        if existing.closed_at is not None:
+            existing.closed_at = None
+            existing.close_reason = None
+            session.commit()
+        return get_mission(session, user_id, existing.id)
+
     mission = Mission(
         user_id=user_id, term=term, program_code=program_code, created_by=created_by
     )
@@ -147,16 +158,89 @@ def create_mission(
     return get_mission(session, user_id, mission.id)
 
 
-def mission_id_for_term(session: Session, user_id: int, term: str) -> int | None:
-    """The id of this user's mission for a term, closed ones included, or None.
+@dataclass(frozen=True)
+class ConfirmedCandidate:
+    """A course the student chose on a mission, with the mission that carries it.
+
+    The provenance is not decoration: this course appears in the planner's totals while
+    being uneditable there, and a row you cannot edit and cannot place is worse than one
+    that is simply absent.
+    """
+
+    course_code: str
+    term: str
+    mission_id: int
+    confirmed_at: datetime
+
+
+def confirmed_candidates(session: Session, user_id: int) -> list[ConfirmedCandidate]:
+    """Every course confirmed on an open mission, newest mission first.
+
+    Closed missions are excluded: closing one is the student saying it is no longer what
+    they are doing, and its courses should stop counting the moment they say so.
+    """
+    rows = session.scalars(
+        select(Mission)
+        .where(Mission.user_id == user_id, Mission.closed_at.is_(None))
+        .options(selectinload(Mission.candidates))
+        .order_by(Mission.created_at.desc())
+    ).all()
+    seen: set[str] = set()
+    out: list[ConfirmedCandidate] = []
+    for mission in rows:
+        for candidate in sorted(mission.candidates, key=lambda c: c.course_code):
+            if candidate.confirmed_at is None or candidate.course_code in seen:
+                continue
+            seen.add(candidate.course_code)
+            out.append(
+                ConfirmedCandidate(
+                    course_code=candidate.course_code,
+                    term=mission.term,
+                    mission_id=mission.id,
+                    confirmed_at=candidate.confirmed_at,
+                )
+            )
+    return out
+
+
+def confirmed_candidate_courses(session: Session, user_id: int) -> list[StatedCourse]:
+    """Courses the student has confirmed on any open mission, as planned coursework.
+
+    The read half of "Add to my plan". A confirmed candidate is a decision the student
+    made — the same kind of fact as a course they typed into their record — so the planner
+    and the sequence read it alongside the profile rather than each keeping their own idea
+    of what is planned. See `services.profile.stated_record` for why this is merged on
+    read instead of copied into `profile_courses`.
+
+    Closed missions are excluded: closing one is the student saying it is no longer what
+    they are doing, and its courses should stop counting the moment they say so.
+    """
+    return [
+        StatedCourse(code=c.course_code, state=CourseState.planned, term=c.term)
+        for c in confirmed_candidates(session, user_id)
+    ]
+
+
+def mission_id_for_term(
+    session: Session, user_id: int, term: str, program_code: str
+) -> int | None:
+    """The id of this user's mission for a term *under a programme*, closed ones included.
 
     Exists so a caller can tell whether `create_mission` is about to create or to reopen.
     That distinction is invisible in its return value and matters to anything that may
-    need to undo the call: reopening returns work the student already did.
+    need to undo the call: reopening returns work the student already did. It takes the
+    programme for the same reason `create_mission` does — matching on term alone would
+    call a new mission "existing" whenever the student had one for that term under a
+    programme they have left, and the deferral rollback would then decline to undo a
+    container it had just created.
     """
     term = " ".join(term.strip().split())
     return session.scalar(
-        select(Mission.id).where(Mission.user_id == user_id, Mission.term == term)
+        select(Mission.id).where(
+            Mission.user_id == user_id,
+            Mission.term == term,
+            Mission.program_code == program_code,
+        )
     )
 
 
@@ -341,10 +425,16 @@ def withdraw_accepted_risk(
 def build_facts(session: Session, user_id: int, mission: Mission) -> tuple[MissionFacts, dict]:
     """Assemble everything the pure engine needs, and the plan metadata for display.
 
-    The confirmed candidates are handed to the planner as `planned` coursework for the
-    mission's term. That is what makes "are these courses actually takeable" answerable by
-    the existing rule engine rather than by a second implementation — the same code that
-    powers the what-if screen, given the mission's choices as the hypothetical.
+    Confirmed candidates reach the planner as `planned` coursework, which is what makes
+    "are these courses actually takeable" answerable by the existing rule engine rather
+    than by a second implementation. They arrive through `plan_for_user`'s own read of the
+    record, not from here — this function used to inject them as hypotheticals, and one
+    surface merging privately is exactly how the mission page, the planner and the
+    sequence ended up disagreeing about what was planned.
+
+    `stated_courses` below stays the typed profile alone. It is the mission's report of
+    what the student entered, and folding confirmed candidates into it would make the
+    mission page claim they had typed courses they had only chosen.
     """
     profile = list_profile(session, user_id)
     stated_from_profile = {
@@ -366,18 +456,18 @@ def build_facts(session: Session, user_id: int, mission: Mission) -> tuple[Missi
         for row in sorted(mission.candidates, key=lambda c: c.course_code)
     )
 
-    extra = [
-        StatedCourse(code=c.course_code, state=CourseState.planned, term=mission.term)
-        for c in candidates
-        if c.counts_toward_the_plan and c.course_code not in stated_from_profile
-    ]
-
+    # No `extra_courses` here any more. This function used to inject its own mission's
+    # confirmed candidates as hypotheticals, which is how the mission page came to see a
+    # plan the planner and the sequence did not: the merge lived here instead of in the
+    # read every surface shares. `plan_for_user` now reads confirmed candidates from every
+    # open mission, so this one is already included — and so are the others, which is
+    # right: a course confirmed for spring is planned coursework when you are looking at
+    # the autumn mission too.
     result, meta = plan_for_user(
         session,
         user_id,
         program_code=mission.program_code,
         include_planned=True,
-        extra_courses=extra,
     )
 
     accepted = tuple(
@@ -477,6 +567,9 @@ __all__ = [
     "add_candidate",
     "build_facts",
     "close_mission",
+    "ConfirmedCandidate",
+    "confirmed_candidate_courses",
+    "confirmed_candidates",
     "create_mission",
     "decide_candidate",
     "discard_missions",

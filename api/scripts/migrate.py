@@ -106,7 +106,7 @@ STATEMENTS = [
            created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
            closed_at TIMESTAMPTZ,
            close_reason VARCHAR(200),
-           UNIQUE (user_id, term)
+           UNIQUE (user_id, term, program_code)
        )""",
     "CREATE INDEX IF NOT EXISTS ix_missions_user ON missions (user_id)",
     # `confirmed_at` is the boundary between the assistant proposing and the student
@@ -258,6 +258,15 @@ STATEMENTS = [
     "DROP TYPE IF EXISTS case_status",
     "DROP TYPE IF EXISTS case_priority",
     "DROP TYPE IF EXISTS actor_kind",
+    # 2026-08-16: a mission is identified by programme as well as term. The old constraint
+    # let "one mission per term" hand a student the mission they opened under a programme
+    # they have since left, evaluated against its rules and labelled only by term.
+    "ALTER TABLE missions DROP CONSTRAINT IF EXISTS missions_user_id_term_key",
+    """DO $$ BEGIN
+           ALTER TABLE missions ADD CONSTRAINT missions_user_id_term_program_key
+               UNIQUE (user_id, term, program_code);
+       EXCEPTION WHEN duplicate_table THEN NULL;
+       END $$""",
 ]
 
 

@@ -820,7 +820,11 @@ def tool_start_mission(ctx: ToolContext, term: str | None = None) -> dict[str, A
     # create_mission returns a reopened mission exactly as it returns a new one. Only a
     # genuinely new container is recorded as this turn's, so that undoing a deferred turn
     # can never delete a mission the student already had.
-    pre_existing_id = mission_id_for_term(ctx.session, ctx.user_id, str(target))
+    from app.services.profile import program_for_user
+
+    pre_existing_id = mission_id_for_term(
+        ctx.session, ctx.user_id, str(target), program_for_user(ctx.session, ctx.user_id).code
+    )
     mission = create_mission(ctx.session, ctx.user_id, term=str(target), created_by="ai")
     if pre_existing_id is None:
         ctx.missions_opened.append(mission.id)

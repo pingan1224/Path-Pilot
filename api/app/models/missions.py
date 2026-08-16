@@ -50,7 +50,13 @@ class Mission(Base):
     __tablename__ = "missions"
     # One open mission per term per student. Two would give the same question two answers.
     __table_args__ = (
-        UniqueConstraint("user_id", "term", name="missions_user_id_term_key"),
+        # Programme is part of the identity, not decoration. Without it "one mission per
+        # term" meant a student who changed programme got the old programme's mission back
+        # for the same term — still evaluated against rules they had left, with only the
+        # term shown on screen to tell them apart.
+        UniqueConstraint(
+            "user_id", "term", "program_code", name="missions_user_id_term_program_key"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

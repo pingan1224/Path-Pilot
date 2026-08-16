@@ -7,6 +7,103 @@
 回流更新」的闭环没有接通。本方案把五个产品缺口排成六个阶段，每一步都在现有架构规则
 之内 —— 不发明新的真相源，不承诺产品没有的能力。
 
+---
+
+## 交接（2026-08-16 收工，`main@43273d6`）
+
+### 进度
+
+| 阶段 | 状态 | 落地 |
+|---|---|---|
+| P0 eval 基线 | ✅ | PR #5 · gate 首次在 gpt-5.4-mini 上 PASS |
+| A 统一计划基底 | ✅ | PR #7 |
+| B 偏好持久化 | ✅ | PR #8 |
+| C 方案对比 | ✅ | PR #9 |
+| D Elective 候选 | ✅ | PR #10 |
+| **E Albert 清单** | **未开始** | 见下方待决 |
+| F 账户与 onboarding | 未开始 | 原计划不变 |
+
+`latest.json` = `20260816-200258` / `gpt-5.4-mini` / gate PASS（31/35、高风险召回 1.0、
+forbidden 0、泄漏 0）。这是**第一份同类可比的基线**——此前所有「vs 20260812」都是跨模型
+加跨用例集。
+
+### 开工前必须先做的一件事
+
+**跑一次完整 gate。** B、C、D 各自往 agent 工具的返回载荷加了字段
+（`credits_per_term_source`、`deadline_source`、`concentrations_that_also_fit`、
+finding 上的 `options`），而本方案风险一节写明「每阶段收尾跑一次与基线对比」——这三个
+阶段都还没跑。现在有基线可比，是第一次能真正做回归判断的时候。
+
+```
+cd api && .venv/Scripts/python.exe -m scripts.run_eval --gate --repeat 3 --reseed
+```
+
+约 40 分钟，花真实 token。
+
+### Phase E 的两个待决问题
+
+**一、第六步是否 gate「Mission complete」。**（本文档决策表原定「gate，但可跳过」）
+
+现在 "Complete" 的含义是「步骤看过、风险收过、摘要生成了」，学生理解成「可以去注册
+了」。加第六步会让它变成「……而且该去 Albert 核实的都声明核实过了」——门槛变高、更名副
+其实，代价是没空跑 Albert 的学生卡在最后一步（故允许跳过，跳过也记录并写进 handoff）。
+不 gate 则第六步只是一段没人看的提示。**owner 未拍板。**
+
+**二、时间冲突这一项怎么做。** 见下。
+
+### 已查清的合规事实：NYU class-search 不可用（2026-08-16）
+
+owner 提议用 `https://bulletins.nyu.edu/class-search/` 取上课时间，以自动判断时间冲突。
+**实测结论是不可行，理由已查证，不要再走一遍：**
+
+- 该页面背后有一个公开、免登录的 JSON 接口
+  `/class-search/api/?page=fose&route=search`，返回每个班次的星期、起止时间、开课结束
+  日期（`meetingTimes` 是机器可读的）。**没有**剩余座位、waitlist、hold、注册时段。
+- **`robots.txt` 明确禁止该接口**：`Disallow: /class-search/api` 与
+  `Disallow: /class-search/api/`。而 `/class-search/`（页面本身）未被禁——学校给的
+  信号是「人可以看页面，不要碰接口」。
+- **绕开接口爬页面无效**：实测
+  `/class-search/?crit-subject=MASY1-GC&crit-srcdb=1268` 在不执行 JS 时**返回空表单，
+  没有任何课程数据**。数据只存在于被禁的接口后面，页面是空壳。
+- 现有 bulletin 语料只有 `typically_offered`（开课季节模式），本来就没有具体时间——这
+  正是 CLAUDE.md 写下「产品无法处理时间偏好」那句话的原因。
+
+三条路都堵死。**唯一合规的替代是让学生粘贴课表**：学生自己去那个页面查完全正当（页面
+就是给人看的），产品做他们手算很累的部分——四门课、每门多个班次，交叉比对哪些时段撞
+车。形状与 transcript intake 完全一致：学生做查询，产品做计算。
+
+据此 Phase E 建议：**时间冲突改为「粘贴课表 → 产品确定性计算」，其余三项（座位、hold、
+注册窗口）保持自报清单**（那三样连公开页面都没有）。owner 尚未在 A（含粘贴）/ B（四项
+全自报）之间选定。
+
+还有一条 owner 可做而 agent 不可做的路：**直接向 SPS 或 registrar 申请官方课表数据授
+权**。那不是绕 robots.txt，是拿到许可。
+
+### Phase E 的两条产品语言红线（先写探针，后写功能）
+
+- 永不渲染没有日期的 "verified ✓"
+- 永不说「你没有 hold」，只能说「你声明在某日查过 hold」
+
+### 遗留的小问题（都不阻断）
+
+- **`--reseed` 会清掉 live probe 账户**，之后跑测试出现 9 个 error。手动恢复：
+  `python -c "from app.db.session import get_sessionmaker; from scripts.live_mode_probe import ensure_live_user; ...ensure_live_user(s)"`。
+  probe 由探针脚本创建而非 seed，这个割裂本身值得修（今天撞了三次）。
+- **B35 抖动**：一个词 "help" 约 1/3 会触发 `start_mission`。刻意留作已测量事实——硬零
+  门槛对「泄漏」显然正确，对「可见且可一键关闭的空容器」是否同样严格，是门槛设计问题，
+  靠调提示词绕过是更糟的答案。
+- `delay_costs` 不感知 `defer`（what-if 界面残留一枚过期标签）；TONE 的 light 主题
+  rgba 字面量散在 11 个文件；导航注册表三处重复；oxlint 的 rules-of-hooks 被移除；
+  `Course.credits` 是 float 而 `PlanOut` 声明 int（学分含 .5 会让 `/plan` 500）。
+
+### 两条工作经验
+
+- **api 的 preview server 不热重载。** 改完后端必须
+  `preview_stop` + `preview_start`，否则浏览器验证的是旧代码（今天因此误判过三次）。
+- **浏览器实点抓到了构建和测试都抓不到的两个问题**：Phase C 里选中备选后 chip 行整行
+  消失、没有路切回去；Phase D 里借用方向的课加进去后学位审计**根本不计入**。两个都是
+  只有真的点下去才会暴露的。
+
 ## 不变量：方案的边界
 
 以下规则来自 CLAUDE.md 与源 RFP，本方案每一项设计服从它们，冲突时以它们为准：

@@ -11,20 +11,38 @@ import { zh } from "./zh"
  * `t()` resolves against the active dictionary and falls back to English so a missing
  * translation degrades to readable text, never to a raw key on screen.
  *
- * Theme is three-state, not two: `auto` removes the data-theme attribute so the
- * `prefers-color-scheme` media block in App.css decides — the palette's own contract is
- * that an explicit choice beats the OS preference *in both directions*, which requires
- * an explicit state for "no choice". A two-way toggle defaulting to dark would silently
- * disable the system preference, which is how the source design shipped and exactly what
- * this provider exists not to do.
+ * Theme is two-state and always stamps `data-theme`: the source design has no
+ * system-preference path, App.css carries no `prefers-color-scheme` block, and the owner
+ * took the design as drawn on this branch. The cost is real and is the reason this
+ * paragraph exists rather than being deleted: a light-preference OS user lands in dark
+ * with no auto option. Restoring auto means an "auto" state here *and* a media block in
+ * App.css — one without the other is a toggle that reads the OS and cannot override it.
  */
 
 const STRINGS = { en, zh }
 const PrefsContext = createContext(null)
 
+// Storage is optional, not assumed. `localStorage` throws SecurityError on access — not
+// on write — where site data is blocked (Chrome's "block all cookies", a sandboxed
+// iframe), and setItem can throw on quota. Both happen inside this provider, which is the
+// outermost thing that runs, so an unguarded access blanks the app rather than losing a
+// preference. Falling back to the default is the right degradation: the session works,
+// the choice just does not survive a reload.
 function read(key, allowed, fallback) {
-  const v = localStorage.getItem(key)
-  return allowed.includes(v) ? v : fallback
+  try {
+    const v = localStorage.getItem(key)
+    return allowed.includes(v) ? v : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function write(key, value) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // Preferences do not persist in this browser. Nothing else changes.
+  }
 }
 
 export function PrefsProvider({ children }) {
@@ -36,12 +54,12 @@ export function PrefsProvider({ children }) {
   const [theme, setTheme] = useState(() => read("pp-theme", ["light", "dark"], "dark"))
 
   useEffect(() => {
-    localStorage.setItem("pp-locale", locale)
+    write("pp-locale", locale)
     document.documentElement.setAttribute("lang", locale === "zh" ? "zh-Hans" : "en")
   }, [locale])
 
   useEffect(() => {
-    localStorage.setItem("pp-theme", theme)
+    write("pp-theme", theme)
     document.documentElement.setAttribute("data-theme", theme)
   }, [theme])
 

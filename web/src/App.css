@@ -70,7 +70,13 @@
 
   --color-violet: #6d28d9;
   --color-violet-light: #5b21b6;
-  --color-violet-dim: #ede9fe;
+  /* The far end of the avatar/logo gradient, and nothing else — its three call sites all
+     paint `linear-gradient(--color-violet, --color-violet-dim)` under a white mark. It
+     was #ede9fe here, a near-white lavender, so in light theme the compass on the logo
+     and the initials on both avatars faded into their own background. A token that
+     inverts between themes cannot be rescued by the glyph colour: the surface has to stay
+     dark, because what sits on it is always light. */
+  --color-violet-dim: #4c1d95;
 
   --color-amber: #b45309;
   --color-amber-light: #d97706;

@@ -366,6 +366,7 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
       <CardHeading
         eyebrow="Your record — self-reported"
         title="My courses"
+        titleId="record-heading"
         desc="Path Pilot cannot see Albert. Everything below is what you tell it, and the plan is only as accurate as this list."
       />
       <div className="flex flex-col gap-3">
@@ -691,7 +692,11 @@ function WhatIfCard() {
 
   return (
     <MakeCard delay={320} className="mb-4" aria-labelledby="whatif-heading">
-      <CardHeading eyebrow="Hypothetical — nothing is saved" title="What if I took…" />
+      <CardHeading
+        eyebrow="Hypothetical — nothing is saved"
+        title="What if I took…"
+        titleId="whatif-heading"
+      />
       <div className="flex flex-col gap-3">
         <form className="flex flex-wrap items-center gap-2" onSubmit={run}>
           <input
@@ -809,6 +814,7 @@ function HandoffCard({ courses, plan }) {
       <CardHeading
         eyebrow="For your advisor"
         title="Advisor handoff"
+        titleId="handoff-heading"
         desc="A ready-to-send summary of your record, what the rules say, and what only your advisor can answer. Copy it into an email — Path Pilot does not send anything for you."
       />
       <div className="flex flex-col gap-3">

@@ -145,8 +145,13 @@ export const en = {
   "chat.ready": "Ready",
   "chat.sources": "Sources",
   "chat.sourcesUsed": ({ count }) => `${count} source${count === 1 ? "" : "s"} used`,
+  // The persistent line under the composer, and the only disclaimer still on screen once
+  // the conversation has scrolled. It therefore has to carry the claim that matters —
+  // that this is not an NYU system and cannot see Albert — because this is the text that
+  // sits in the screenshot a student takes of an answer and acts on.
   "chat.footer":
-    "Answers cite their sources — verify anything that affects registration in Albert.",
+    "Not an NYU system, and it cannot see Albert. Answers cite their sources — verify " +
+    "anything that affects registration there.",
 
   // Chat — waiting
   "chat.thinking": "Checking your record, policy and plans as needed · ",

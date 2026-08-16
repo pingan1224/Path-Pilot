@@ -68,7 +68,7 @@ function BotAvatar() {
       className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
       style={{ background: "linear-gradient(135deg, var(--color-violet), var(--color-violet-dim))" }}
     >
-      <Compass size={13} className="text-white" />
+      <Compass size={13} style={{ color: "var(--on-accent)" }} />
     </div>
   )
 }

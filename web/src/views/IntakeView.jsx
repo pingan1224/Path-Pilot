@@ -55,7 +55,10 @@ export default function IntakeView({ onOpenView }) {
       // Carries its own retry: the file is still in the input, so re-reading it is one
       // click. Without this a failed read is a dead end — the only way forward was to
       // notice the message and re-pick the same file from the OS dialog.
-      setError({ message: err.message, retry: () => upload(file) })
+      //
+      // Named, not captured. A stored callback would freeze the state it closed over,
+      // which is harmless for a file but wrong for a confirm — see the confirm handler.
+      setError({ message: err.message, retry: "upload", file })
       setReading(null)
     } finally {
       setBusy(false)
@@ -91,15 +94,36 @@ export default function IntakeView({ onOpenView }) {
       setEdits({})
       if (fileRef.current) fileRef.current.value = ""
     } catch (err) {
-      setError({ message: err.message, retry: confirm })
+      // The retry is a name, not this closure. `confirm` is re-created every render over
+      // that render's `selected` and `edits`, so storing the function froze the selection
+      // as it stood when the request failed: a student who then unticked a row or fixed a
+      // grade and pressed "Try again" re-sent the old rows and the old grades, and the
+      // success card confirmed a count they thought they had changed.
+      setError({ message: err.message, retry: "confirm" })
     } finally {
       setBusy(false)
     }
   }
 
+  function runRetry() {
+    if (!error) return
+    if (error.retry === "upload") upload(error.file)
+    else if (error.retry === "confirm") confirm()
+  }
+
   const chosen = reading
     ? reading.rows.filter((row, i) => selected[i] && row.confirmable).length
     : 0
+
+  // Bulk selection is `matched` only, never `confirmable`. `confirmable` merely means the
+  // row has a course code and is not unreadable, which is true of every `needs_review`
+  // row — and `intake.service._as_reviewed` forces every OCR row to `needs_review`, so
+  // keying the button on it would let one click stage a whole photographed transcript.
+  // The server cannot catch that: POST /intake/confirm stamps `matched` on whatever it
+  // receives, on the stated assumption that the student looked at each row. So the "no
+  // OCR row is ever vouched for" rule has to hold here, in the only place that could
+  // break it. Same predicate as the post-upload pre-select above, deliberately.
+  const readyCount = reading ? reading.rows.filter((row) => row.status === "matched").length : 0
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
@@ -207,7 +231,7 @@ export default function IntakeView({ onOpenView }) {
             >
               <span>{error.message}</span>
               {error.retry ? (
-                <Button variant="outline" size="sm" disabled={busy} onClick={error.retry}>
+                <Button variant="outline" size="sm" disabled={busy} onClick={runRetry}>
                   Try again
                 </Button>
               ) : null}
@@ -399,20 +423,20 @@ export default function IntakeView({ onOpenView }) {
             </Button>
             <Button
               variant="outline"
-              disabled={busy}
+              disabled={busy || readyCount === 0}
               onClick={() => {
                 const all = {}
                 reading.rows.forEach((row, i) => {
-                  if (row.confirmable) all[i] = true
+                  if (row.status === "matched") all[i] = true
                 })
                 setSelected(all)
               }}
             >
-              Select all readable
+              Select all {readyCount} ready
             </Button>
             <p className="text-[11px]" style={{ color: "var(--color-ink-3)" }}>
-              Rows marked “needs a look” are not selected for you — that is the point of the
-              label.
+              Rows marked “needs a look” are not selected for you, and cannot be selected in
+              bulk — that is the point of the label.
             </p>
           </div>
         </MakeCard>

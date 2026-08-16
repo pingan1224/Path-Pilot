@@ -55,17 +55,31 @@ and the login and student-dashboard styles, which are demo/portfolio scope and w
 deliberately left on the old shell.
 
 **There is one palette and it is global.** `--accent` and friends live on `:root`; nothing
-is scoped to a container any more, and the theme flips through
-`prefers-color-scheme` with a `[data-theme]` override that beats it in both directions.
-Two rules when touching colour:
+is scoped to a container any more. The theme is **two-state and always stamped**: the
+Figma Make design has no system-preference path, so `App.css` carries no
+`prefers-color-scheme` block and `data-theme` is set on every load, dark by default.
+That is a deliberate adoption of the design as drawn and it has a cost — a
+light-preference OS user lands in dark with no auto option. Restoring auto needs both
+halves at once: an `auto` state in the prefs provider *and* a media block in `App.css`.
+One without the other is a toggle that reads the OS and cannot override it.
+
+Three rules when touching colour:
 
 - **Never hardcode a hex in a component.** A stock Tailwind colour (`border-amber-500`)
-  is invisible to the theme toggle — that bug shipped once in the intake OCR notice.
-  Reach for `--good`/`--warn`/`--danger` or their `-soft` pairs.
-- **Text on a filled accent or danger background uses `--on-filled`, never `#fff`.** White
-  on the dark-mode accent measures 3.06:1. `--on-filled` is white in light and near-black
-  in dark, and every combination in the palette clears 4.5:1 on all three surfaces in both
-  themes — verified by sweeping the painted DOM, not by eye.
+  is invisible to the theme toggle — that bug shipped once in the intake OCR notice, and
+  again as `text-white` on the avatars in the Make rebuild. Reach for
+  `--good`/`--warn`/`--danger` or their `-soft` pairs, and `--on-accent` for a mark on a
+  filled accent.
+- **Text on a filled accent or danger background uses `--on-filled`, never `#fff`.**
+  White on the dark-mode accent measures 3.06:1. **On this branch `--on-filled` is white
+  in both themes**, so it no longer carries that guarantee on its own: it was the Make
+  design's own value, and nothing currently renders the filled-destructive pairing it
+  would break (no call site passes `variant="destructive"`). Check the pairing before
+  using one — do not assume the token saves you.
+- **A token used as a background must not invert between themes.** `--color-violet-dim`
+  did — deep violet in dark, near-white in light — while its three call sites all paint a
+  white glyph on it, so the logo and both avatars faded out in light mode. The glyph
+  colour cannot fix that; the surface has to stay on one side of the contrast.
 
 ## Non-negotiable architecture rules
 
@@ -685,6 +699,16 @@ system's.** The behavior prompt was tuned against kimi; a full `--gate --repeat 
 the OpenAI model is owed before quoting any behavior number. Retrieval and decoder
 numbers are unaffected (no chat model in either), and intake OCR now shares a vendor
 with everything else.
+
+**The one OpenAI measurement in the repo is a three-case smoke run, and what it shows is
+not reassuring.** `eval/results/report-20260814-204503.md` is a `--only` subset — gate
+`n/a`, single attempt per case — so none of its rates are comparable to the 35-case kimi
+baseline above, and nothing should be read off them as a trend. But two things in it are
+worth carrying until the full run replaces them: **B05 escalated a case labelled
+answered**, and **two of the three runs contained a failed tool call** (`runs with a
+failed call` 0.6667, against 0 on kimi). Correct tool calling is the property the model
+was chosen for, so that is the number the full run has to clear — read this file as a
+reason to run the gate, not as evidence the swap is fine.
 
 **Every failure this suite has produced was intermittent**, and until 2026-08-11 it could
 not say so: one attempt per case, a model that rejects any temperature but 1, and a coin

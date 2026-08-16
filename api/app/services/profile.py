@@ -9,7 +9,14 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Course, ProfileCourse, Program, Student, User
+from app.models import (
+    Course,
+    ProfileCourse,
+    Program,
+    Student,
+    User,
+    UserPreferences,
+)
 from app.planning.loader import ProgramNotEncodedError, load_program_rules
 from app.planning.rules import evaluate_plan
 from app.planning.types import CourseState, PlanResult, StatedCourse
@@ -283,6 +290,76 @@ def remove_course(session: Session, user_id: int, course_code: str) -> bool:
     session.delete(row)
     session.commit()
     return True
+
+
+@dataclass
+class StatedPreferences:
+    """What the student has said they want. Every field may be None, meaning unsaid."""
+
+    target_finish_term: str | None
+    max_credits_per_term: int | None
+    summers_ok: bool | None
+    updated_at: datetime | None
+
+    @property
+    def is_empty(self) -> bool:
+        return not any(
+            (self.target_finish_term, self.max_credits_per_term, self.summers_ok is not None)
+        )
+
+
+def get_preferences(session: Session, user_id: int) -> StatedPreferences:
+    """Read the student's stated preferences. A missing row reads as all-unsaid.
+
+    No row is created on read. "Has not said" and "has said nothing in particular" are the
+    same state and there is nothing to store about it — the same reason nothing here
+    carries a default.
+    """
+    row = session.scalars(
+        select(UserPreferences).where(UserPreferences.user_id == user_id)
+    ).first()
+    if row is None:
+        return StatedPreferences(None, None, None, None)
+    return StatedPreferences(
+        target_finish_term=row.target_finish_term,
+        max_credits_per_term=row.max_credits_per_term,
+        summers_ok=row.summers_ok,
+        updated_at=row.updated_at,
+    )
+
+
+def set_preferences(
+    session: Session,
+    user_id: int,
+    *,
+    target_finish_term: Omissible = UNSET,
+    max_credits_per_term: int | None | _Unset = UNSET,
+    summers_ok: bool | None | _Unset = UNSET,
+) -> StatedPreferences:
+    """Update the fields the caller mentioned, and only those.
+
+    Same contract as `upsert_course`: omitted means unchanged, an explicit None clears.
+    It matters more here than it does there, because these are three unrelated intentions
+    living in one row — saving a credit cap must not be a way to silently forget when the
+    student wanted to graduate.
+    """
+    row = session.scalars(
+        select(UserPreferences).where(UserPreferences.user_id == user_id)
+    ).first()
+    if row is None:
+        row = UserPreferences(user_id=user_id)
+        session.add(row)
+
+    if target_finish_term is not UNSET:
+        row.target_finish_term = (target_finish_term or None) and " ".join(
+            str(target_finish_term).split()
+        )
+    if max_credits_per_term is not UNSET:
+        row.max_credits_per_term = max_credits_per_term
+    if summers_ok is not UNSET:
+        row.summers_ok = summers_ok
+    session.commit()
+    return get_preferences(session, user_id)
 
 
 def stated_record(session: Session, user_id: int) -> list[StatedCourse]:

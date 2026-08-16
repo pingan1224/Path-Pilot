@@ -142,6 +142,15 @@ export const api = {
     const query = params.toString();
     return request(`/sequence${query ? `?${query}` : ""}`);
   },
+  // preferences — what the student wants, as distinct from what they have taken. PUT
+  // sends only the field being changed: three unrelated intentions share the row, and
+  // the server reads an absent key as "unchanged" and an explicit null as "clear".
+  preferences: () => request("/profile/preferences"),
+  preferencesPut: (patch) =>
+    request("/profile/preferences", {
+      method: "PUT",
+      body: JSON.stringify(patch),
+    }),
   missionClose: (id, reason) =>
     request(`/missions/${id}/close`, {
       method: "POST",

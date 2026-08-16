@@ -261,6 +261,19 @@ STATEMENTS = [
     # 2026-08-16: a mission is identified by programme as well as term. The old constraint
     # let "one mission per term" hand a student the mission they opened under a programme
     # they have since left, evaluated against its rules and labelled only by term.
+    # What the student wants, kept apart from what they have taken. Nullable throughout:
+    # unset is a real answer, and a default written here would be the product deciding
+    # when someone wants to graduate and then solving against it.
+    """CREATE TABLE IF NOT EXISTS user_preferences (
+           id SERIAL PRIMARY KEY,
+           user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+           target_finish_term VARCHAR(16),
+           max_credits_per_term INTEGER,
+           summers_ok BOOLEAN,
+           created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+           updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+       )""",
+    "CREATE INDEX IF NOT EXISTS ix_user_preferences_user ON user_preferences (user_id)",
     "ALTER TABLE missions DROP CONSTRAINT IF EXISTS missions_user_id_term_key",
     """DO $$ BEGIN
            ALTER TABLE missions ADD CONSTRAINT missions_user_id_term_program_key

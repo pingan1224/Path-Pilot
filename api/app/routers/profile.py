@@ -19,11 +19,13 @@ from app.services.auth import Identity, require_roles
 from app.missions import service
 from app.services.profile import (
     UNSET,
+    get_preferences,
     list_profile,
     list_record,
     plan_for_user,
     program_for_user,
     remove_course,
+    set_preferences,
     upsert_course,
 )
 from app.planning.types import StatedCourse
@@ -239,6 +241,116 @@ def put_program(
                     )
 
     return _program_out(program_for_user(session, identity.user.id))
+
+
+class PreferencesIn(BaseModel):
+    """Every field optional twice over: absent means unchanged, null means clear.
+
+    `model_fields_set` is what tells those apart — see put_preferences. Without it,
+    saving a credit cap would silently forget the finish term, because a partial update
+    would arrive indistinguishable from an explicit "I no longer have one".
+    """
+
+    target_finish_term: str | None = Field(default=None, max_length=16)
+    max_credits_per_term: int | None = Field(default=None, ge=1, le=24)
+    summers_ok: bool | None = None
+
+    @field_validator("target_finish_term")
+    @classmethod
+    def parseable(cls, value: str | None) -> str | None:
+        """A term this product can actually solve against, normalised to its own spelling.
+
+        Rejected at the door rather than stored and discovered later. This value does not
+        show up on screen the moment it is typed the way a mission's term does — it sits
+        in preferences and only bites at the next solve — so a form the parser cannot read
+        would fail silently, weeks after the student set it.
+        """
+        if value is None or not value.strip():
+            return None
+        from app.sequence.terms import TermParseError, Term
+
+        try:
+            return str(Term.parse(value))
+        except TermParseError as exc:
+            raise ValueError(str(exc)) from exc
+
+
+class PreferencesOut(BaseModel):
+    target_finish_term: str | None
+    max_credits_per_term: int | None
+    summers_ok: bool | None
+    # When the student last said any of this. Intent goes stale like anything else: a
+    # finish date chosen a year ago may not be the one they want now, so the UI shows the
+    # date beside the value instead of presenting it as timeless.
+    updated_at: datetime | None
+    # Terms offerable as a target, in this product's own spelling. Supplied by the server
+    # so the picker cannot produce a value the solver would reject.
+    selectable_terms: list[str]
+
+
+def _preferences_out(prefs, terms: list[str]) -> PreferencesOut:
+    return PreferencesOut(
+        target_finish_term=prefs.target_finish_term,
+        max_credits_per_term=prefs.max_credits_per_term,
+        summers_ok=prefs.summers_ok,
+        updated_at=prefs.updated_at,
+        selectable_terms=terms,
+    )
+
+
+def _selectable_terms(saved: str | None) -> list[str]:
+    """The next twelve terms from the one a student could next register for.
+
+    Three years is past the finish date of anyone this product can usefully plan for, and
+    a longer list is a scroll rather than a choice. A saved target further out than that
+    is kept in the list rather than dropped — a picker that silently cannot represent the
+    stored value is how a preference gets cleared by being looked at.
+    """
+    from app.sequence.service import next_registerable_term
+    from app.sequence.terms import parse_or_none
+
+    terms = [str(t) for t in next_registerable_term().forward(12)]
+    if saved and saved not in terms:
+        terms = sorted(
+            terms + [saved],
+            key=lambda text: (parse_or_none(text) or next_registerable_term()),
+        )
+    return terms
+
+
+@router.get("/preferences", response_model=PreferencesOut)
+def get_prefs(
+    identity: Identity = Depends(student_only),
+    session: Session = Depends(get_session),
+) -> PreferencesOut:
+    prefs = get_preferences(session, identity.user.id)
+    return _preferences_out(prefs, _selectable_terms(prefs.target_finish_term))
+
+
+@router.put("/preferences", response_model=PreferencesOut)
+def put_preferences(
+    payload: PreferencesIn,
+    identity: Identity = Depends(student_only),
+    session: Session = Depends(get_session),
+) -> PreferencesOut:
+    """Update the preferences the caller mentioned, and only those.
+
+    Three unrelated intentions share this row, so a partial update must not be a way to
+    forget the other two. The client saves one control at a time.
+    """
+    sent = payload.model_fields_set
+    prefs = set_preferences(
+        session,
+        identity.user.id,
+        target_finish_term=(
+            payload.target_finish_term if "target_finish_term" in sent else UNSET
+        ),
+        max_credits_per_term=(
+            payload.max_credits_per_term if "max_credits_per_term" in sent else UNSET
+        ),
+        summers_ok=payload.summers_ok if "summers_ok" in sent else UNSET,
+    )
+    return _preferences_out(prefs, _selectable_terms(prefs.target_finish_term))
 
 
 @router.get("/courses", response_model=list[CourseOut])

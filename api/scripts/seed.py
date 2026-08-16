@@ -44,6 +44,7 @@ from app.models import (
     Intent,
     InteractionDecision,
     Office,
+    ProfileCourse,
     Program,
     Requirement,
     RequirementKind,
@@ -577,6 +578,99 @@ def seed_hero_students(
     heroes["diego"] = diego
 
     return heroes
+
+
+# The heroes' self-reported records, in *catalog* course codes against the real MASY
+# program. This is the half of a demo identity the 2026-08-13 tool surface reads: the
+# registrar fixtures above (demo MASY-GC enrollments, sections, seat counts) serve the
+# course-info and seat questions, while get_my_plan and the planner read only what the
+# "student" has told Path Pilot — users.program_id plus profile_courses. Before this
+# function existed, that half lived as hand-entered UI data on one dev database and a
+# migration backfill that happened to sweep demo users; the first database reset erased
+# both, and every eval case written against the self-report surface failed at once.
+#
+# Each record retells its persona's documented story in the real program's terms
+# (12cr Management Core / 12cr Technical Core / 6cr concentration / 3cr electives /
+# 3cr capstone):
+#   Alex  — nearly done: 21cr completed + 2 in progress; what remains is the tail
+#           (MASY1-GC 1315, 1800, and the capstone).
+#   Priya — genuinely on track, but nothing from the 1700/1800 chain: her wall is
+#           ordering, not pace.
+#   Diego — 27 credits earned, the classic wrong 27: all of Management Core, six
+#           elective credits beyond the 3-credit cap, three Technical Core courses
+#           plus the entire capstone still to go.
+HERO_SELFREPORTS: dict[str, list[tuple[str, str, str | None, str | None]]] = {
+    # (course_code, state, term, grade)
+    "alex": [
+        ("MASY1-GC 1015", "completed", "Fall 2025", "A-"),
+        ("MASY1-GC 1115", "completed", "Fall 2025", "B+"),
+        ("MASY1-GC 1215", "completed", "Spring 2026", "A"),
+        ("MASY1-GC 1500", "completed", "Fall 2025", "A-"),
+        ("MASY1-GC 1600", "completed", "Spring 2026", "B+"),
+        ("MASY1-GC 2400", "completed", "Spring 2026", "A"),
+        ("MASY1-GC 3030", "completed", "Spring 2026", "A-"),
+        ("MASY1-GC 1700", "in_progress", "Fall 2026", None),
+        ("MASY1-GC 2500", "in_progress", "Fall 2026", None),
+    ],
+    "priya": [
+        ("MASY1-GC 1015", "completed", "Fall 2025", "A"),
+        ("MASY1-GC 1115", "completed", "Fall 2025", "A-"),
+        ("MASY1-GC 1215", "completed", "Spring 2026", "A"),
+        ("MASY1-GC 1500", "completed", "Fall 2025", "B+"),
+        ("MASY1-GC 1600", "completed", "Spring 2026", "A-"),
+        ("MASY1-GC 1315", "in_progress", "Fall 2026", None),
+    ],
+    "diego": [
+        ("MASY1-GC 1015", "completed", "Fall 2025", "B+"),
+        ("MASY1-GC 1115", "completed", "Fall 2025", "A-"),
+        ("MASY1-GC 1215", "completed", "Spring 2026", "B+"),
+        ("MASY1-GC 1315", "completed", "Spring 2026", "A"),
+        ("MASY1-GC 1500", "completed", "Fall 2025", "B+"),
+        ("MASY1-GC 3030", "completed", "Spring 2026", "A-"),
+        ("MASY1-GC 3100", "completed", "Spring 2026", "B+"),
+        ("MASY1-GC 3260", "completed", "Fall 2025", "A-"),
+        ("MASY1-GC 2000", "completed", "Spring 2026", "A-"),
+    ],
+}
+
+# The heroes' stated program: the real, encoded MASY MS. The demo program fixture cannot
+# serve here — load_program_rules reads catalog rows only, by design, so a hero filed
+# under the demo program gets a refusal from the very planner the demo exists to show.
+HERO_PROGRAM_CODE = "MASY-MS-REAL"
+
+
+def seed_hero_selfreports(session: Session, heroes: dict[str, Student]) -> None:
+    catalog_program = session.scalars(
+        select(Program).where(
+            Program.code == HERO_PROGRAM_CODE, Program.source == "catalog"
+        )
+    ).first()
+    if catalog_program is None:
+        # A virgin database seeded before the ingest pipeline has run. The demo still
+        # works for policy answers and the decoder; planning needs the catalog. Loud,
+        # because the last time this dependency was implicit it took the eval down.
+        print(
+            f"  ! {HERO_PROGRAM_CODE} is not ingested — hero self-reports skipped.\n"
+            f"    Run `python -m ingest.catalog`, `-m ingest.programs`,\n"
+            f"    `-m ingest.requirements`, then reseed for a demo that can plan."
+        )
+        return
+
+    for key, rows in HERO_SELFREPORTS.items():
+        student = heroes[key]
+        user = session.get(User, student.user_id)
+        user.program_id = catalog_program.id
+        for code, state, term, grade in rows:
+            session.add(
+                ProfileCourse(
+                    user_id=user.id,
+                    course_code=code,
+                    state=state,
+                    term=term,
+                    grade=grade,
+                )
+            )
+    session.flush()
 
 
 # Invented names for the background population. These were deleted by f1efbf7 alongside
@@ -1124,6 +1218,7 @@ def main() -> None:
         sections = seed_sections(session, courses, terms)
         advisors = seed_advisors(session)
         heroes = seed_hero_students(session, program, advisors, terms, sections)
+        seed_hero_selfreports(session, heroes)
         background = seed_background_students(session, program, advisors, terms)
         seed_background_enrollments(session, background, sections)
         seed_cases(session, heroes, advisors)

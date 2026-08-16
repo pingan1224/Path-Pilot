@@ -182,12 +182,20 @@ STATEMENTS = [
     #
     # Idempotent twice over: only fills nulls, and matches no rows at all if the catalog
     # program has not been ingested yet.
+    #
+    # Demo fixtures are excluded: the seed states the heroes' program explicitly (it is
+    # part of their persona, alongside their self-reported record), and this statement
+    # originally swept them too — which happened to make the demo planner work, but as an
+    # accident of migration order that a database reset silently undid. A fixture's
+    # identity belongs in the seed, not in a backfill written for live accounts — which
+    # are exactly the accounts with no Student row.
     """
     UPDATE users u
        SET program_id = p.id
       FROM programs p
      WHERE u.program_id IS NULL
        AND u.role = 'student'
+       AND NOT EXISTS (SELECT 1 FROM students st WHERE st.user_id = u.id)
        AND p.source = 'catalog'
        AND p.code = 'MASY-MS-REAL'
     """,

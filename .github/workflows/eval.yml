@@ -10,7 +10,7 @@
 # - `eval-gate` runs the full agent evaluation and fails the build if a metric drops
 #   below threshold (see GATE in api/scripts/run_eval.py: high-stakes escalation recall
 #   >= 0.90, zero leakage, zero readiness mismatches, and the retrieval floors).
-#   It needs three secrets — DATABASE_URL, MOONSHOT_API_KEY, OPENAI_API_KEY — plus a
+#   It needs two secrets — DATABASE_URL, OPENAI_API_KEY — plus a
 #   database seeded for eval. Because it costs real tokens, it is wired to manual
 #   dispatch rather than every push; run it before merging anything that touches
 #   app/services/agent*.py, retrieval, or the prompts.
@@ -22,7 +22,7 @@ on:
   workflow_dispatch:
     inputs:
       chat_model:
-        description: "CHAT_MODEL override (e.g. kimi-k3 to compare models)"
+        description: "CHAT_MODEL override (e.g. gpt-5.4 to compare models)"
         required: false
         default: ""
 
@@ -93,8 +93,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.EVAL_DATABASE_URL }}
-      MOONSHOT_API_KEY: ${{ secrets.MOONSHOT_API_KEY }}
-      MOONSHOT_BASE_URL: https://api.moonshot.cn/v1
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - uses: actions/checkout@v4

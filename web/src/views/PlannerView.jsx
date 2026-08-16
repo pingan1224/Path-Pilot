@@ -31,7 +31,7 @@ const STATE_LABEL = {
   planned: "Planned",
 }
 
-export default function PlannerView({ onOpenProgram }) {
+export default function PlannerView({ onOpenProgram, onOpenMission }) {
   const { t } = usePrefs()
   const [courses, setCourses] = useState(null)
   const [plan, setPlan] = useState(null)
@@ -205,7 +205,13 @@ export default function PlannerView({ onOpenProgram }) {
           onTogglePlanned={() => setIncludePlanned((v) => !v)}
         />
 
-        <CourseEditor courses={courses} onSave={saveCourse} onRemove={removeCourse} busy={busy} />
+        <CourseEditor
+          courses={courses}
+          onSave={saveCourse}
+          onRemove={removeCourse}
+          busy={busy}
+          onOpenMission={onOpenMission}
+        />
 
         <WhatIfCard />
 
@@ -335,7 +341,7 @@ function RingSummary({ plan }) {
 
 /* ---------------------------------------------------------------------------------- */
 
-function CourseEditor({ courses, onSave, onRemove, busy }) {
+function CourseEditor({ courses, onSave, onRemove, busy, onOpenMission }) {
   const { query, setQuery, results } = useCourseSearch()
   const [manualCode, setManualCode] = useState("")
 
@@ -454,6 +460,7 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
                 busy={busy}
                 onSave={onSave}
                 onRemove={onRemove}
+                onOpenMission={onOpenMission}
               />
             ))}
           </ul>
@@ -478,7 +485,7 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
  * services/profile.upsert_course), so re-asserting a value the student did not touch would
  * only add a way for a stale copy to overwrite a fresher one.
  */
-function CourseRow({ course: c, busy, onSave, onRemove }) {
+function CourseRow({ course: c, busy, onSave, onRemove, onOpenMission }) {
   const [draft, setDraft] = useState(c.grade ?? "")
   const [seen, setSeen] = useState(c.grade ?? "")
   // Follow the server's value until the reader types over it; adopt it again when it
@@ -508,6 +515,21 @@ function CourseRow({ course: c, busy, onSave, onRemove }) {
         {c.title ?? "Not in this catalog"}{" "}
         {!c.in_catalog ? <Tone tone="warn">unverified</Tone> : null}
       </span>
+      {/* Confirmed on a mission, not typed here. It counts toward the totals above — it
+          is on the plan — but the mission page is where it can be changed, and a second
+          writable surface for one fact is how the two came to disagree in the first
+          place. Shown rather than hidden: a credit total that includes courses missing
+          from the list under it reads as an arithmetic error. */}
+      {c.from_mission ? (
+        <span className="flex flex-wrap items-center gap-1.5">
+          <Tone tone="neutral">from {c.from_mission} mission</Tone>
+          {onOpenMission ? (
+            <Button size="xs" variant="outline" onClick={onOpenMission}>
+              Open mission
+            </Button>
+          ) : null}
+        </span>
+      ) : (
       <span className="flex flex-wrap items-center gap-1.5">
         <select
           className="rounded-lg px-2 py-1 text-[12px]"
@@ -553,6 +575,7 @@ function CourseRow({ course: c, busy, onSave, onRemove }) {
           Remove
         </Button>
       </span>
+      )}
     </li>
   )
 }

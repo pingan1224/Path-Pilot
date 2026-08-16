@@ -148,6 +148,10 @@ class ProfileEntry:
     title: str | None = None
     credits: int | None = None
     in_catalog: bool = False
+    # The term of the mission this course was confirmed on, or None when the student typed
+    # it. Set means the row is read-only here: its edit surface is the mission page, and
+    # one fact with two writable surfaces is how they drift apart.
+    from_mission: str | None = None
 
 
 def list_profile(session: Session, user_id: int) -> list[ProfileEntry]:
@@ -180,6 +184,48 @@ def list_profile(session: Session, user_id: int) -> list[ProfileEntry]:
         )
         for row in rows
     ]
+
+
+def list_record(session: Session, user_id: int) -> list[ProfileEntry]:
+    """Everything on the student's plan, typed and mission-confirmed, for display.
+
+    `list_profile` is the typed record alone and stays that way — it backs the editor,
+    which may only write what it owns. This is what the planner shows, because the degree
+    audit now counts both: a total that includes courses missing from the list under it
+    reads as an arithmetic error.
+    """
+    from app.missions.service import confirmed_candidates
+
+    typed = list_profile(session, user_id)
+    held = {e.course_code for e in typed}
+    extra = [c for c in confirmed_candidates(session, user_id) if c.course_code not in held]
+    if not extra:
+        return typed
+
+    catalog = {
+        c.code: c
+        for c in session.scalars(
+            select(Course).where(
+                Course.source == "catalog",
+                Course.code.in_({c.course_code for c in extra}),
+            )
+        )
+    }
+    merged = typed + [
+        ProfileEntry(
+            course_code=c.course_code,
+            state=CourseState.planned,
+            term=c.term,
+            grade=None,
+            updated_at=c.confirmed_at,
+            title=catalog[c.course_code].title if c.course_code in catalog else None,
+            credits=catalog[c.course_code].credits if c.course_code in catalog else None,
+            in_catalog=c.course_code in catalog,
+            from_mission=c.term,
+        )
+        for c in extra
+    ]
+    return sorted(merged, key=lambda e: e.course_code)
 
 
 def upsert_course(
@@ -239,6 +285,39 @@ def remove_course(session: Session, user_id: int, course_code: str) -> bool:
     return True
 
 
+def stated_record(session: Session, user_id: int) -> list[StatedCourse]:
+    """Everything the student has told this product they are taking, from both places.
+
+    A course reaches the plan two ways: typed into the record, or confirmed on a
+    registration mission. Both are the same kind of fact — the student said so — but until
+    2026-08-16 only the first one was read here, so "Add to my plan" on a mission card put
+    a course into a plan the planner and the sequence could not see. Three surfaces, three
+    answers to one question.
+
+    Merged on read rather than written through, deliberately. A confirmed candidate row
+    already *is* the fact ("they chose this, at this time"); copying it into
+    `profile_courses` would make a second copy that has to be kept in step, and un-
+    confirming would then need an undo path to chase. Recomputing means un-confirming is
+    just the fact disappearing. Same reasoning as missions storing no status column.
+
+    The profile wins a collision: if a course is both typed and confirmed, the typed row
+    carries a grade and a real term, and the candidate carries neither.
+    """
+    from app.missions.service import confirmed_candidate_courses
+
+    stated = [
+        StatedCourse(
+            code=entry.course_code, state=entry.state, term=entry.term, grade=entry.grade
+        )
+        for entry in list_profile(session, user_id)
+    ]
+    held = {s.code for s in stated}
+    stated.extend(
+        c for c in confirmed_candidate_courses(session, user_id) if c.code not in held
+    )
+    return stated
+
+
 def plan_for_user(
     session: Session,
     user_id: int,
@@ -261,12 +340,7 @@ def plan_for_user(
         program_code = program_for_user(session, user_id).code
     program = load_program_rules(session, program_code)
 
-    stated = [
-        StatedCourse(
-            code=entry.course_code, state=entry.state, term=entry.term, grade=entry.grade
-        )
-        for entry in list_profile(session, user_id)
-    ]
+    stated = stated_record(session, user_id)
     if extra_courses:
         # Hypotheticals win: asking "what if I took X next term" while X sits in the
         # profile as planned should evaluate the question asked.

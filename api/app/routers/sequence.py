@@ -85,6 +85,13 @@ class SequenceOut(BaseModel):
     deadline: str | None
     max_credits_per_term: int
     credit_cap_was_assumed: bool
+    # Where each constraint came from: "request" | "saved" | "assumed", and None for a
+    # deadline nobody has stated. The UI badges a saved value with its date rather than
+    # presenting a student's own decision as the product's guess, or the reverse.
+    credit_cap_source: str
+    deadline_source: str | None
+    start_was_assumed: bool
+    preferences_updated_at: str | None
     chosen_track: str | None
     rejected_tracks: list[dict]
     terms: list[TermOut]
@@ -177,6 +184,10 @@ def get_sequence(
         deadline=meta["deadline"],
         max_credits_per_term=meta["max_credits_per_term"],
         credit_cap_was_assumed=meta["credit_cap_was_assumed"],
+        credit_cap_source=meta["credit_cap_source"],
+        deadline_source=meta["deadline_source"],
+        start_was_assumed=meta["start_was_assumed"],
+        preferences_updated_at=meta["preferences_updated_at"],
         chosen_track=plan.chosen_track,
         rejected_tracks=[
             {"track": name, "why": why} for name, why in plan.rejected_tracks

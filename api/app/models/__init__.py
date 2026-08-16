@@ -31,7 +31,7 @@ from app.models.governance import AiInteraction, SourceFreshnessPolicy
 from app.models.identity import Student, User
 from app.models.knowledge import EMBEDDING_DIM, Document, DocumentChunk
 from app.models.missions import Mission, MissionCandidate, MissionDecision
-from app.models.profile import ProfileCourse
+from app.models.profile import ProfileCourse, UserPreferences
 
 __all__ = [
     "EMBEDDING_DIM",
@@ -50,6 +50,7 @@ __all__ = [
     "MissionDecision",
     "Office",
     "ProfileCourse",
+    "UserPreferences",
     "Program",
     "ReadinessStatus",
     "Requirement",

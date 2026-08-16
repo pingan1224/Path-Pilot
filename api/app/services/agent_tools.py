@@ -978,6 +978,16 @@ def tool_get_course_sequence(
         "finish_by_requested": meta["deadline"],
         "credits_per_term_used": meta["max_credits_per_term"],
         "credits_per_term_was_assumed": meta["credit_cap_was_assumed"],
+        # Where the constraints came from, so the answer can attribute them. A cap the
+        # student saved is theirs and can be named as such ("your saved 9-credit cap, set
+        # on 16 August"); the fallback is this product's guess and must never be quoted as
+        # a rule — the ingested corpus has per-term caps for Stern's MBA only, and reading
+        # one at an SPS student is the mistake the home-school retrieval boost exists to
+        # prevent.
+        "credits_per_term_source": meta["credit_cap_source"],
+        "deadline_source": meta["deadline_source"],
+        "start_term_was_assumed": meta["start_was_assumed"],
+        "preferences_stated_on": meta["preferences_updated_at"],
         "feasible": plan.feasible,
         "concentration_used": plan.chosen_track,
         "concentrations_that_do_not_fit": [

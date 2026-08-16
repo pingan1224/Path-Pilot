@@ -71,8 +71,14 @@ const isPlaceholder = (code) => /\(|\)/.test(code)
 
 export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
   const { t } = usePrefs()
+  const [startTerm, setStartTerm] = useState("")
   const [deadline, setDeadline] = useState("")
   const [maxCredits, setMaxCredits] = useState("")
+  // The server's own term vocabulary, so a picker cannot offer a value the solver would
+  // reject; `prefs` is what the student has saved, shown beside the controls with the
+  // date they said it — intent goes stale like any other source.
+  const [terms, setTerms] = useState([])
+  const [prefs, setPrefs] = useState(null)
   const [deferred, setDeferred] = useState(null)
   const [plan, setPlan] = useState(null)
   // `{ key, plan }` — the un-deferred answer plus the constraints it was solved under.
@@ -104,11 +110,12 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
    *  a constraint moves while a deferral is up. */
   const load = useCallback(async (overrides = {}) => {
     const next = {
+      startTerm: overrides.startTerm ?? startTerm,
       deadline: overrides.deadline ?? deadline,
       maxCredits: overrides.maxCredits ?? maxCredits,
       defer: "defer" in overrides ? overrides.defer : deferred,
     }
-    const key = `${next.deadline}|${next.maxCredits}`
+    const key = `${next.startTerm}|${next.deadline}|${next.maxCredits}`
     setBusy(true)
     setError(null)
     try {
@@ -128,9 +135,18 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
     } finally {
       setBusy(false)
     }
-  }, [deadline, maxCredits, deferred])
+  }, [startTerm, deadline, maxCredits, deferred])
 
   useEffect(() => {
+    // Preferences first: the picker's options come from the server, and a saved target
+    // has to be selectable or looking at the page would appear to clear it.
+    api
+      .preferences()
+      .then((p) => {
+        setPrefs(p)
+        setTerms(p.selectable_terms ?? [])
+      })
+      .catch(() => setTerms([]))
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -138,7 +154,26 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
   async function ask(overrides) {
     if ("defer" in overrides) setDeferred(overrides.defer)
     if ("maxCredits" in overrides) setMaxCredits(overrides.maxCredits)
+    if ("startTerm" in overrides) setStartTerm(overrides.startTerm)
+    if ("deadline" in overrides) setDeadline(overrides.deadline)
     await load(overrides)
+  }
+
+  /** Save one control's current value as the student's default.
+   *
+   * One field per call: the server reads an absent key as "unchanged", so saving a
+   * credit cap cannot forget a finish term. Asking a what-if never writes — this is the
+   * only path from this screen into preferences, and it is a button they press.
+   */
+  async function saveDefault(patch) {
+    setBusy(true)
+    try {
+      setPrefs(await api.preferencesPut(patch))
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy(false)
+    }
   }
 
   if (error && !plan) {
@@ -228,7 +263,12 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
         <div className="mt-4 flex flex-wrap items-end gap-4">
           <div>
             <div className="mb-1 text-[10px] font-medium tracking-wide uppercase" style={{ color: "var(--color-ink-3)" }}>
-              Credits per term{plan.credit_cap_was_assumed ? " · assumed, not a rule" : ""}
+              {/* Three sources, three labels. "Assumed" is the product's own guess and
+                  says so; "saved" is the student's decision and must not wear the guess's
+                  hedge; a value named in this request needs neither. */}
+              Credits per term
+              {plan.credit_cap_source === "assumed" ? " · assumed, not a rule" : ""}
+              {plan.credit_cap_source === "saved" ? " · saved" : ""}
             </div>
             <div
               className="flex items-center gap-0.5 rounded-lg p-0.5"
@@ -259,27 +299,78 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
             </div>
           </div>
 
-          <form
-            className="flex items-end gap-2"
-            onSubmit={(e) => {
-              e.preventDefault()
-              load()
-            }}
-          >
-            <label className="flex flex-col gap-1 text-[10px] font-medium tracking-wide uppercase" style={{ color: "var(--color-ink-3)" }}>
-              Finish by
-              <input
-                className={INPUT_CLASS}
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                placeholder="e.g. Spring 2027"
+          {/* Start and finish are pickers over the server's own term list, not free text.
+              Neither is visible the moment it is typed the way a mission's term is — they
+              feed the solver and, once saved, only bite at the next solve — so a spelling
+              the parser cannot read would fail quietly and days later. The list comes from
+              the server so the picker cannot offer a value the solver would reject. */}
+          <label className="flex flex-col gap-1 text-[10px] font-medium tracking-wide uppercase" style={{ color: "var(--color-ink-3)" }}>
+            Starting term{plan.start_was_assumed ? " · assumed" : ""}
+            <select
+              className={INPUT_CLASS}
+              value={startTerm}
+              disabled={busy}
+              onChange={(e) => ask({ startTerm: e.target.value })}
+            >
+              {/* "The next term you could register for" is the assumption when nothing is
+                  chosen; naming it is what lets a student sitting out a term say so. */}
+              <option value="">Next available ({plan.start_term})</option>
+              {terms.map((term) => (
+                <option key={term} value={term}>
+                  {term}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1 text-[10px] font-medium tracking-wide uppercase" style={{ color: "var(--color-ink-3)" }}>
+            Finish by{plan.deadline_source === "saved" ? " · saved" : ""}
+            <select
+              className={INPUT_CLASS}
+              value={deadline}
+              disabled={busy}
+              onChange={(e) => ask({ deadline: e.target.value })}
+            >
+              <option value="">
+                {plan.deadline_source === "saved" ? `Saved: ${plan.deadline}` : "No deadline"}
+              </option>
+              {terms.map((term) => (
+                <option key={term} value={term}>
+                  {term}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {/* The one write on this screen, and it is a button. Everything else here poses
+              a question; saving turns this answer's constraints into the ones the next
+              solve — and the assistant — will start from, which is a decision, not a
+              side effect of exploring. */}
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-medium tracking-wide uppercase" style={{ color: "var(--color-ink-3)" }}>
+              Defaults
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
                 disabled={busy}
-              />
-            </label>
-            <Button type="submit" variant="outline" size="sm" disabled={busy}>
-              Check
-            </Button>
-          </form>
+                onClick={() =>
+                  saveDefault({
+                    max_credits_per_term: cap,
+                    target_finish_term: deadline || plan.deadline || null,
+                  })
+                }
+              >
+                Save these as mine
+              </Button>
+              {prefs?.updated_at ? (
+                <span className="text-[10px]" style={{ color: "var(--color-ink-3)" }}>
+                  saved {new Date(prefs.updated_at).toLocaleDateString()}
+                </span>
+              ) : null}
+            </div>
+          </div>
         </div>
       </div>
 

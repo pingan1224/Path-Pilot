@@ -336,10 +336,20 @@ def eval_behavior(session, only: set[str] | None, repeat: int = 1) -> dict:
     if problems:
         raise SystemExit("Leakage probes cannot detect a leak:\n  " + "\n  ".join(problems))
 
+    # Both halves of a demo identity, keyed by name. The harness used to pass only the
+    # student id, which was enough for the pre-2026-08-13 tool surface — those tools read
+    # the registrar fixture through subject_student_id. The unified surface resolves the
+    # signed-in account instead (get_my_plan, start_mission and the mission tools all go
+    # through program_for_user(ctx.user_id)), so an eval run without a user id had every
+    # one of those tools failing with program_not_stated, and the model escalating —
+    # correctly, given what it could see. That read as a model regression on the first
+    # complete post-swap run; it was this harness being one migration behind the product.
     by_name = {
-        name: sid
-        for sid, name in session.execute(
-            select(Student.id, User.full_name).join(User, User.id == Student.user_id)
+        name: (sid, uid)
+        for sid, uid, name in session.execute(
+            select(Student.id, Student.user_id, User.full_name).join(
+                User, User.id == Student.user_id
+            )
         ).all()
     }
 
@@ -366,7 +376,10 @@ def _run_one_case(session, run_agent, case, by_name, rows: list, *, attempt: int
             session,
             question=case.question,
             acting_role=UserRole(case.role),
-            subject_student_id=by_name.get(case.subject) if case.subject else None,
+            subject_student_id=(
+                by_name[case.subject][0] if case.subject in by_name else None
+            ),
+            user_id=(by_name[case.subject][1] if case.subject in by_name else None),
         )
     except Exception as exc:  # noqa: BLE001 — an eval must record failures, not die on them
         rows.append(

@@ -17,12 +17,7 @@ from app.models.academic import (
     requirement_courses,
     requirement_track_courses,
 )
-from app.models.cases import Case, CaseEvent
 from app.models.enums import (
-    ActorKind,
-    CaseCategory,
-    CasePriority,
-    CaseStatus,
     EnrollmentStatus,
     FailureReason,
     Intent,
@@ -40,13 +35,7 @@ from app.models.profile import ProfileCourse
 
 __all__ = [
     "EMBEDDING_DIM",
-    "ActorKind",
     "AiInteraction",
-    "Case",
-    "CaseCategory",
-    "CaseEvent",
-    "CasePriority",
-    "CaseStatus",
     "Course",
     "CoursePrerequisite",
     "Document",

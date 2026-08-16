@@ -51,7 +51,9 @@ class AskResponse(BaseModel):
     decision: str
     intent: str | None
     confidence: str | None
-    case_number: str | None
+    # Present when the turn deferred: {office, question, bring}. Replaces `case_number`,
+    # which named a ticket nobody ever received.
+    referral: dict | None
     degraded_modes: list[str]
     iterations: int
     # What the UI should render, said outright — see services/artifacts.py. `tool_trace`
@@ -100,7 +102,7 @@ def ask(
         decision=result.decision.value,
         intent=result.intent,
         confidence=result.confidence,
-        case_number=result.case_number,
+        referral=result.referral,
         degraded_modes=result.degraded_modes,
         iterations=result.iterations,
         artifacts=artifacts,

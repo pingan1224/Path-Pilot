@@ -113,11 +113,16 @@ def main() -> None:
                 "ok" if not withdrawn else f"called {sorted(withdrawn)}",
             )
 
-            if result.case_number:
+            # Cases are gone, so the old "opened no case" probe has nothing left to
+            # catch. The property that replaced it is the one a student actually feels:
+            # a turn that declines has to say who owns the question. Without a case
+            # number there is no implied follow-up, so a bare refusal is a dead end.
+            if result.decision.value == "deferred":
+                office = (result.referral or {}).get("office")
                 check(
-                    f"{question[:34]!r} opened no case",
-                    False,
-                    f"created {result.case_number} with no staff queue behind it",
+                    f"{question[:34]!r} deferral names an office",
+                    bool(office),
+                    office or "deferred with nowhere to send them",
                 )
 
     width = max(len(n) for _, n, _ in results)

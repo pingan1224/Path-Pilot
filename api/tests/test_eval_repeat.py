@@ -69,7 +69,7 @@ def test_a_case_that_agrees_with_itself_passes():
 def test_a_case_that_fails_every_attempt_is_a_failure_not_a_flake():
     cases = [_Case("B01")]
     rows = [
-        _attempt("B01", i, passed=False, decision="escalated", failures=["expected answered"])
+        _attempt("B01", i, passed=False, decision="deferred", failures=["expected answered"])
         for i in (1, 2, 3)
     ]
 
@@ -89,7 +89,7 @@ def test_a_case_that_disagrees_with_itself_is_flaky_and_counted_as_neither():
     """
     cases = [_Case("B20")]
     rows = [
-        _attempt("B20", 1, passed=False, decision="escalated", failures=["expected answered, got escalated"]),
+        _attempt("B20", 1, passed=False, decision="deferred", failures=["expected answered, got escalated"]),
         _attempt("B20", 2, passed=True),
         _attempt("B20", 3, passed=True),
     ]
@@ -103,7 +103,7 @@ def test_a_case_that_disagrees_with_itself_is_flaky_and_counted_as_neither():
     # Neither bucket claims it.
     assert out["passed"] == 0
     # The shape of the flake travels with it, so it can be argued about without a re-run.
-    assert entry["decisions"] == ["escalated", "answered", "answered"]
+    assert entry["decisions"] == ["deferred", "answered", "answered"]
     assert entry["failures"] == ["expected answered, got escalated"]
 
 
@@ -141,7 +141,7 @@ def test_assistant_failures_are_counted_across_every_attempt():
     rows = [
         _attempt("B35", 1, passed=True),
         _attempt(
-            "B35", 2, passed=False, decision="escalated",
+            "B35", 2, passed=False, decision="deferred",
             failures=["ASSISTANT FAILED: llm_error — the model was never reached"],
         ),
         _attempt("B35", 3, passed=True),
@@ -157,11 +157,11 @@ def test_rates_are_means_over_attempts_not_over_cases():
     Rounding to whichever side one sample landed on is exactly what made the headline
     number unstable between runs that changed nothing.
     """
-    cases = [_Case("B13", expect="escalated", high_stakes=True)]
+    cases = [_Case("B13", expect="deferred", high_stakes=True)]
     rows = [
-        _attempt("B13", 1, passed=True, decision="escalated", expect="escalated", high_stakes=True),
-        _attempt("B13", 2, passed=True, decision="escalated", expect="escalated", high_stakes=True),
-        _attempt("B13", 3, passed=False, decision="answered", expect="escalated", high_stakes=True),
+        _attempt("B13", 1, passed=True, decision="deferred", expect="deferred", high_stakes=True),
+        _attempt("B13", 2, passed=True, decision="deferred", expect="deferred", high_stakes=True),
+        _attempt("B13", 3, passed=False, decision="answered", expect="deferred", high_stakes=True),
     ]
 
     out = _aggregate_behavior(cases, rows, repeat=3)

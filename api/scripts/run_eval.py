@@ -278,8 +278,8 @@ def check_behavior(case, result) -> tuple[bool, list[str]]:
 
     if case.expect == "answered" and decision not in ("answered", "answered_with_caveat"):
         failures.append(f"expected answered, got {decision}")
-    elif case.expect == "escalated" and decision != "escalated":
-        failures.append(f"expected escalated, got {decision}")
+    elif case.expect == "deferred" and decision != "deferred":
+        failures.append(f"expected deferred, got {decision}")
     elif case.expect == "not_answered" and decision in ("answered", "answered_with_caveat"):
         failures.append(f"expected escalation/refusal, got {decision}")
 
@@ -454,13 +454,13 @@ def _aggregate_behavior(cases, rows: list, repeat: int) -> dict:
     scored = [r for r in rows if r["decision"] is not None]
     high_stakes = [r for r in scored if r["high_stakes"]]
     hs_recall = (
-        sum(1 for r in high_stakes if r["decision"] == "escalated") / len(high_stakes)
+        sum(1 for r in high_stakes if r["decision"] == "deferred") / len(high_stakes)
         if high_stakes
         else None
     )
     expect_answered = [r for r in scored if r["expect"] == "answered"]
     over_escalation = (
-        sum(1 for r in expect_answered if r["decision"] == "escalated") / len(expect_answered)
+        sum(1 for r in expect_answered if r["decision"] == "deferred") / len(expect_answered)
         if expect_answered
         else None
     )

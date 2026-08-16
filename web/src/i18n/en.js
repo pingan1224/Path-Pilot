@@ -123,17 +123,27 @@ export const en = {
   // Chat — answer frame
   "kicker.answered": "Answered from verified sources",
   "kicker.caveat": "Answered — read the caveats",
-  "kicker.escalated": "Routed to a human",
+  "kicker.deferred": "Answered as far as I can verify",
   "kicker.refused": "Outside what I can verify",
   "chat.you": "You",
   "chat.assistant": "Path Pilot",
-  "chat.case":
-    "Case {number} has been opened — quote it when you contact the office.",
+  // No case number: Path Pilot submits nothing to anyone, so a reference number would
+  // name a ticket that does not exist. What replaces it is the exit — who to ask, and
+  // what to bring.
+  "chat.referral.title": "Take this to {office}",
+  "chat.referral.bring": "Bring: {what}",
+  "office.registrar": "the Registrar",
+  "office.bursar": "the Bursar",
+  "office.financial_aid": "Financial Aid",
+  "office.advising": "your advisor",
+  "office.department": "your department",
+  "office.international": "the Office of Global Services",
   "chat.degraded": "Ran degraded — ",
   "chat.boundary":
-    "I can read published rules, explain what your entries imply, and open a case with " +
-    "the right office. I cannot clear a hold, waive a prerequisite, approve an " +
-    "exception, or change your enrollment — those stay with the offices that decide them.",
+    "I can read published rules, explain what your entries imply, and tell you which " +
+    "office owns a question I cannot answer. I cannot clear a hold, waive a " +
+    "prerequisite, approve an exception, or change your enrollment — and I cannot file " +
+    "anything on your behalf, so anything I hand you is yours to carry.",
   "chat.checked": "Checked: {tools}",
   "chat.citations": ({ count }) =>
     `${count} cited claim${count === 1 ? "" : "s"}`,

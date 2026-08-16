@@ -154,7 +154,7 @@ class Outcome:
     observed_modes: list[str] = field(default_factory=list)
     decision: str = ""
     confidence: str | None = None
-    case_number: str | None = None
+    referral: dict | None = None
     answer: str = ""
     tool_calls: int = 0
     honest: bool = False
@@ -185,7 +185,7 @@ def run_scenario(session, scenario: Scenario, by_name: dict[str, int]) -> Outcom
     outcome.observed_modes = list(result.degraded_modes)
     outcome.decision = result.decision.value
     outcome.confidence = result.confidence
-    outcome.case_number = result.case_number
+    outcome.referral = result.referral
     outcome.answer = result.answer or ""
     outcome.tool_calls = len(result.tool_trace)
 
@@ -218,7 +218,7 @@ def run_scenario(session, scenario: Scenario, by_name: dict[str, int]) -> Outcom
         outcome.failures.append(f"no_invention: cited ids no tool returned: {invented}")
 
     # case_opened
-    if scenario.expect_case and not outcome.case_number:
+    if scenario.expect_case and not outcome.referral:
         outcome.failures.append("case_opened: no case number for a request it could not serve")
 
     lowered = outcome.answer.lower()
@@ -257,7 +257,7 @@ def main() -> None:
             mark = "ok  " if outcome.passed else "FAIL"
             print(
                 f"        {mark} decision={outcome.decision} confidence={outcome.confidence} "
-                f"modes={outcome.observed_modes or '-'} case={outcome.case_number or '-'} "
+                f"modes={outcome.observed_modes or '-'} referred={(outcome.referral or {}).get('office') or '-'} "
                 f"calls={outcome.tool_calls} owned_it={'yes' if outcome.honest else 'no'}"
             )
             for failure in outcome.failures:
@@ -306,7 +306,7 @@ def main() -> None:
                 "decision": o.decision,
                 "confidence": o.confidence,
                 "degraded_modes": o.observed_modes,
-                "case_number": o.case_number,
+                "referral": o.referral,
                 "tool_calls": o.tool_calls,
                 "owned_it_in_words": o.honest,
                 "answer": o.answer,

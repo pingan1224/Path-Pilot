@@ -104,15 +104,23 @@ export const zh = {
   // Chat — answer frame
   "kicker.answered": "基于已核实来源作答",
   "kicker.caveat": "已作答——请留意注意事项",
-  "kicker.escalated": "已转交人工处理",
+  "kicker.deferred": "已在可核实范围内作答",
   "kicker.refused": "超出可核实范围",
   "chat.you": "你",
   "chat.assistant": "Path Pilot",
-  "chat.case": "已开立工单 {number}——联系相关办公室时请引用此编号。",
+  "chat.referral.title": "这个问题请找{office}",
+  "chat.referral.bring": "带上：{what}",
+  "office.registrar": "注册处",
+  "office.bursar": "财务处",
+  "office.financial_aid": "助学金办公室",
+  "office.advising": "你的学业导师",
+  "office.department": "所在系",
+  "office.international": "国际学生服务处",
   "chat.degraded": "降级运行——",
   "chat.boundary":
-    "我可以阅读公开规则、解释你录入的信息意味着什么、并向对应办公室开立工单。" +
-    "我不能解除 hold、免除先修要求、批准例外或更改你的注册——这些决定权在相应办公室。",
+    "我可以阅读公开规则、解释你录入的信息意味着什么，并告诉你某个问题该找哪个办公室。" +
+    "我不能解除 hold、免除先修要求、批准例外或更改你的注册，也无法代你提交任何东西——" +
+    "我给你的材料，需要你自己带过去。",
   "chat.checked": "已核查：{tools}",
   "chat.citations": "{count} 条已引用的论断",
   "chat.error.kicker": "无法作答",

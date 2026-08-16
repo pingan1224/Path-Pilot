@@ -19,7 +19,6 @@ from app.services.profile import ProgramNotStatedError
 from app.routers import (
     assistant,
     auth,
-    cases,
     catalog,
     decoder,
     health,
@@ -123,7 +122,6 @@ async def database_not_configured_handler(
 app.include_router(health.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(students.router, prefix="/api/v1")
-app.include_router(cases.router, prefix="/api/v1")
 app.include_router(assistant.router, prefix="/api/v1")
 app.include_router(profile.router, prefix="/api/v1")
 app.include_router(catalog.router, prefix="/api/v1")

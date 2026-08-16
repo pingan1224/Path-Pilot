@@ -239,6 +239,25 @@ STATEMENTS = [
     # column reusing the name.
     "DROP TYPE IF EXISTS hold_type",
     "DROP TYPE IF EXISTS registration_outcome",
+    # 2026-08-16: the assistant defers instead of escalating. Path Pilot is a third-party
+    # planning tool that submits nothing to anyone, so a `Case` row with a quotable number
+    # promised a queue that never existed — live mode had already stopped creating them,
+    # and the demo's rows were worked by nobody.
+    #
+    # The new label is ADDed rather than the old one renamed, and the old one is left in
+    # place: `escalated` is the literal stored on every audit row written before today,
+    # and those rows are the eval's own dataset. Renaming would rewrite history to say
+    # something the system did not do at the time.
+    "ALTER TYPE interaction_decision ADD VALUE IF NOT EXISTS 'deferred'",
+    # `case_id` went with them. The referral lives in `escalation_reason`, which keeps its
+    # column name because renaming it would break the same historical rows.
+    "ALTER TABLE ai_interactions DROP COLUMN IF EXISTS case_id",
+    "DROP TABLE IF EXISTS case_events",
+    "DROP TABLE IF EXISTS cases",
+    "DROP TYPE IF EXISTS case_category",
+    "DROP TYPE IF EXISTS case_status",
+    "DROP TYPE IF EXISTS case_priority",
+    "DROP TYPE IF EXISTS actor_kind",
 ]
 
 

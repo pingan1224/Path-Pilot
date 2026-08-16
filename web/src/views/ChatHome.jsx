@@ -50,7 +50,7 @@ const toolLabel = (t, name) => (KNOWN_TOOLS.includes(name) ? t(`tool.${name}`) :
 const DECISION_BADGE = {
   answered: { icon: CheckCircle, key: "kicker.answered", color: "var(--color-emerald)", bg: "var(--color-emerald-muted)" },
   answered_with_caveat: { icon: Clock, key: "kicker.caveat", color: "var(--color-amber)", bg: "var(--color-amber-muted)" },
-  escalated: { icon: AlertCircle, key: "kicker.escalated", color: "var(--color-amber)", bg: "var(--color-amber-muted)" },
+  deferred: { icon: AlertCircle, key: "kicker.deferred", color: "var(--color-amber)", bg: "var(--color-amber-muted)" },
   refused: { icon: AlertTriangle, key: "kicker.refused", color: "var(--color-rose)", bg: "var(--color-rose-muted)" },
 }
 
@@ -440,7 +440,7 @@ export default function ChatHome({
             const BadgeIcon = badge.icon
             const artifacts = result.artifacts ?? []
             const showBoundary =
-              result.decision === "refused" || result.decision === "escalated"
+              result.decision === "refused" || result.decision === "deferred"
             const turnSources = result.tool_trace.map((call, j) => ({
               id: `${i}-${j}`,
               label: toolLabel(t, call.tool),
@@ -488,7 +488,11 @@ export default function ChatHome({
                     </p>
                   </div>
 
-                  {result.case_number ? (
+                  {/* Where the case-number chip used to be. A number implied someone had
+                      received the question; nothing was ever submitted anywhere, so what
+                      goes here instead is the thing the student can actually act on —
+                      who owns it, and what to walk in with. */}
+                  {result.referral ? (
                     <div
                       className="rounded-xl px-3 py-2.5 text-[12px] leading-relaxed"
                       style={{
@@ -497,7 +501,19 @@ export default function ChatHome({
                         color: "var(--color-ink)",
                       }}
                     >
-                      {t("chat.case", { number: result.case_number })}
+                      <div className="font-medium" style={{ color: "var(--color-violet-light)" }}>
+                        {t("chat.referral.title", {
+                          office: t(`office.${result.referral.office}`),
+                        })}
+                      </div>
+                      {result.referral.question ? (
+                        <div className="mt-1">{result.referral.question}</div>
+                      ) : null}
+                      {result.referral.bring ? (
+                        <div className="mt-1" style={{ color: "var(--color-ink-3)" }}>
+                          {t("chat.referral.bring", { what: result.referral.bring })}
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
 

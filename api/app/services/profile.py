@@ -19,7 +19,7 @@ from app.models import (
 )
 from app.planning.loader import ProgramNotEncodedError, load_program_rules
 from app.planning.rules import evaluate_plan
-from app.planning.types import CourseState, PlanResult, StatedCourse
+from app.planning.types import CourseState, PlanResult, StatedCourse, Verdict
 from app.services.retrieval import SCHOOL_TO_CORPUS_SLUG, RetrievalScope
 
 
@@ -360,6 +360,41 @@ def set_preferences(
         row.summers_ok = summers_ok
     session.commit()
     return get_preferences(session, user_id)
+
+
+def elective_options_for(
+    session: Session, user_id: int, result: PlanResult, *, program_code: str | None = None
+) -> dict[str, list]:
+    """Candidate courses for every `credits` requirement this student is short on.
+
+    Keyed by finding key, so the caller can hang them under the gap they fill rather than
+    in a list of their own. A satisfied requirement gets none: a student who has finished
+    their electives does not need suggestions for them, and offering some would read as
+    "there is still something to do here".
+    """
+    from app.planning.electives import elective_options
+
+    short = {
+        f.key for f in result.findings if f.verdict is not Verdict.satisfied
+    }
+    if not short:
+        return {}
+
+    program = load_program_rules(
+        session, program_code or program_for_user(session, user_id).code
+    )
+    stated = stated_record(session, user_id)
+    out: dict[str, list] = {}
+    for spec in program.requirements:
+        if spec.rule != "credits":
+            continue
+        key = f"requirement:{spec.name}"
+        if key not in short:
+            continue
+        options = elective_options(program, spec, stated)
+        if options:
+            out[key] = options
+    return out
 
 
 def stated_record(session: Session, user_id: int) -> list[StatedCourse]:

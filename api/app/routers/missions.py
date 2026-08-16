@@ -14,13 +14,14 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
 from app.missions import service
 from app.missions.service import MissionNotFoundError
 from app.missions.types import MissionFacts, MissionState
-from app.models import UserRole
+from app.models import Course, UserRole
 from app.services.auth import Identity, require_roles
 
 router = APIRouter(prefix="/missions", tags=["missions"])
@@ -66,6 +67,12 @@ class CandidateOut(BaseModel):
     rationale: str | None
     created_at: datetime
     decided_at: datetime | None
+    # A candidate used to be a bare code on screen, so a typed typo looked exactly like a
+    # real course. These are the profile editor's answer to the same problem, and they are
+    # deliberately not a rejection: a course this catalogue does not hold may still be a
+    # legitimate cross-school one, so it is shown and marked rather than refused.
+    title: str | None = None
+    in_catalog: bool = False
 
 
 class StepOut(BaseModel):
@@ -132,7 +139,20 @@ def _finding_out(finding) -> FindingOut:
     )
 
 
-def _mission_out(mission, facts: MissionFacts, state: MissionState, meta: dict) -> MissionOut:
+def _catalog_titles(session: Session, codes: list[str]) -> dict[str, str]:
+    if not codes:
+        return {}
+    rows = session.scalars(select(Course).where(Course.code.in_(codes)))
+    return {row.code: row.title for row in rows}
+
+
+def _mission_out(
+    mission,
+    facts: MissionFacts,
+    state: MissionState,
+    meta: dict,
+    titles: dict[str, str],
+) -> MissionOut:
     stale_keys = {r.finding_key for r in state.stale_acceptances}
     row_by_code = {c.course_code: c for c in mission.candidates}
 
@@ -167,6 +187,8 @@ def _mission_out(mission, facts: MissionFacts, state: MissionState, meta: dict) 
                 rationale=c.rationale,
                 created_at=c.created_at,
                 decided_at=c.decided_at,
+                title=titles.get(c.course_code),
+                in_catalog=c.course_code in titles,
             )
             for c in facts.candidates
             if c.course_code in row_by_code
@@ -192,7 +214,8 @@ def _load(session: Session, user_id: int, mission_id: int) -> MissionOut:
     except MissionNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     # ProgramNotEncodedError deliberately propagates — see main.py.
-    return _mission_out(mission, facts, state, meta)
+    titles = _catalog_titles(session, [c.course_code for c in mission.candidates])
+    return _mission_out(mission, facts, state, meta, titles)
 
 
 @router.get("", response_model=list[MissionOut])

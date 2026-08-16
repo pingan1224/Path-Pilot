@@ -22,6 +22,7 @@ import {
   useDisclosure,
 } from "@/components/make"
 import { useCountUp } from "@/hooks/useCountUp"
+import { useCourseSearch } from "@/hooks/useCourseSearch"
 import { usePrefs } from "@/i18n"
 
 const STATE_LABEL = {
@@ -335,29 +336,8 @@ function RingSummary({ plan }) {
 /* ---------------------------------------------------------------------------------- */
 
 function CourseEditor({ courses, onSave, onRemove, busy }) {
-  const [query, setQuery] = useState("")
-  const [results, setResults] = useState([])
+  const { query, setQuery, results } = useCourseSearch()
   const [manualCode, setManualCode] = useState("")
-
-  useEffect(() => {
-    if (query.trim().length < 2) {
-      setResults([])
-      return
-    }
-    let cancelled = false
-    const timer = setTimeout(async () => {
-      try {
-        const found = await api.catalogSearch(query)
-        if (!cancelled) setResults(found.slice(0, 8))
-      } catch {
-        /* search failures are non-fatal; the manual field still works */
-      }
-    }, 250)
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-    }
-  }, [query])
 
   const held = new Set(courses.map((c) => c.course_code))
 
@@ -373,7 +353,7 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
         <input
           type="search"
           className={`${INPUT_CLASS} w-full`}
-          placeholder="Search the MASY catalog — code or title…"
+          placeholder="Search the SPS graduate catalog — code or title…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search the course catalog"
@@ -468,80 +448,112 @@ function CourseEditor({ courses, onSave, onRemove, busy }) {
         ) : (
           <ul className="flex list-none flex-col gap-2">
             {courses.map((c) => (
-              <li
+              <CourseRow
                 key={c.course_code}
-                className="flex flex-wrap items-center gap-2 rounded-xl p-3"
-                style={{
-                  background: "var(--color-surface-2)",
-                  border: "1px solid var(--color-rail)",
-                }}
-              >
-                <Code>{c.course_code}</Code>
-                <span
-                  className="min-w-0 flex-1 text-[12px] leading-snug"
-                  style={{ color: "var(--color-ink)" }}
-                >
-                  {c.title ?? "Not in this catalog"}{" "}
-                  {!c.in_catalog ? <Tone tone="warn">unverified</Tone> : null}
-                </span>
-                <span className="flex flex-wrap items-center gap-1.5">
-                  <select
-                    className="rounded-lg px-2 py-1 text-[12px]"
-                    style={{
-                      background: "var(--color-surface)",
-                      border: "1px solid var(--color-rail-strong)",
-                      color: "var(--color-ink)",
-                    }}
-                    value={c.state}
-                    disabled={busy}
-                    aria-label={`Status of ${c.course_code}`}
-                    onChange={(e) =>
-                      onSave({ course_code: c.course_code, state: e.target.value, grade: c.grade })
-                    }
-                  >
-                    {Object.entries(STATE_LABEL).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                  {c.state === "completed" ? (
-                    <input
-                      className="w-16 rounded-lg px-2 py-1 text-[12px] uppercase"
-                      style={{
-                        background: "var(--color-surface)",
-                        border: "1px solid var(--color-rail-strong)",
-                        color: "var(--color-ink)",
-                      }}
-                      value={c.grade ?? ""}
-                      placeholder="grade"
-                      maxLength={2}
-                      disabled={busy}
-                      aria-label={`Grade for ${c.course_code}`}
-                      onChange={(e) =>
-                        onSave({
-                          course_code: c.course_code,
-                          state: c.state,
-                          grade: e.target.value || null,
-                        })
-                      }
-                    />
-                  ) : null}
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => onRemove(c.course_code)}
-                  >
-                    Remove
-                  </Button>
-                </span>
-              </li>
+                course={c}
+                busy={busy}
+                onSave={onSave}
+                onRemove={onRemove}
+              />
             ))}
           </ul>
         )}
       </div>
     </MakeCard>
+  )
+}
+
+/**
+ * One course in the record editor.
+ *
+ * The grade is a local draft committed on blur or Enter, not a controlled field posted on
+ * every keystroke. Saving per keystroke fought the typist three ways at once: the request
+ * flipped a view-wide `busy` that disabled this very input, which blurred it mid-word; the
+ * refetch that followed snapped the value back to whatever the server had; and a two-
+ * character grade meant two writes, so `B+` could persist as `B` if the second keystroke
+ * landed during the round trip. `maxLength` is 4, matching the column — 2 truncated the
+ * off-scale marks the parser already recognises.
+ *
+ * Neither control sends `term`. Omitting a field now means "leave it alone" (see
+ * services/profile.upsert_course), so re-asserting a value the student did not touch would
+ * only add a way for a stale copy to overwrite a fresher one.
+ */
+function CourseRow({ course: c, busy, onSave, onRemove }) {
+  const [draft, setDraft] = useState(c.grade ?? "")
+  const [seen, setSeen] = useState(c.grade ?? "")
+  // Follow the server's value until the reader types over it; adopt it again when it
+  // actually changes underneath them.
+  if ((c.grade ?? "") !== seen) {
+    setSeen(c.grade ?? "")
+    setDraft(c.grade ?? "")
+  }
+
+  const commit = () => {
+    const next = draft.trim().toUpperCase()
+    if (next === (c.grade ?? "")) return
+    setDraft(next)
+    onSave({ course_code: c.course_code, state: c.state, grade: next || null })
+  }
+
+  return (
+    <li
+      className="flex flex-wrap items-center gap-2 rounded-xl p-3"
+      style={{ background: "var(--color-surface-2)", border: "1px solid var(--color-rail)" }}
+    >
+      <Code>{c.course_code}</Code>
+      <span
+        className="min-w-0 flex-1 text-[12px] leading-snug"
+        style={{ color: "var(--color-ink)" }}
+      >
+        {c.title ?? "Not in this catalog"}{" "}
+        {!c.in_catalog ? <Tone tone="warn">unverified</Tone> : null}
+      </span>
+      <span className="flex flex-wrap items-center gap-1.5">
+        <select
+          className="rounded-lg px-2 py-1 text-[12px]"
+          style={{
+            background: "var(--color-surface)",
+            border: "1px solid var(--color-rail-strong)",
+            color: "var(--color-ink)",
+          }}
+          value={c.state}
+          disabled={busy}
+          aria-label={`Status of ${c.course_code}`}
+          onChange={(e) => onSave({ course_code: c.course_code, state: e.target.value })}
+        >
+          {Object.entries(STATE_LABEL).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        {c.state === "completed" ? (
+          <input
+            className="w-16 rounded-lg px-2 py-1 text-[12px] uppercase"
+            style={{
+              background: "var(--color-surface)",
+              border: "1px solid var(--color-rail-strong)",
+              color: "var(--color-ink)",
+            }}
+            value={draft}
+            placeholder="grade"
+            maxLength={4}
+            aria-label={`Grade for ${c.course_code}`}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                e.preventDefault()
+                commit()
+              }
+            }}
+          />
+        ) : null}
+        <Button size="xs" variant="outline" disabled={busy} onClick={() => onRemove(c.course_code)}>
+          Remove
+        </Button>
+      </span>
+    </li>
   )
 }
 

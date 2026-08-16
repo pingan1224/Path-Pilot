@@ -156,16 +156,17 @@ def parse_rows(text: str, *, catalog: set[str] | None = None) -> list[ExtractedR
     terms = _terms_in(text)
 
     rows: list[ExtractedRow] = []
-    seen: set[str] = set()
+    at: dict[str, int] = {}
 
     for index, match in enumerate(matches):
         code = normalise_code(*match.groups())
-        # A transcript can legitimately list a repeated course twice; the review list is
-        # keyed by code downstream, so collapse duplicates here and say nothing false about
-        # repeats rather than inventing two conflicting rows for one code.
-        if code in seen:
-            continue
-        seen.add(code)
+        # A transcript can legitimately list a repeated course twice — a retake. The profile
+        # is keyed by code, so only one row can survive, and which one is not arbitrary:
+        # keeping the *first* meant a failed attempt in the autumn silently outranked the
+        # pass that replaced it in the spring, because transcripts run in date order. The
+        # later attempt wins, and the row says the merge happened rather than presenting a
+        # collapsed history as a complete one.
+        repeated = code in at
 
         start, end = match.start(), match.end()
         next_start = matches[index + 1].start() if index + 1 < len(matches) else None
@@ -173,6 +174,14 @@ def parse_rows(text: str, *, catalog: set[str] | None = None) -> list[ExtractedR
         window = text[max(0, start - WINDOW_BEFORE) : end] + after
 
         reasons: list[str] = []
+        if repeated:
+            # Non-empty reasons drop the row to needs_review below, which is the point: a
+            # retake is exactly the case the reader must not vouch for.
+            reasons.append(
+                f"{code} appears more than once on this transcript, which usually means a "
+                "retake. Only the most recent attempt is shown — check its grade and term "
+                "are the ones you meant to report."
+            )
 
         # --- grade. Searched after the code first: every layout measured puts the grade
         # after its course, and looking behind would find the previous row's grade.
@@ -244,18 +253,21 @@ def parse_rows(text: str, *, catalog: set[str] | None = None) -> list[ExtractedR
         else:
             status = RowStatus.matched
 
-        rows.append(
-            ExtractedRow(
-                course_code=code,
-                status=status,
-                term=term,
-                credits=credits,
-                grade=grade,
-                state=state,
-                reasons=tuple(reasons),
-                raw=" ".join(window.split()),
-            )
+        row = ExtractedRow(
+            course_code=code,
+            status=status,
+            term=term,
+            credits=credits,
+            grade=grade,
+            state=state,
+            reasons=tuple(reasons),
+            raw=" ".join(window.split()),
         )
+        if repeated:
+            rows[at[code]] = row
+        else:
+            at[code] = len(rows)
+            rows.append(row)
 
     rows.extend(_unreadable_rows(text, matches))
     return rows

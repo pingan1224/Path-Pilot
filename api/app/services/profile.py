@@ -15,6 +15,19 @@ from app.planning.rules import evaluate_plan
 from app.planning.types import CourseState, PlanResult, StatedCourse
 from app.services.retrieval import SCHOOL_TO_CORPUS_SLUG, RetrievalScope
 
+
+class _Unset:
+    """"The caller said nothing", which is not the same as "the caller said None"."""
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:  # pragma: no cover - debugging aid
+        return "UNSET"
+
+
+UNSET = _Unset()
+Omissible = str | None | _Unset
+
 # Planning is only offered for programs whose requirements have been hand-encoded and
 # validated. Everyone else gets policy answers, which is a smaller promise honestly kept.
 #
@@ -175,9 +188,17 @@ def upsert_course(
     *,
     course_code: str,
     state: CourseState,
-    term: str | None = None,
-    grade: str | None = None,
+    term: Omissible = UNSET,
+    grade: Omissible = UNSET,
 ) -> ProfileEntry:
+    """Create or update one self-reported course.
+
+    An omitted `term` or `grade` means "leave it alone"; passing None means "clear it".
+    They used to be assigned unconditionally, which made every partial update a silent
+    delete: the planner's state and grade controls post only the code, the state and the
+    grade, so changing either one wiped the term a transcript import had filled in. The
+    student saw a course quietly lose the semester they never edited.
+    """
     code = " ".join(course_code.strip().upper().split())
     row = session.scalars(
         select(ProfileCourse).where(
@@ -189,11 +210,15 @@ def upsert_course(
         session.add(row)
 
     row.state = state.value
-    row.term = term or None
+    if term is not UNSET:
+        row.term = term or None
     # A grade only means anything for something finished. Keeping one on an in-progress or
     # planned course would let a stale value silently satisfy a minimum-grade prerequisite
-    # later.
-    row.grade = (grade or None) if state is CourseState.completed else None
+    # later — so leaving `completed` clears it even when the caller sent no grade at all.
+    if state is not CourseState.completed:
+        row.grade = None
+    elif grade is not UNSET:
+        row.grade = grade or None
     session.commit()
 
     entries = [e for e in list_profile(session, user_id) if e.course_code == code]

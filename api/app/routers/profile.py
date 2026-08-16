@@ -17,6 +17,7 @@ from app.models import Program, UserRole
 from app.planning.types import CourseState, Verdict
 from app.services.auth import Identity, require_roles
 from app.services.profile import (
+    UNSET,
     list_profile,
     plan_for_user,
     program_for_user,
@@ -228,13 +229,18 @@ def put_course(
     identity: Identity = Depends(student_only),
     session: Session = Depends(get_session),
 ) -> CourseOut:
+    # `model_fields_set` is what separates "term: null" from no term at all. Passing
+    # `payload.term` unconditionally made every partial update clear the fields it did not
+    # mention, so editing a grade dropped the semester the transcript importer had filled
+    # in. A client that means to clear one still can — by sending it as null.
+    sent = payload.model_fields_set
     entry = upsert_course(
         session,
         identity.user.id,
         course_code=payload.course_code,
         state=payload.state,
-        term=payload.term,
-        grade=payload.grade,
+        term=payload.term if "term" in sent else UNSET,
+        grade=payload.grade if "grade" in sent else UNSET,
     )
     return _to_out(entry)
 

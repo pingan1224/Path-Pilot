@@ -58,6 +58,28 @@ def test_a_repeated_course_yields_one_row():
     assert len(rows) == 1
 
 
+def test_a_retake_keeps_the_latest_attempt_not_the_first():
+    """Which of the two survives is not arbitrary.
+
+    Transcripts run in date order, so keeping the first meant an autumn failure silently
+    outranked the spring pass that replaced it — a worse grade written into a degree audit
+    with nothing on screen saying a merge had happened.
+    """
+    text = "MASY1-GC 1015 3.0 F\nMASY1-GC 1015 3.0 B+"
+    row = only(parse_rows(text, catalog=CATALOG), "MASY1-GC 1015")
+    assert row.grade == "B+"
+
+
+def test_a_retake_is_never_vouched_for():
+    """One row cannot represent two attempts, so the reader says so instead of implying
+    the record is complete. `matched` means every field is trusted; a collapsed history
+    is exactly what a student should be asked to look at."""
+    text = "MASY1-GC 1015 3.0 F\nMASY1-GC 1015 3.0 B+"
+    row = only(parse_rows(text, catalog=CATALOG), "MASY1-GC 1015")
+    assert row.status is RowStatus.needs_review
+    assert any("more than once" in r for r in row.reasons)
+
+
 def test_empty_text_yields_nothing_rather_than_erroring():
     assert parse_rows("", catalog=CATALOG) == []
     assert parse_rows("   \n\n ", catalog=CATALOG) == []

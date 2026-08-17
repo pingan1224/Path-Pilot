@@ -179,6 +179,21 @@ export default function StudentShell({ me, onSignOut }) {
   }
   const subs = Object.fromEntries(NAV_IDS.map((id) => [id, subFor(id)]))
 
+  /** What the tool pages may start from instead of fetching it again.
+   *
+   *  The shell re-reads all of this on every view change, and the pages were then reading
+   *  the same endpoints a second time — the duplicate was the one they showed their
+   *  loading state for. Handing over the copy already in hand removes the wait without
+   *  making anything staler: it is the same request, issued moments earlier by the
+   *  component that was going to issue it regardless.
+   *
+   *  `LOAD_FAILED` must never be passed on. It is truthy, so a page would render the
+   *  sentinel as data — the failure mode the sentinel exists to prevent. Null means "no
+   *  seed", and the page fetches and handles its own error.
+   */
+  const seedMissions = Array.isArray(missions) ? missions : null
+  const seedCourses = Array.isArray(courses) ? courses : null
+
   // A deep-linkable page deserves a nameable tab; the chat keeps the product name.
   useEffect(() => {
     document.title = view === "chat" ? "Path Pilot" : `${t(`nav.${view}`)} · Path Pilot`
@@ -286,11 +301,14 @@ export default function StudentShell({ me, onSignOut }) {
                 <MissionView
                   onOpenPlanner={() => setView("planner")}
                   onOpenProgram={() => setView("program")}
+                  seedMissions={seedMissions}
                 />
               ) : view === "planner" ? (
                 <PlannerView
                   onOpenProgram={() => setView("program")}
                   onOpenMission={() => setView("mission")}
+                  seedCourses={seedCourses}
+                  seedPlan={plan}
                 />
               ) : view === "sequence" ? (
                 <SequenceView
@@ -322,9 +340,11 @@ export default function StudentShell({ me, onSignOut }) {
                     <StudentView studentId={me.student_id} />
                   ) : (
                     <PlannerView
-                  onOpenProgram={() => setView("program")}
-                  onOpenMission={() => setView("mission")}
-                />
+                      onOpenProgram={() => setView("program")}
+                      onOpenMission={() => setView("mission")}
+                      seedCourses={seedCourses}
+                      seedPlan={plan}
+                    />
                   )}
                 </div>
               </div>

@@ -10,7 +10,7 @@ act of adding) or through the assistant's tool (unconfirmed), and the only thing
 confirms an unconfirmed one is `POST /candidates/{id}/decision` — a student route.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_session
 from app.missions import service
+from app.missions.albert import CheckKind
 from app.missions.service import MissionNotFoundError
 from app.missions.types import MissionFacts, MissionState
 from app.models import Course, UserRole
@@ -53,6 +54,18 @@ class AcceptRiskIn(BaseModel):
     # what was on screen when the student clicked, and the screen is what they accepted.
     finding_summary: str | None = Field(default=None, max_length=400)
     note: str | None = Field(default=None, max_length=2000)
+
+
+class AlbertCheckIn(BaseModel):
+    """One item on the Albert checklist, declared checked or skipped.
+
+    There is no field for what the student found, and there is not going to be one — see
+    `missions.albert`. The client cannot send an outcome because the request has nowhere to
+    put it, which is the same reason no tool can take a `student_id`.
+    """
+
+    key: str = Field(min_length=1, max_length=200)
+    skipped: bool = False
 
 
 class HandoffIn(BaseModel):
@@ -104,6 +117,22 @@ class AcceptedRiskOut(BaseModel):
     reads_differently_now: bool
 
 
+class AlbertItemOut(BaseModel):
+    key: str
+    label: str
+    where: str
+    what: str
+    # "Not checked yet." / "You checked this in Albert on <date>." / "You chose to skip
+    # this on <date>." Rendered server-side so the one place these sentences exist is the
+    # one the red-line probes read.
+    status: str
+    settled: bool
+    skipped: bool
+    checked_on: date | None
+    # Seat counts go stale within the hour, so the item says so beside itself.
+    moves_fast: bool
+
+
 class MissionOut(BaseModel):
     id: int
     term: str
@@ -120,10 +149,32 @@ class MissionOut(BaseModel):
     open_blockers: list[FindingOut]
     degree_findings: list[FindingOut]
     accepted_risks: list[AcceptedRiskOut]
+    albert_items: list[AlbertItemOut]
     disclaimer: str = (
         "This mission tracks what you have told Path Pilot and what the published rules say about "
         "it. Path Pilot cannot see Albert, cannot register you, and cannot confirm a course is "
         "available. Nothing here is done until you have done it in Albert."
+    )
+
+
+def _albert_out(item) -> AlbertItemOut:
+    skipped = item.check is not None and item.check.kind is CheckKind.skipped
+    return AlbertItemOut(
+        key=item.key,
+        label=item.label,
+        where=item.where,
+        what=item.what,
+        status=item.status_line(),
+        settled=item.settled,
+        skipped=skipped,
+        # Only ever populated for a *checked* item, so a client cannot render a date beside
+        # a skip and have it read as a check.
+        checked_on=(
+            item.check.decided_at.date()
+            if item.check is not None and not skipped
+            else None
+        ),
+        moves_fast=item.moves_fast,
     )
 
 
@@ -205,6 +256,7 @@ def _mission_out(
             )
             for r in facts.accepted_risks
         ],
+        albert_items=[_albert_out(i) for i in state.albert_items],
     )
 
 
@@ -358,6 +410,56 @@ def delete_accept_risk(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     if not withdrawn:
         raise HTTPException(status_code=404, detail="That risk was not accepted.")
+    return _load(session, identity.user.id, mission_id)
+
+
+@router.post("/{mission_id}/albert-checks", response_model=MissionOut)
+def post_albert_check(
+    mission_id: int,
+    payload: AlbertCheckIn,
+    identity: Identity = Depends(student_only),
+    session: Session = Depends(get_session),
+) -> MissionOut:
+    """Declare one checklist item checked, or skipped.
+
+    Re-posting the same key replaces the earlier declaration — re-checking seats is the
+    student saying "as of now", and the item shows the newest date. Nothing about the
+    result is accepted, because `AlbertCheckIn` has nowhere to put it.
+    """
+    try:
+        service.record_decision(
+            session,
+            identity.user.id,
+            mission_id,
+            kind=service.ALBERT_SKIPPED if payload.skipped else service.ALBERT_CHECKED,
+            finding_key=payload.key,
+        )
+    except MissionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return _load(session, identity.user.id, mission_id)
+
+
+@router.delete("/{mission_id}/albert-checks/{key:path}", response_model=MissionOut)
+def delete_albert_check(
+    mission_id: int,
+    key: str,
+    identity: Identity = Depends(student_only),
+    session: Session = Depends(get_session),
+) -> MissionOut:
+    """Undo a declaration. The item returns to unchecked and the step re-opens.
+
+    Worth having rather than making the student live with a mis-click: the alternative is
+    a checklist that can only ever be more settled than the truth, which is the direction
+    that matters.
+    """
+    try:
+        withdrawn = service.withdraw_albert_check(
+            session, identity.user.id, mission_id, key
+        )
+    except MissionNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if not withdrawn:
+        raise HTTPException(status_code=404, detail="That item was not checked.")
     return _load(session, identity.user.id, mission_id)
 
 

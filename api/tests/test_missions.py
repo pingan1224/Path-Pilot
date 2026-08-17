@@ -14,6 +14,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from app.missions.albert import AlbertCheck, CheckKind
 from app.missions.steps import compute_state, unverifiable_for_handoff
 from app.missions.types import (
     STEP_ORDER,
@@ -60,6 +61,17 @@ def degree_gap(key="requirement:Electives", summary="Electives: 3 credit(s) shor
     )
 
 
+def albert_settled(*codes, term="Fall 2026", at=T0):
+    """Every checklist item declared checked.
+
+    Used by the tests whose subject is a step *after* the Albert check, so that they stay
+    tests of that step rather than becoming tests of step six by accident. Step six has its
+    own file, `test_albert_checklist.py`.
+    """
+    keys = ("holds", f"appointment:{term}", *(f"seats:{c}" for c in codes))
+    return tuple(AlbertCheck(key=k, kind=CheckKind.checked, decided_at=at) for k in keys)
+
+
 def facts(**overrides) -> MissionFacts:
     base = {
         "term": "Fall 2026",
@@ -101,7 +113,7 @@ def test_acknowledging_gaps_moves_to_choosing_courses():
     assert state.current is StepId.candidates
 
 
-def test_a_confirmed_candidate_with_no_blockers_moves_to_the_handoff():
+def test_a_confirmed_candidate_with_no_blockers_moves_to_the_albert_check():
     state = compute_state(
         facts(
             stated_courses=(course("A"),),
@@ -111,7 +123,27 @@ def test_a_confirmed_candidate_with_no_blockers_moves_to_the_handoff():
     )
     assert state.step(StepId.candidates).state is StepState.done
     assert state.step(StepId.open_items).state is StepState.done
-    assert state.current is StepId.handoff
+    assert state.current is StepId.albert_check
+
+
+def test_a_handoff_alone_no_longer_completes_the_mission():
+    """The sixth step raising the bar, stated as its own case.
+
+    Before 2026-08-17 this exact fact set completed the mission, and "complete" therefore
+    meant "you saw the steps and settled the risks" while the student read it as "I can go
+    and register". The handoff is produced and the mission is still open.
+    """
+    state = compute_state(
+        facts(
+            stated_courses=(course("A"),),
+            acknowledged_gaps_at=T0,
+            candidates=(candidate("B"),),
+            handoff_recorded_at=LATER,
+            last_material_change_at=T0,
+        )
+    )
+    assert not state.complete
+    assert state.current is StepId.albert_check
 
 
 def test_the_mission_completes_when_the_handoff_is_produced():
@@ -120,6 +152,7 @@ def test_the_mission_completes_when_the_handoff_is_produced():
             stated_courses=(course("A"),),
             acknowledged_gaps_at=T0,
             candidates=(candidate("B"),),
+            albert_checks=albert_settled("B"),
             handoff_recorded_at=LATER,
             last_material_change_at=T0,
         )
@@ -243,7 +276,7 @@ def test_a_blocker_on_a_course_they_did_not_choose_is_not_a_blocker():
         )
     )
     assert state.open_blockers == ()
-    assert state.current is StepId.handoff
+    assert state.current is StepId.albert_check
 
 
 def test_a_degree_gap_never_blocks_a_registration_mission():
@@ -258,7 +291,7 @@ def test_a_degree_gap_never_blocks_a_registration_mission():
     )
     assert state.open_blockers == ()
     assert [f.key for f in state.degree_findings] == ["requirement:Electives"]
-    assert state.current is StepId.handoff
+    assert state.current is StepId.albert_check
 
 
 def test_open_items_cannot_be_done_before_a_course_is_chosen():
@@ -297,6 +330,7 @@ def test_a_handoff_that_predates_a_later_change_reopens_the_step():
             stated_courses=(course("A"),),
             acknowledged_gaps_at=T0,
             candidates=(candidate("B"),),
+            albert_checks=albert_settled("B"),
             handoff_recorded_at=T0,
             last_material_change_at=LATER,
         )

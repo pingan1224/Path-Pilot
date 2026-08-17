@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
+from app.missions.albert import AlbertCheck, ChecklistItem
 from app.planning.types import Finding, StatedCourse
 
 
@@ -28,6 +29,14 @@ class StepId(str, Enum):
     gaps = "gaps"
     candidates = "candidates"
     open_items = "open_items"
+    # Sixth, added 2026-08-17, and positioned *before* the handoff on purpose: the handoff
+    # lists what was checked and what was skipped, so producing it first would send an
+    # advisor a document that omits the answer to the question they would ask next.
+    #
+    # It raises the bar, which is the point — "complete" now also means the Albert-only
+    # facts have been declared looked at. An existing mission that was complete reopens
+    # here, correctly: it was completed against the older, weaker criterion.
+    albert_check = "albert_check"
     handoff = "handoff"
 
 
@@ -101,6 +110,9 @@ class MissionFacts:
     # Findings from evaluating the profile *plus* the confirmed candidates as planned work.
     findings: tuple[Finding, ...]
     accepted_risks: tuple[AcceptedRisk, ...] = ()
+    # What the student says they went and looked at in Albert. Declarations only — see
+    # `missions.albert` on why no outcome is stored alongside them.
+    albert_checks: tuple[AlbertCheck, ...] = ()
     acknowledged_gaps_at: datetime | None = None
     handoff_recorded_at: datetime | None = None
     # The most recent time any of the above materially changed: a profile edit, a candidate
@@ -149,6 +161,10 @@ class MissionState:
     open_blockers: tuple[Finding, ...] = ()
     # Accepted risks whose finding now reads differently than it did when accepted.
     stale_acceptances: tuple[AcceptedRisk, ...] = ()
+    # The Albert checklist as it currently derives, each item carrying its declaration or
+    # none. Exposed on the state because the UI, the handoff and the audit trail all read
+    # the same derivation rather than each recomputing it from decisions.
+    albert_items: tuple[ChecklistItem, ...] = field(default_factory=tuple)
     # Degree-level findings — the content of the gaps step. Kept separate from
     # open_blockers on purpose: "your capstone is still outstanding" is true and is not a
     # reason you cannot register for next term, and pooling the two would either block a

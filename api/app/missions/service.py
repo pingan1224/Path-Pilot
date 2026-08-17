@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.missions.handoff import build_handoff
 from app.missions.steps import compute_state
+from app.missions.albert import AlbertCheck, CheckKind
 from app.missions.types import (
     AcceptedRisk,
     Candidate,
@@ -37,6 +38,12 @@ from app.services.profile import list_profile, plan_for_user, program_for_user
 ACKNOWLEDGED_GAPS = "acknowledged_gaps"
 ACCEPTED_RISK = "accepted_risk"
 RECORDED_HANDOFF = "recorded_handoff"
+# Step six. Two kinds rather than one with a note, because the handoff has to print them
+# differently — "checked in Albert on the 17th" and "skipped" are not the same statement to
+# an advisor, and a nullable note is not a discriminator anyone can rely on.
+ALBERT_CHECKED = "albert_checked"
+ALBERT_SKIPPED = "albert_skipped"
+ALBERT_KINDS = (ALBERT_CHECKED, ALBERT_SKIPPED)
 
 
 class MissionNotFoundError(LookupError):
@@ -400,6 +407,27 @@ def record_decision(
     return row
 
 
+def withdraw_albert_check(
+    session: Session, user_id: int, mission_id: int, key: str
+) -> bool:
+    """Remove every declaration for one checklist key, checked or skipped.
+
+    Both kinds, because a student correcting a mis-click does not know or care which one
+    they recorded — and leaving the other behind would settle the item with the opposite
+    meaning from the one they just withdrew.
+    """
+    mission = get_mission(session, user_id, mission_id)
+    matches = [
+        d for d in mission.decisions if d.kind in ALBERT_KINDS and d.finding_key == key
+    ]
+    if not matches:
+        return False
+    for row in matches:
+        session.delete(row)
+    session.commit()
+    return True
+
+
 def withdraw_accepted_risk(
     session: Session, user_id: int, mission_id: int, finding_key: str
 ) -> bool:
@@ -480,6 +508,20 @@ def build_facts(session: Session, user_id: int, mission: Mission) -> tuple[Missi
         for d in mission.decisions
         if d.kind == ACCEPTED_RISK and d.finding_key
     )
+    # Declarations about Albert, keyed the same way an accepted risk is. Only the most
+    # recent per key survives — re-checking seats is the student saying "as of now", and a
+    # list of every time they looked would make "how old is this check" a scan.
+    albert_by_key: dict[str, AlbertCheck] = {}
+    for d in sorted(
+        (d for d in mission.decisions if d.kind in ALBERT_KINDS and d.finding_key),
+        key=lambda d: d.decided_at,
+    ):
+        albert_by_key[d.finding_key] = AlbertCheck(
+            key=d.finding_key,
+            kind=CheckKind.checked if d.kind == ALBERT_CHECKED else CheckKind.skipped,
+            decided_at=d.decided_at,
+        )
+
     acknowledged = next(
         (d.decided_at for d in mission.decisions if d.kind == ACKNOWLEDGED_GAPS), None
     )
@@ -507,6 +549,10 @@ def build_facts(session: Session, user_id: int, mission: Mission) -> tuple[Missi
         stamps.append(row.confirmed_at)
         stamps.append(row.declined_at)
     stamps += [d.decided_at for d in mission.decisions if d.kind == ACCEPTED_RISK]
+    # Deliberately *not* included: an Albert declaration must not count as a material
+    # change. It is the student reporting on the outside world, not altering their plan,
+    # and counting it would make each check invalidate the ones recorded before it — the
+    # last item ticked would leave every earlier one flagged as out of date.
     last_change = max((s for s in stamps if s is not None), default=None)
 
     facts = MissionFacts(
@@ -515,6 +561,7 @@ def build_facts(session: Session, user_id: int, mission: Mission) -> tuple[Missi
         candidates=candidates,
         findings=tuple(result.findings),
         accepted_risks=accepted,
+        albert_checks=tuple(albert_by_key.values()),
         acknowledged_gaps_at=acknowledged,
         handoff_recorded_at=handoff_at,
         last_material_change_at=last_change,

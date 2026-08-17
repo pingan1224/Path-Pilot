@@ -20,6 +20,7 @@ saw it and made a call.
 
 from __future__ import annotations
 
+from app.missions.albert import checked_items, checklist, outstanding, skipped_items
 from app.missions.steps import unverifiable_for_handoff
 from app.missions.types import MissionFacts
 from app.planning.types import CourseState, Verdict
@@ -44,6 +45,13 @@ def build_handoff(
     question: str | None = None,
 ) -> str:
     chosen = "\n".join(f"  - {c.course_code}" for c in facts.confirmed) or NOTHING
+    # Derived here rather than passed in, so the document and the mission page cannot
+    # disagree about what the checklist currently contains.
+    facts_albert = checklist(
+        term=facts.term,
+        confirmed_codes=tuple(c.course_code for c in facts.confirmed),
+        checks=facts.albert_checks,
+    )
 
     settled = (
         "\n".join(
@@ -69,6 +77,24 @@ def build_handoff(
         )
         or NOTHING
     )
+
+    # Step six, in the advisor's hands. Every line is in the student's own voice and about
+    # the *act of looking*, never about what Albert said — the tool has no access and this
+    # document must not let an advisor read one into it. Skipped items are listed as
+    # plainly as checked ones: an advisor who knows the student did not get to their holds
+    # can ask, and hiding it would make the section worth less than nothing.
+    checked = "\n".join(
+        f"  - I checked {i.own_words} in Albert on "
+        f"{i.check.decided_at.date().isoformat()}"
+        for i in checked_items(facts_albert)
+    )
+    skipped = "\n".join(
+        f"  - I did not get to {i.own_words}" for i in skipped_items(facts_albert)
+    )
+    outstanding_items = "\n".join(
+        f"  - I have not checked {i.own_words}" for i in outstanding(facts_albert)
+    )
+    albert_block = "\n".join(x for x in (checked, skipped, outstanding_items) if x) or NOTHING
 
     questions = (
         "\n".join(
@@ -110,6 +136,9 @@ WHAT THE PUBLISHED RULES SAY (checked against {rules_line}):
 
 WHAT I COULD NOT CONFIRM MYSELF:
 {open_items}
+
+WHAT ONLY ALBERT KNOWS (my own check — Path Pilot cannot see any of this):
+{albert_block}
 
 RISKS I AM KNOWINGLY CARRYING:
 {accepted}

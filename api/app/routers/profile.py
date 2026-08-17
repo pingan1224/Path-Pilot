@@ -94,10 +94,13 @@ class PlanOut(BaseModel):
     program_name: str
     program_source_url: str | None
     rules_verified_on: str | None
-    credits_completed: int
-    credits_in_progress: int
-    credits_planned: int
-    credits_required: int
+    # Float. Not cosmetic: pydantic refuses to coerce 1.5 into an int, so declaring these
+    # `int` turned every fractional-credit course into a 500 from this endpoint — and this
+    # endpoint is what the planner, the rail and the chat card all read. See PlanResult.
+    credits_completed: float
+    credits_in_progress: float
+    credits_planned: float
+    credits_required: float
     courses_stated: int
     profile_last_updated: str | None
     profile_age_days: int | None

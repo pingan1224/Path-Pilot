@@ -24,6 +24,7 @@ from app.models import (
     Student,
     Term,
 )
+from app.planning.format import fmt_credits
 from app.schemas import ReadinessResponse, RequirementProgress, StudentSummary
 from app.services.freshness import FreshnessPolicies
 
@@ -89,7 +90,7 @@ def compute_readiness(session: Session, student_id: int) -> ReadinessResponse:
             Enrollment.status == EnrollmentStatus.completed,
         )
     ).all()
-    completed_credits: dict[int, int] = {row[0]: row[1] for row in completed}
+    completed_credits: dict[int, float] = {row[0]: row[1] for row in completed}
 
     # --- Requirements with the courses that satisfy them.
     requirements = session.scalars(
@@ -100,13 +101,13 @@ def compute_readiness(session: Session, student_id: int) -> ReadinessResponse:
     ).all()
 
     progress: list[RequirementProgress] = []
-    total_applied = 0
-    total_raw = 0
-    remaining_by_kind: dict[RequirementKind, int] = {}
+    total_applied = 0.0
+    total_raw = 0.0
+    remaining_by_kind: dict[RequirementKind, float] = {}
 
     for requirement in requirements:
         earned = sum(
-            completed_credits.get(course.id, 0) for course in requirement.courses
+            completed_credits.get(course.id, 0.0) for course in requirement.courses
         )
         applied = min(earned, requirement.min_credits)
         remaining = requirement.min_credits - applied
@@ -206,8 +207,8 @@ def _classify(
     can_finish: bool,
     terms_required: int,
     terms_remaining: int | None,
-    capstone_remaining: int,
-    credits_remaining: int,
+    capstone_remaining: float,
+    credits_remaining: float,
 ) -> tuple[ReadinessStatus, str]:
     """Pick a status and say why in one sentence.
 
@@ -220,11 +221,11 @@ def _classify(
     that mattered.
     """
     if not can_finish and terms_remaining is not None:
-        detail = f"{credits_remaining} applicable credits remain"
+        detail = f"{fmt_credits(credits_remaining)} applicable credits remain"
         if capstone_remaining:
             detail += (
-                f", including {capstone_remaining} capstone credits that must be taken in "
-                "consecutive terms"
+                f", including {fmt_credits(capstone_remaining)} capstone credits that must "
+                "be taken in consecutive terms"
             )
         return (
             ReadinessStatus.at_risk,

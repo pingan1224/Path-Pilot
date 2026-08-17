@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.planning.format import fmt_credits
 from app.planning.types import (
     Citation,
     CourseState,
@@ -484,11 +485,14 @@ def evaluate_requirement(
             verdict=Verdict.satisfied,
             key=rkey,
             summary=f"{spec.name} complete",
-            detail=f"{listed_credits} of {spec.min_credits} credits from the listed courses.",
+            detail=(
+                f"{fmt_credits(listed_credits)} of {fmt_credits(spec.min_credits)} credits "
+                "from the listed courses."
+            ),
             citations=(citation,),
         )
 
-    detail = f"{listed_credits} of {spec.min_credits} credits so far."
+    detail = f"{fmt_credits(listed_credits)} of {fmt_credits(spec.min_credits)} credits so far."
     if elsewhere:
         detail += (
             f" {', '.join(sorted(elsewhere))} "
@@ -508,7 +512,7 @@ def evaluate_requirement(
     return Finding(
         verdict=Verdict.unverifiable if unknown_held else Verdict.not_satisfied,
         key=rkey,
-        summary=f"{spec.name}: {spec.min_credits - listed_credits} credit(s) short",
+        summary=f"{spec.name}: {fmt_credits(spec.min_credits - listed_credits)} credit(s) short",
         detail=detail,
         citations=(citation,),
         next_step="Confirm your elective choice with your advisor and in Albert.",
@@ -588,7 +592,7 @@ def evaluate_plan(
 
     for course in stated_courses:
         rule = program.courses.get(course.code)
-        credits = rule.credits if rule else 0
+        credits = rule.credits if rule else 0.0
         if course.state is CourseState.completed:
             result.credits_completed += credits
         elif course.state is CourseState.in_progress:

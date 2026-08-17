@@ -100,10 +100,17 @@ class PlanResult:
     """Everything the engine concluded, ready for the model to narrate."""
 
     findings: list[Finding] = field(default_factory=list)
-    credits_completed: int = 0
-    credits_in_progress: int = 0
-    credits_planned: int = 0
-    credits_required: int = 0
+    # Float, because half credits are real and they are not decoration: three encoded
+    # degrees (MSEM, TCTM, TCHS) are built out of 1.5-credit courses, and MSEM's internship
+    # — a single 1.5-credit *required* course — means the first thing such a student enters
+    # produces a fractional total. These were annotated `int` while `CourseRule.credits` was
+    # already float, so the lie was invisible here and surfaced two layers away as a 500
+    # from `/plan` when pydantic refused to coerce 1.5. `credits_required` stays float for
+    # symmetry with the other three even though its column is Integer today.
+    credits_completed: float = 0.0
+    credits_in_progress: float = 0.0
+    credits_planned: float = 0.0
+    credits_required: float = 0.0
 
     def add(self, finding: Finding) -> None:
         self.findings.append(finding)

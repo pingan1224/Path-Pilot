@@ -44,7 +44,11 @@ class StudentSummary(BaseModel):
     student_number: str
     full_name: str
     program_name: str
-    program_credits_required: int
+    # Same value as ReadinessResponse.credits_required and float for the same reason — see
+    # RequirementProgress. Its column is Integer today; the annotation does not depend on
+    # that staying true, and one object handing back `36` beside `16.5` is worse than both
+    # being float.
+    program_credits_required: float
     advisor_name: str | None
     expected_graduation_term: str | None
     registration_opens_at: date | None
@@ -52,13 +56,17 @@ class StudentSummary(BaseModel):
 
 
 class RequirementProgress(BaseModel):
-    name: str
-    kind: RequirementKind
-    required_credits: int
-    earned_credits: int = Field(description="Credits completed in courses tied to this requirement")
-    applied_credits: int = Field(description="Credits that count, capped at required_credits")
-    remaining_credits: int
-    unapplied_credits: int = Field(
+    # Float throughout, because `Requirement.min_credits` and `Course.credits` are both
+    # Float and half credits are real — six encoded requirements are 16.5 or 1.5. Declaring
+    # these `int` is a latent 500: pydantic will not coerce a fractional float, and the
+    # only reason this surface has not hit it is that the demo fixtures happen to be whole.
+    required_credits: float
+    earned_credits: float = Field(
+        description="Credits completed in courses tied to this requirement"
+    )
+    applied_credits: float = Field(description="Credits that count, capped at required_credits")
+    remaining_credits: float
+    unapplied_credits: float = Field(
         description="Earned but over the cap, so they do not count toward the degree"
     )
     satisfied: bool
@@ -74,10 +82,11 @@ class ReadinessResponse(BaseModel):
     status_action: str
     status_reason: str
 
-    credits_required: int
-    credits_applied: int
-    credits_earned_raw: int
-    credits_unapplied: int
+    credits_required: float
+    credits_applied: float
+    credits_earned_raw: float
+    credits_unapplied: float
+    # Stays int: it is a rounded percentage, not a credit count.
     percent_complete: int
 
     terms_remaining: int | None

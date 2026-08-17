@@ -153,7 +153,7 @@ class ProfileEntry:
     # Resolved against the loaded catalog, so the UI can show a title and flag the
     # courses this tool cannot reason about.
     title: str | None = None
-    credits: int | None = None
+    credits: float | None = None
     in_catalog: bool = False
     # The term of the mission this course was confirmed on, or None when the student typed
     # it. Set means the row is read-only here: its edit surface is the mission page, and

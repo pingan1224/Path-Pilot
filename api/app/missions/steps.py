@@ -12,7 +12,14 @@ Read the criteria first; they are the specification:
    name. This is the termination condition, and it is the reason the whole mission is
    decidable: "resolved or knowingly accepted" is checkable, where "the student is ready"
    is not.
-5. **handoff** — a handoff has been produced *since the last material change*. A summary
+5. **albert_check** — every Albert-only fact is declared checked, or explicitly skipped.
+   This is the step that makes "complete" mean what a student already reads it to mean. It
+   records only that they went and looked: no outcome is stored, because this product
+   cannot see Albert and a stored outcome is how "you have no holds" gets said. Skipping is
+   itself a recorded decision and appears in the handoff — without that escape the step
+   would be uncompletable for anyone without time to open Albert, and a step nobody can
+   finish is the thing the sixth-step draft was cut for the first time round.
+6. **handoff** — a handoff has been produced *since the last material change*. A summary
    generated before the student added two courses no longer describes their plan, and it is
    a document they send to a human who will act on it.
 
@@ -29,6 +36,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from app.missions.albert import checked_items, checklist, outstanding, skipped_items
 from app.missions.types import (
     STEP_ORDER,
     AcceptedRisk,
@@ -110,6 +118,25 @@ def compute_state(facts: MissionFacts) -> MissionState:
     gaps_done = facts.acknowledged_gaps_at is not None
     candidates_done = len(facts.confirmed) > 0
     open_items_done = candidates_done and not open_blockers
+
+    # Derived, never stored. Confirming another course adds a `seats:` key with no
+    # declaration behind it, which is what re-opens this step — the checklist *is* the
+    # derivation, so there is no staleness rule to keep in sync with it.
+    albert = checklist(
+        term=facts.term,
+        confirmed_codes=tuple(c.course_code for c in facts.confirmed),
+        checks=facts.albert_checks,
+    )
+    albert_outstanding = outstanding(albert)
+    # Gated on the courses being chosen: with nothing confirmed the seat items do not exist
+    # yet, so a student could "finish" this step before there was anything to check.
+    albert_done = candidates_done and not albert_outstanding
+    stale_checks = sum(
+        1
+        for i in albert
+        if i.check is not None
+        and _reviewed_before_a_later_change(facts, i.check.decided_at)
+    )
     handoff_done = facts.handoff_recorded_at is not None and not _reviewed_before_a_later_change(
         facts, facts.handoff_recorded_at
     )
@@ -171,6 +198,25 @@ def compute_state(facts: MissionFacts) -> MissionState:
                 else None
             ),
         ),
+        StepId.albert_check: (
+            albert_done,
+            "Every fact only Albert knows is either checked or explicitly skipped.",
+            (
+                "Open Albert and check each item below. Skip the ones you cannot get to — "
+                "a skip is recorded and appears in your handoff."
+                if candidates_done
+                else "Confirm your courses first — the seat checks come from them."
+            ),
+            (
+                f"{len(checked_items(albert))} checked, {len(skipped_items(albert))} "
+                f"skipped, {len(albert_outstanding)} outstanding.",
+            ),
+            (
+                f"{stale_checks} of your checks were made before your most recent change."
+                if stale_checks
+                else None
+            ),
+        ),
         StepId.handoff: (
             handoff_done,
             "A handoff summary has been produced since your last change.",
@@ -194,6 +240,7 @@ def compute_state(facts: MissionFacts) -> MissionState:
         StepId.gaps: "Review your degree gaps",
         StepId.candidates: f"Choose courses for {facts.term}",
         StepId.open_items: "Settle the open items",
+        StepId.albert_check: "Check what only Albert knows",
         StepId.handoff: "Produce the advisor handoff",
     }
 
@@ -233,6 +280,7 @@ def compute_state(facts: MissionFacts) -> MissionState:
         open_blockers=open_blockers,
         stale_acceptances=stale,
         degree_findings=degree,
+        albert_items=albert,
     )
 
 

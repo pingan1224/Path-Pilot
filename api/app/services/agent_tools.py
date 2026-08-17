@@ -385,7 +385,6 @@ def tool_get_course_info(ctx: ToolContext, course_code: str) -> dict[str, Any]:
                     "seats": f"{section.enrolled_count}/{section.capacity}",
                     "seats_remaining": section.seats_remaining,
                     "waitlist": section.waitlist_count,
-                    "meeting": section.meeting_pattern,
                     "requires_permission": section.requires_permission,
                     "reserved_seat_rule": section.reserved_seat_rule,
                     "seat_data_age": humanize_age(provenance.age_seconds),

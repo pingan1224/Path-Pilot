@@ -278,7 +278,17 @@ class Section(Base, TimestampMixin, SourcedMixin):
     waitlist_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     instructor: Mapped[str | None] = mapped_column(String(160))
-    meeting_pattern: Mapped[str | None] = mapped_column(String(64))  # "Mon 18:00-20:30"
+    # There is deliberately no meeting time here (removed 2026-08-17). It held invented
+    # weeknight patterns on the 45 demo sections and reached the model through
+    # `tool_get_course_info`, which made it the last place the product stated a fabricated
+    # fact about availability with the same confidence as a computed one — the shape that
+    # got hold status removed on 2026-08-13.
+    #
+    # Scheduling is now out of scope rather than unbuilt. The only compliant source of real
+    # meeting times was ruled out (NYU's class-search API is disallowed by robots.txt and
+    # the page renders nothing without it), so anything here could only ever be fiction, and
+    # a planner that reasons about a fictional timetable is worse than one that says it
+    # cannot. `typically_offered` stays: a term pattern is not a time of day.
     modality: Mapped[str | None] = mapped_column(String(32))
     # Seats held for a subset of students, e.g. "MSMS majors only until Mar 20". A frequent
     # cause of the "the site says there are seats but I cannot enroll" confusion.

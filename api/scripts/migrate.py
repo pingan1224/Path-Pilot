@@ -280,6 +280,14 @@ STATEMENTS = [
                UNIQUE (user_id, term, program_code);
        EXCEPTION WHEN duplicate_table THEN NULL;
        END $$""",
+    # 2026-08-17: scheduling is out of scope, so the column that carried invented meeting
+    # times goes with it. It existed only on the 45 demo sections, reached the model through
+    # `tool_get_course_info`, and was the last place the product asserted a fabricated fact
+    # about availability as confidently as a computed one. Dropped rather than left empty:
+    # a nullable column is an invitation to fill it, and there is no compliant source to
+    # fill it from. The rest of `sections` stays — seat counts are what "is it full?"
+    # resolves to, and `readiness` reaches enrollments through this table.
+    "ALTER TABLE sections DROP COLUMN IF EXISTS meeting_pattern",
 ]
 
 

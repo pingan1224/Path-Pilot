@@ -166,6 +166,16 @@ Three things follow, and they are the reason for the change rather than decorati
 - **"Time preference" means course load and which terms you sit out — not time of day.** The
   catalogue publishes a term pattern (`typically_offered`) and no meeting times or sections
   at all. Nothing in this product can honour "evenings only", and it must not imply it can.
+  **Scheduling was ruled out entirely on 2026-08-17** — meeting times, conflict detection, a
+  weekly calendar — and `Section.meeting_pattern` was dropped with it, the last column
+  holding invented times that reached the model. Two reasons, and the second is the one that
+  decides it. Real data is not obtainable compliantly: NYU's class-search API is disallowed
+  by `robots.txt` and the page renders an empty form without it, so anything stored could
+  only be fiction. And even with the data, **Albert already refuses to register a
+  conflicting section**, so detection is worthless; the value would be in *arranging* a
+  workable week before registration, which is a separate product with its own parser and its
+  own staleness semantics, not an extension of "what should I take next term". Reopening
+  this needs a data licence from SPS or the registrar, which is not something to re-research.
 
 ### Holds: what changed, and why it is a scope decision (2026-08-13)
 

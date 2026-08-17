@@ -329,7 +329,6 @@ def seed_sections(
                 waitlist_capacity=10,
                 waitlist_count=0,
                 instructor="Staff",
-                meeting_pattern="Wed 18:00-20:30",
                 modality="In person",
                 source_key="registrar_section",
                 verified_at=NOW - timedelta(days=200),
@@ -337,7 +336,6 @@ def seed_sections(
             session.add(section)
             sections[f"{term_code}:{code}"] = section
 
-    patterns = ["Mon 18:00-20:30", "Tue 18:00-20:30", "Wed 18:00-20:30", "Thu 18:00-20:30"]
     for idx, (code, cap, enrolled, wl_cap, wl, permission, reserved) in enumerate(
         FALL_2026_SECTIONS
     ):
@@ -350,7 +348,6 @@ def seed_sections(
             waitlist_capacity=wl_cap,
             waitlist_count=wl,
             instructor="Staff",
-            meeting_pattern=patterns[idx % len(patterns)],
             modality="In person",
             reserved_seat_rule=reserved,
             requires_permission=permission,

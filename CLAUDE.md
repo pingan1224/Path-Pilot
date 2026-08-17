@@ -724,29 +724,37 @@ and the intake layouts in api/eval/intake_cases.py. (`golden.RETRIEVAL_CASES` is
 came from.) Runner is scripts/run_eval.py (--gate for thresholds, --only for subsets,
 --only-decoder for the model-free part, --reseed to restore the demo db).
 
-**Latest complete run, 2026-08-12** (35 cases × 3 attempts = 105 runs,
-`kimi-k2.7-code-highspeed`), gate PASS: 34/35 passing every attempt, 1 disagreeing across
-attempts, high-stakes escalation recall 0.963, over-escalation 0.0, citation coverage
-0.9855, intent accuracy 1.0, leakage 0, runs where the assistant was never reached 0,
-latency p50/p95 6,227/15,740 ms, iterations mean 2.78. Retrieval on the same corpus:
-recall@5 0.91, MRR 0.825, 3 misses (R24, R40, R42).
+**Latest complete run, 2026-08-17** (`report-20260817-204835.md`, 35 cases × 3 attempts =
+105 runs, `gpt-5.4-mini`), gate PASS: **30/35 passing every attempt, 0 failing every
+attempt, 5 disagreeing across attempts**, high-stakes escalation recall 1.0,
+over-escalation 0.0476, citation coverage 1.0, intent accuracy 0.8889 (labelled subset),
+leakage 0, runs where the assistant was never reached 0, latency p50/p95 3,901/6,966 ms,
+iterations mean 2.62. Trajectory: 1.7 calls/run, redundant 0.0, forbidden 0, uncited
+0.2571, path ratio 1.71 (n=24). Retrieval on the same corpus is unchanged and has no chat
+model in it: recall@5 0.91, MRR 0.825.
 
-**Those behavior numbers were measured on Kimi and the chat model has since changed
-(2026-08-14, see P3 facts) — they are the previous model's baseline, not the current
-system's.** The behavior prompt was tuned against kimi; a full `--gate --repeat 3` run on
-the OpenAI model is owed before quoting any behavior number. Retrieval and decoder
-numbers are unaffected (no chat model in either), and intake OCR now shares a vendor
-with everything else.
+**The tool-calling question the model swap opened is now answered: 1 run in 105 contained
+a failed tool call** (0.0095, against 0/105 on kimi and 0.0476 on the 08-16 baseline). The
+three-case smoke run's alarming 0.6667 was a three-sample artifact, not a property of
+`gpt-5.4-mini` — which is the whole reason a subset run now reports `gate: n/a`. Correct
+tool calling was the property the model was chosen for, and it holds.
 
-**The one OpenAI measurement in the repo is a three-case smoke run, and what it shows is
-not reassuring.** `eval/results/report-20260814-204503.md` is a `--only` subset — gate
-`n/a`, single attempt per case — so none of its rates are comparable to the 35-case kimi
-baseline above, and nothing should be read off them as a trend. But two things in it are
-worth carrying until the full run replaces them: **B05 escalated a case labelled
-answered**, and **two of the three runs contained a failed tool call** (`runs with a
-failed call` 0.6667, against 0 on kimi). Correct tool calling is the property the model
-was chosen for, so that is the number the full run has to clear — read this file as a
-reason to run the gate, not as evidence the swap is fine.
+**Read the two regressions in this run as flakiness, not as damage, and here is why that
+is more than a shrug.** Against 08-16: B10 improved (flaky → pass), B09 and B30
+destabilised (pass → flaky), so 31→30 passing and 4→5 flaky. Both destabilised cases
+landed in a family that already contained a flaky member with a *byte-identical* failure
+signature — B09 joins B12 on `no citation with prefix ['policy:chunk']`, B30 joins B29 on
+`never called get_course_info`. Neither signature has a mechanism connecting it to what
+changed since the baseline: the payload edits removed a field from a tool's *return* value,
+and a model decides whether to call a tool from its description, before it sees any payload.
+
+Two numbers moved that are reported and deliberately not gated, and both are small
+denominators rather than trends. Intent accuracy 1.0 → 0.8889 is **one attempt**: B08
+attempt 3 read "What happens if I join a waitlist?" as `explain_blocker` instead of
+`find_policy`, on a case that still passed with the right tool. Only 3 cases carry an
+intent label, so the metric moves in steps of 0.111 and cannot express anything finer.
+Uncited lookups rose 0.181 → 0.2571 — diligence, by the rule that gating it would reward
+padding citations.
 
 **Every failure this suite has produced was intermittent**, and until 2026-08-11 it could
 not say so: one attempt per case, a model that rejects any temperature but 1, and a coin
@@ -765,10 +773,14 @@ the direction of the first is the point:
   failed, and is reported with its decision sequence rather than gated — flakiness is a
   property of the system, and failing the build for it leaves the gate permanently red.
 
-At `--repeat 3` on 2026-08-12: 34/35 passing every attempt, **1 flaky — B17**, which the
-run's own comparison against the previous baseline flagged as `pass → flaky, destabilised`;
-0 failing all three. B20 held that slot on 2026-08-11 and B05 before it, which is the
-pattern: it is one borderline answer-vs-escalate case at a time, not the same case.
+At `--repeat 3` on 2026-08-17: 30/35 passing every attempt, **5 flaky — B02, B09, B12,
+B29, B30**; 0 failing all three, as at every previous run. The old pattern was "one
+borderline answer-vs-escalate case at a time, and never the same case" (B17 on 08-12, B20
+on 08-11, B05 before that). **That is no longer the shape.** The flaky set is now five and
+falls into three stable families by failure signature — deferred-instead-of-answered
+(B02), missing policy citation (B09, B12), skipped `get_course_info` (B29, B30) — and
+membership moves within a family rather than wandering. Reading it as one wobbly case is
+now wrong; there are three recurring weaknesses with two members each and one singleton.
 A subset run (`--only`) now reports `gate: n/a` instead of grading thresholds against a
 sample nobody chose.
 Decoder run 2026-08-17: **27/30, coverage 0.8636**, accuracy 1.00, 0 confidently wrong,

@@ -33,18 +33,35 @@
 forbidden 0、泄漏 0）。这是**第一份同类可比的基线**——此前所有「vs 20260812」都是跨模型
 加跨用例集。
 
-### 开工前必须先做的一件事
+### ~~开工前必须先做的一件事~~ ✅ 已跑（2026-08-17，gate PASS）
 
-**跑一次完整 gate。** B、C、D 各自往 agent 工具的返回载荷加了字段
-（`credits_per_term_source`、`deadline_source`、`concentrations_that_also_fit`、
-finding 上的 `options`），而本方案风险一节写明「每阶段收尾跑一次与基线对比」——这三个
-阶段都还没跑。现在有基线可比，是第一次能真正做回归判断的时候。
+`report-20260817-204835.md`。清掉的是**五处**载荷欠账,不是三处——B/C/D 三处加上当天
+删掉的 `tool_get_course_info` 的 `"meeting"` 键和 decoder 的一个 `FailureReason` 成员。
 
-```
-cd api && .venv/Scripts/python.exe -m scripts.run_eval --gate --repeat 3 --reseed
-```
+**结论:五处载荷改动没有造成回归。**
 
-约 40 分钟，花真实 token。
+| | 08-16 基线 | 08-17 |
+|---|---|---|
+| 每次运行含失败工具调用 | 5/105 | **1/105** |
+| 过度升级率 | 0.0714 | **0.0476** |
+| path ratio | 1.96 | **1.71** |
+| 三次全挂的用例 | 0 | 0 |
+| 高风险召回 / 泄漏 / forbidden / redundant | 1.0 / 0 / 0 / 0.0 | 不变 |
+| 三次全过 | 31/35 | 30/35（flaky 4→5） |
+| unused result rate | 0.181 | 0.2571 |
+| p50 / p95 / iterations | 3584 / 6331 / 2.37 | 3901 / 6966 / 2.62 |
+
+**P0 当初要的那个结论:失败工具调用率 105 次运行里 1 次**（kimi 是 0/105）。换模型时那次
+三例冒烟跑出的 0.6667 是三样本的假象,不是 `gpt-5.4-mini` 的性质——这正是子集跑现在报
+`gate: n/a` 的原因。
+
+**两个 destabilised 与本次改动无关,理由不是「大概是噪声」:** B09 与 B30 各自掉进一个
+基线上就已有成员、**失败签名一字不差**的家族（B09↔B12 缺 policy 引用;B30↔B29 没调
+`get_course_info`）。而且机制上说不通——改的是工具**返回载荷**里的字段,模型决定要不要
+调用某工具靠的是它的**描述**,在看到任何载荷之前就决定了。B10 反向变好（flaky→pass）。
+
+`intent_accuracy` 1.0→0.8889 是**一个 attempt**（B08 第 3 次把「join a waitlist」读成
+`explain_blocker`,该用例仍通过）。只有 3 个用例标了 intent,这个指标的最小刻度就是 0.111。
 
 ### Phase E 的两个待决问题
 

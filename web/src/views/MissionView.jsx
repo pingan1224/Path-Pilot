@@ -326,7 +326,7 @@ function Mission({ mission, busy, act, onMission, onClose, onOpenPlanner, t }) {
         className="pp-slide-up mb-5 rounded-xl px-4 py-3"
         style={{
           background: "var(--color-amber-muted)",
-          border: "1px solid rgba(180,83,9,0.2)",
+          border: "1px solid var(--color-amber-edge)",
           animationDelay: "80ms",
         }}
       >
@@ -630,7 +630,7 @@ function CandidatesBody({ mission, busy, act }) {
               className="pp-slide-up rounded-xl p-3"
               style={{
                 background: "var(--color-violet-muted)",
-                border: "1px solid rgba(124,58,237,0.25)",
+                border: "1px solid var(--color-violet-edge)",
                 animationDelay: `${i * 60}ms`,
               }}
             >

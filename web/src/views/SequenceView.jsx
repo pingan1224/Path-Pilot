@@ -53,9 +53,9 @@ import { usePrefs } from "@/i18n"
 const CREDIT_CHOICES = [3, 6, 9, 12]
 
 const SEM_STYLE = {
-  Spring: { primary: "var(--color-emerald)", bg: "var(--color-emerald-muted)", border: "rgba(4,120,87,0.2)" },
-  Fall: { primary: "var(--color-violet-light)", bg: "var(--color-violet-muted)", border: "rgba(124,58,237,0.25)" },
-  Summer: { primary: "var(--color-amber)", bg: "var(--color-amber-muted)", border: "rgba(180,83,9,0.2)" },
+  Spring: { primary: "var(--color-emerald)", bg: "var(--color-emerald-muted)", border: "var(--color-emerald-edge)" },
+  Fall: { primary: "var(--color-violet-light)", bg: "var(--color-violet-muted)", border: "var(--color-violet-edge)" },
+  Summer: { primary: "var(--color-amber)", bg: "var(--color-amber-muted)", border: "var(--color-amber-edge)" },
 }
 const semesterOf = (term) => SEM_STYLE[String(term).split(" ")[0]] ?? SEM_STYLE.Fall
 
@@ -422,7 +422,7 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
                   className="rounded-xl px-3 py-2 text-left"
                   style={{
                     background: active ? "var(--color-violet-muted)" : "var(--color-surface-2)",
-                    border: `1px solid ${active ? "rgba(124,58,237,0.35)" : "var(--color-rail-strong)"}`,
+                    border: `1px solid ${active ? "var(--color-violet-edge-strong)" : "var(--color-rail-strong)"}`,
                     transition: "background 200ms ease, border-color 200ms ease",
                   }}
                 >
@@ -468,7 +468,7 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
         {plan.deferred ? (
           <div
             className="pp-slide-up flex flex-wrap items-center gap-3 rounded-xl px-4 py-3"
-            style={{ background: "var(--color-violet-muted)", border: "1px solid rgba(124,58,237,0.25)" }}
+            style={{ background: "var(--color-violet-muted)", border: "1px solid var(--color-violet-edge)" }}
           >
             <Sparkles size={13} style={{ color: "var(--color-violet-light)" }} aria-hidden="true" />
             <div className="min-w-0 flex-1">
@@ -508,7 +508,7 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
               type="button"
               onClick={() => setShowAssumptions((o) => !o)}
               className="flex w-full items-center gap-2 rounded-xl px-4 py-2.5 text-left"
-              style={{ background: "var(--color-sky-muted)", border: "1px solid rgba(96,165,250,0.2)" }}
+              style={{ background: "var(--color-sky-muted)", border: "1px solid var(--color-sky-edge)" }}
             >
               <Info size={12} style={{ color: "var(--color-sky)" }} aria-hidden="true" />
               <span className="flex-1 text-[12px]" style={{ color: "var(--color-sky)" }}>
@@ -528,7 +528,7 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
             {showAssumptions ? (
               <div
                 className="pp-slide-up rounded-xl px-4 py-3"
-                style={{ background: "var(--color-sky-muted)", border: "1px solid rgba(96,165,250,0.2)" }}
+                style={{ background: "var(--color-sky-muted)", border: "1px solid var(--color-sky-edge)" }}
               >
                 <ul className="findings">
                   {plan.assumptions.map((a) => (
@@ -669,7 +669,7 @@ export default function SequenceView({ onOpenPlanner, onOpenProgram }) {
         <div className="nx-scroll min-h-0 flex-1 overflow-y-auto px-6 pt-3 pb-6">
           <div
             className="pp-slide-up rounded-2xl p-4"
-            style={{ background: "var(--color-surface)", border: "1px solid rgba(180,83,9,0.25)" }}
+            style={{ background: "var(--color-surface)", border: "1px solid var(--color-amber-edge-strong)" }}
           >
             <p className="text-[12px] leading-relaxed" style={{ color: "var(--color-ink-2)" }}>
               {plan.infeasibility?.explanation}
@@ -776,7 +776,7 @@ function CourseCard({ course, cost, deferrable, busy, index, onDefer, onDragStar
       onDragEnd={deferrable ? onDragEnd : undefined}
       className="overflow-hidden rounded-xl"
       style={{
-        border: `1px solid ${shaky ? "rgba(180,83,9,0.25)" : "var(--color-rail)"}`,
+        border: `1px solid ${shaky ? "var(--color-amber-edge-strong)" : "var(--color-rail)"}`,
         background: shaky ? "var(--color-amber-muted)" : "var(--color-surface-2)",
         cursor: deferrable ? "grab" : "default",
         animation: `pp-slide-up 200ms cubic-bezier(0.22,1,0.36,1) ${index * 60}ms both`,
@@ -838,10 +838,12 @@ function CourseCard({ course, cost, deferrable, busy, index, onDefer, onDragStar
         </div>
       ) : null}
 
+      {/* The wash stays a literal: at 0.06 it is a one-off tint, not the 0.1 the amber
+          `-muted` token carries, and a token used once buys nothing. */}
       {shaky ? (
         <div
           className="px-3 py-2"
-          style={{ borderTop: "1px solid rgba(180,83,9,0.15)", background: "rgba(180,83,9,0.06)" }}
+          style={{ borderTop: "1px solid var(--color-amber-edge)", background: "rgba(180,83,9,0.06)" }}
         >
           <p className="text-[11px] leading-snug" style={{ color: "var(--color-amber)" }}>
             {course.offering_note}

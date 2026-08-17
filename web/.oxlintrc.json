@@ -1,7 +1,27 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "env": { "browser": true, "es2024": true },
+  "plugins": ["react", "oxc"],
   "rules": {
-    "no-undef": "error"
+    // A missing top-level binding reached the browser once and blanked the app on
+    // transcript upload. Verified against that very bug before being turned on.
+    "no-undef": "error",
+    // Restored 2026-08-16. It was dropped as collateral when `plugins` was rewritten to
+    // add no-undef, not because anything failed it — and it still reports zero. A hook
+    // behind a condition is a bug class no test in this repo would catch.
+    //
+    // Two things verified rather than assumed, because a lint rule that is quietly inert
+    // is worse than an absent one: a conditional `useState` in a throwaway file is an
+    // error with this line present and is *not* reported with `plugins` alone, so this
+    // key is load-bearing. The diagnostic prints under `react-hooks(rules-of-hooks)`
+    // while the key is `react/...` — that mismatch is oxlint's, not a typo here.
+    "react/rules-of-hooks": "error",
+    // `react/only-export-components` is deliberately NOT here. It reports seven files
+    // whose shape is not ours to change: the shadcn components are copied in from
+    // upstream and export their `cva` variants beside the component, and `i18n/index.jsx`
+    // exports `usePrefs` beside its provider. The rule buys dev-time fast-refresh
+    // granularity and costs seven permanent warnings, which is how a team learns to stop
+    // reading lint output.
+    "react/only-export-components": "off"
   }
 }

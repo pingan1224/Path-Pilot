@@ -31,7 +31,14 @@ export class ErrorBoundary extends Component {
   }
 
   componentDidUpdate(prev) {
+    // oxlint's no-did-update-set-state warns about the re-render this causes, and the
+    // usual answer — `key={view}` on the boundary — is wrong here specifically: it would
+    // remount the children on every navigation, and the shell keeps the chat mounted
+    // while a tool page is open precisely so the thread survives. The guard needs both a
+    // changed key and a latched error, so this runs at most once per crash and cannot
+    // loop: clearing the error makes the second condition false.
     if (prev.resetKey !== this.props.resetKey && this.state.error) {
+      // eslint-disable-next-line react/no-did-update-set-state
       this.setState({ error: null })
     }
   }
@@ -45,7 +52,7 @@ export class ErrorBoundary extends Component {
           className="pp-slide-up w-full max-w-lg rounded-2xl p-5"
           style={{
             background: "var(--color-surface)",
-            border: "1px solid rgba(190,18,60,0.25)",
+            border: "1px solid var(--color-rose-edge-strong)",
           }}
           role="alert"
         >

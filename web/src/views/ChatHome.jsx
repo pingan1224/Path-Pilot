@@ -336,7 +336,7 @@ export default function ChatHome({
             className="pp-fade-in flex items-start gap-2.5 rounded-xl px-3 py-2.5"
             style={{
               background: "var(--color-sky-muted)",
-              border: "1px solid rgba(96,165,250,0.2)",
+              border: "1px solid var(--color-sky-edge)",
               animationDelay: "80ms",
             }}
           >
@@ -389,7 +389,7 @@ export default function ChatHome({
                       className="rounded-2xl rounded-tr-sm px-4 py-3"
                       style={{
                         background: "var(--color-violet-muted)",
-                        border: "1px solid rgba(124,58,237,0.25)",
+                        border: "1px solid var(--color-violet-edge)",
                       }}
                     >
                       <p className="text-[13px] leading-relaxed whitespace-pre-wrap" style={{ color: "var(--color-ink)" }}>
@@ -497,7 +497,7 @@ export default function ChatHome({
                       className="rounded-xl px-3 py-2.5 text-[12px] leading-relaxed"
                       style={{
                         background: "var(--color-violet-muted)",
-                        border: "1px solid rgba(124,58,237,0.25)",
+                        border: "1px solid var(--color-violet-edge)",
                         color: "var(--color-ink)",
                       }}
                     >
@@ -528,7 +528,7 @@ export default function ChatHome({
                   {result.degraded_modes.length > 0 ? (
                     <div
                       className="flex items-start gap-2 rounded-xl px-3 py-2.5"
-                      style={{ background: "var(--color-amber-muted)", border: "1px solid rgba(180,83,9,0.2)" }}
+                      style={{ background: "var(--color-amber-muted)", border: "1px solid var(--color-amber-edge)" }}
                     >
                       <AlertTriangle size={11} style={{ color: "var(--color-amber)", flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
                       <p className="text-[11px] leading-relaxed" style={{ color: "var(--color-amber)" }}>
@@ -543,7 +543,7 @@ export default function ChatHome({
                       className="rounded-xl px-3 py-2.5 text-[11px] leading-relaxed"
                       style={{
                         background: "var(--color-sky-muted)",
-                        border: "1px solid rgba(96,165,250,0.2)",
+                        border: "1px solid var(--color-sky-edge)",
                         color: "var(--color-sky)",
                       }}
                     >
@@ -611,7 +611,7 @@ export default function ChatHome({
                   animation: `pp-slide-up 240ms cubic-bezier(0.22,1,0.36,1) ${i * 40 + (landing ? 400 : 0)}ms both`,
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "rgba(124,58,237,0.4)"
+                  e.currentTarget.style.borderColor = "var(--color-violet-edge-strong)"
                   e.currentTarget.style.color = "var(--color-ink)"
                   e.currentTarget.style.transform = "translateY(-1px)"
                 }}
@@ -715,7 +715,7 @@ export default function ChatHome({
             ))}
             <div
               className="rounded-xl px-3 py-2.5"
-              style={{ background: "var(--color-amber-muted)", border: "1px solid rgba(180,83,9,0.2)" }}
+              style={{ background: "var(--color-amber-muted)", border: "1px solid var(--color-amber-edge)" }}
             >
               <div className="flex items-start gap-2">
                 <AlertTriangle size={11} style={{ color: "var(--color-amber)", flexShrink: 0, marginTop: 2 }} aria-hidden="true" />

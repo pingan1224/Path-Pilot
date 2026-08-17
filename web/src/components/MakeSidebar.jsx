@@ -1,16 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from "react"
-import {
-  BarChart2,
-  Calendar,
-  CheckSquare,
-  Compass,
-  FileText,
-  LogOut,
-  MessageSquare,
-  Moon,
-  Sun,
-} from "lucide-react"
+import { Compass, LogOut, Moon, Sun } from "lucide-react"
 import { usePrefs } from "@/i18n"
+import { NAV_ITEMS } from "@/nav"
 
 /**
  * The design's sidebar, 1:1: gradient logo tile, spotlight program chip, five nav items
@@ -39,14 +30,6 @@ import { usePrefs } from "@/i18n"
  * when the two are measured against different boxes — a doubled line. It is dropped
  * here and the travelling edge is the single marker.
  */
-
-const NAV_ITEMS = [
-  { id: "chat", icon: MessageSquare },
-  { id: "planner", icon: BarChart2 },
-  { id: "mission", icon: CheckSquare },
-  { id: "intake", icon: FileText },
-  { id: "sequence", icon: Calendar },
-]
 
 function useSpotlight(ref) {
   useEffect(() => {
@@ -169,7 +152,7 @@ export default function MakeSidebar({
           className="pp-spotlight w-full rounded-lg px-3 py-2 text-left"
           style={{
             background: "var(--color-surface-2)",
-            border: `1px solid ${view === "program" ? "rgba(124,58,237,0.4)" : "var(--color-rail-strong)"}`,
+            border: `1px solid ${view === "program" ? "var(--color-violet-edge-strong)" : "var(--color-rail-strong)"}`,
           }}
         >
           <div className="mb-0.5 text-[10px] font-medium" style={{ color: "var(--color-ink-3)" }}>
@@ -308,7 +291,7 @@ export default function MakeSidebar({
         {mission ? (
           <div
             className="mb-3 rounded-lg px-3 py-2"
-            style={{ background: "var(--color-amber-muted)", border: "1px solid rgba(180,83,9,0.2)" }}
+            style={{ background: "var(--color-amber-muted)", border: "1px solid var(--color-amber-edge)" }}
           >
             <div className="text-[10px] font-medium" style={{ color: "var(--color-amber)" }}>
               {t("sidebar.mission.label")}

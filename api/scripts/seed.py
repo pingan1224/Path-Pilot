@@ -392,6 +392,36 @@ def seed_advisors(session: Session) -> dict[str, User]:
     return advisors
 
 
+LIVE_PROBE_EMAIL = "live.probe@pathpilot.example.edu"
+
+
+def seed_live_probe_user(session: Session) -> User:
+    """The one account that is *not* demo data, and has to be here anyway.
+
+    Live mode is the shape a real user has: a `User` with no `Student` row, so no fixture
+    record exists to be read and the agent falls back to the nine-tool surface. Four test
+    modules and `scripts.live_mode_probe` need such an account to exercise that path at all.
+
+    It was created lazily by the probe script, which meant `reset()` — `DELETE FROM users`
+    is unconditional and has to be — took it out on every reseed, and nine tests in
+    `test_program_endpoints` then errored trying to sign in as a user that no longer
+    existed. Walked into three times on 2026-08-16 alone. Anything user-shaped that the
+    suite depends on must be recreated here, because the reset owns that table.
+
+    Deliberately bare: no program, no stated courses, no `Student`. Every consumer sets up
+    and tears down its own state, and a course seeded here would silently join their plans.
+    """
+    user = User(
+        email=LIVE_PROBE_EMAIL,
+        full_name="Live Probe",
+        role=UserRole.student,
+        password_hash=DEMO_PASSWORD_HASH,
+    )
+    session.add(user)
+    session.flush()
+    return user
+
+
 def make_student(
     session: Session,
     *,
@@ -1082,6 +1112,7 @@ def main() -> None:
         program, courses = seed_catalog(session)
         sections = seed_sections(session, courses, terms)
         advisors = seed_advisors(session)
+        seed_live_probe_user(session)
         heroes = seed_hero_students(session, program, advisors, terms, sections)
         seed_hero_selfreports(session, heroes)
         background = seed_background_students(session, program, advisors, terms)

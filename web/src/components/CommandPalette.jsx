@@ -1,13 +1,7 @@
 import { useEffect, useRef, useState } from "react"
-import {
-  BarChart2,
-  Calendar,
-  CheckSquare,
-  FileText,
-  MessageSquare,
-  Search,
-} from "lucide-react"
+import { Search } from "lucide-react"
 import { usePrefs } from "@/i18n"
+import { NAV_ITEMS } from "@/nav"
 
 /**
  * The design's ⌘K palette, 1:1 — backdrop blur, sliding panel, keyboard navigation,
@@ -15,14 +9,12 @@ import { usePrefs } from "@/i18n"
  * description ("21 / 36 credits"); here the caller passes `subs` — the same live
  * sub-lines the sidebar computes from real reads — so the palette states facts the
  * server just recomputed instead of a screenshot of one afternoon.
+ *
+ * Rows are the rail's own slots in the rail's own order (`@/nav`). This file kept a second
+ * copy of that list until 2026-08-16 and had it in a different order from the sidebar, so
+ * the same five entries came back differently depending on how they were opened.
  */
-const ACTIONS = [
-  { id: "chat", icon: MessageSquare },
-  { id: "planner", icon: BarChart2 },
-  { id: "intake", icon: FileText },
-  { id: "sequence", icon: Calendar },
-  { id: "mission", icon: CheckSquare },
-]
+const ACTIONS = NAV_ITEMS
 
 export default function CommandPalette({ open, onClose, onNavigate, subs }) {
   const { t } = usePrefs()

@@ -11,10 +11,16 @@ one of the invented demo courses.
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import Course, CoursePrerequisite, Program, Requirement
+from app.models import (
+    Course,
+    CoursePrerequisite,
+    Program,
+    Requirement,
+    RequirementTrack,
+)
 from app.planning.rules import (
     CourseRule,
     ProgramRules,
@@ -31,7 +37,54 @@ def _iso(value) -> str | None:
     return value.date().isoformat() if value else None
 
 
+# The whole catalog, keyed by the fingerprint it was built from. Process-local and
+# deliberately unbounded — it holds one entry.
+#
+# **This is a cache of reference data, not of a verdict, and the distinction is the reason
+# it is allowed here at all.** "No stored status, recompute on read" exists because a
+# student's situation changes underneath a stored answer and the answer keeps looking
+# authoritative. The catalogue changes when someone runs an ingest, which is a deploy-shaped
+# event, and nothing about a student can change it. Every plan is still recomputed on every
+# read; what is reused is the 749 rows of course data those computations all read from.
+#
+# Staleness is made impossible rather than unlikely: the fingerprint below is one query that
+# counts the catalogue and takes its newest `updated_at`, so an ingest that adds, removes or
+# edits any course invalidates the entry on the next read. One round trip (~20 ms) replaces
+# two and 749 rows (~87 ms), and `/missions` paid that per open mission.
+_CATALOG: dict[tuple, dict[str, CourseRule]] = {}
+
+
+_PROGRAM_RULES: dict[tuple, ProgramRules] = {}
+
+
+def _catalog_fingerprint(session: Session) -> tuple:
+    """One round trip covering everything an ingest can change.
+
+    Counts and newest-`updated_at` for the catalogue, plus row counts for the three tables
+    that carry a degree's shape. Edges and requirements are counted separately from courses
+    because either can change without a course row being touched — a new prerequisite, or a
+    re-encoded requirement, would otherwise be invisible to the fingerprint and the cache
+    would serve the old degree until the process restarted.
+    """
+    row = session.execute(
+        select(
+            func.count(Course.id),
+            func.max(Course.updated_at),
+            select(func.count(CoursePrerequisite.id)).scalar_subquery(),
+            select(func.count(Requirement.id)).scalar_subquery(),
+            select(func.max(Requirement.updated_at)).scalar_subquery(),
+            select(func.count(RequirementTrack.id)).scalar_subquery(),
+        ).where(Course.source == "catalog")
+    ).one()
+    return tuple(row)
+
+
 def load_catalog_courses(session: Session) -> dict[str, CourseRule]:
+    fingerprint = _catalog_fingerprint(session)
+    cached = _CATALOG.get(fingerprint)
+    if cached is not None:
+        return cached
+
     courses = session.scalars(
         select(Course).where(Course.source == "catalog")
     ).all()
@@ -81,16 +134,48 @@ def load_catalog_courses(session: Session) -> dict[str, CourseRule]:
             concurrent=tuple(sorted(concurrent.get(course.id, ()))),
             typically_offered=course.typically_offered,
         )
+
+    # One entry, replaced wholesale: an older fingerprint can never be read again, so
+    # keeping it would only hold memory. `CourseRule` is frozen, so handing the same dict to
+    # every caller cannot let one of them mutate another's catalogue.
+    _CATALOG.clear()
+    _CATALOG[fingerprint] = rules
     return rules
 
 
 def load_program_rules(session: Session, program_code: str) -> ProgramRules:
+    # Cached on the same fingerprint as the catalogue, and for the same reason: a degree's
+    # encoded rules change when someone runs an ingest, never because of anything a student
+    # does. The plan is still evaluated from scratch on every read — this reuses the rules
+    # it is evaluated *against*.
+    #
+    # Worth more than the catalogue cache, because `/missions` calls this once per open
+    # mission and a student's missions are almost always for the same degree. Every query it
+    # avoids is a ~22 ms round trip to a database in another region, which is what this
+    # endpoint's latency is actually made of.
+    fingerprint = _catalog_fingerprint(session)
+    cache_key = (program_code, fingerprint)
+    cached = _PROGRAM_RULES.get(cache_key)
+    if cached is not None:
+        return cached
+
     program = session.scalars(
         select(Program)
         .where(Program.code == program_code, Program.source == "catalog")
         .options(
             selectinload(Program.requirements).selectinload(Requirement.courses),
-            selectinload(Program.requirements).selectinload(Requirement.tracks),
+            # Both track collections are loaded here, not just the tracks themselves.
+            # `TrackRule` below reads `track.courses` and `track.required_courses`, and
+            # with only `tracks` eager-loaded those were lazy — two extra round trips per
+            # concentration. MASY has four, so a single `/plan` spent eight queries and
+            # ~160ms of its ~540ms fetching them one at a time. The cost scales with
+            # concentrations, so the degrees with the most choice were the slowest to open.
+            selectinload(Program.requirements)
+            .selectinload(Requirement.tracks)
+            .selectinload(RequirementTrack.courses),
+            selectinload(Program.requirements)
+            .selectinload(Requirement.tracks)
+            .selectinload(RequirementTrack.required_courses),
         )
     ).first()
     if program is None:
@@ -139,7 +224,7 @@ def load_program_rules(session: Session, program_code: str) -> ProgramRules:
             )
         )
 
-    return ProgramRules(
+    rules = ProgramRules(
         name=program.name,
         total_credits=program.total_credits_required,
         requirements=tuple(specs),
@@ -147,3 +232,10 @@ def load_program_rules(session: Session, program_code: str) -> ProgramRules:
         source_url=program.catalog_url,
         verified_on=_iso(program.catalog_verified_at),
     )
+
+    # Entries for a superseded fingerprint can never be read again, so they are dropped
+    # rather than left to accumulate one per ingest. Bounded at the 23 encoded degrees.
+    for stale in [k for k in _PROGRAM_RULES if k[1] != fingerprint]:
+        del _PROGRAM_RULES[stale]
+    _PROGRAM_RULES[cache_key] = rules
+    return rules

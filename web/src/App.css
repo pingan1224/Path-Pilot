@@ -97,6 +97,32 @@
   --color-violet-muted: rgba(109, 40, 217, 0.12);
 }
 
+/* ── Tone edges — the border half of the TONE vocabulary ──────
+   Shared by both themes, deliberately, and that is a known defect rather than a design:
+   these are the literals the components already carried, lifted here unchanged so the
+   appearance does not move. They were retyped by hand in eleven files — the amber one
+   nine times — which is why one drag-hover edge had drifted to 0.35 while its three
+   siblings were 0.4.
+
+   The incoherence is visible now that they sit together: emerald, amber and rose are the
+   *light* palette's hues, sky and violet are the *dark* palette's, and none of them
+   follows the toggle. So `make.jsx`'s TONE draws an amber-500 icon on an amber-500 tint
+   inside an amber-700 edge in dark mode, because `color` and `bg` are tokens and `border`
+   was not. Making them theme-aware is a five-line change — move each pair into the two
+   blocks above at that theme's own hue, exactly as `--color-*-muted` already does — and
+   it is left undone here only because it moves every card edge in both themes, which is
+   the owner's call on a branch that replicates a design 1:1. */
+:root {
+  --color-emerald-edge: rgba(4, 120, 87, 0.2);
+  --color-amber-edge: rgba(180, 83, 9, 0.2);
+  --color-amber-edge-strong: rgba(180, 83, 9, 0.25);
+  --color-rose-edge: rgba(190, 18, 60, 0.2);
+  --color-rose-edge-strong: rgba(190, 18, 60, 0.25);
+  --color-sky-edge: rgba(96, 165, 250, 0.2);
+  --color-violet-edge: rgba(124, 58, 237, 0.25);
+  --color-violet-edge-strong: rgba(124, 58, 237, 0.4);
+}
+
 /* ── Fonts, type scale, radius, motion — shared by both themes ── */
 :root {
   --font-display: 'Fraunces Variable', Georgia, serif;

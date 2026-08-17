@@ -180,7 +180,7 @@ export default function PlannerView({ onOpenProgram, onOpenMission }) {
           className="pp-fade-in mb-5 flex items-start gap-2.5 rounded-xl px-4 py-3"
           style={{
             background: "var(--color-sky-muted)",
-            border: "1px solid rgba(96,165,250,0.2)",
+            border: "1px solid var(--color-sky-edge)",
             animationDelay: "360ms",
           }}
         >

@@ -106,13 +106,27 @@ def sequence_for_user(
     # What each of next term's courses costs if it waits. Computed alongside the plan
     # rather than behind a second endpoint: the reason a course is on the list is not a
     # detail view of the list, it is the answer.
-    costs = delay_costs(
-        program,
-        stated,
-        start_term=start,
-        deadline=deadline,
-        max_credits_per_term=cap,
-        horizon=horizon,
+    #
+    # **Not computed under an active deferral, and that is the fix rather than a shortcut.**
+    # A delay cost is priced against a baseline, and when `defer` is set the baseline on
+    # screen is not the one these were solved from: every remaining card kept a price that
+    # assumed the deferred course was still in the starting term. `delay_costs` already
+    # refuses to answer when there is no baseline to compare against — the same reasoning
+    # covers a baseline the caller has replaced. Pricing "what if Y waits *as well*" would
+    # be a different question, and the UI does not ask it: it disables deferring while a
+    # deferral is up. The what-if's own price is still shown, from the client's remembered
+    # un-deferred answer.
+    costs = (
+        ()
+        if defer
+        else delay_costs(
+            program,
+            stated,
+            start_term=start,
+            deadline=deadline,
+            max_credits_per_term=cap,
+            horizon=horizon,
+        )
     )
 
     meta = {

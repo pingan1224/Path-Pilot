@@ -6,6 +6,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary"
 import MakeSidebar from "@/components/MakeSidebar"
 import { ProgramNotice } from "@/components/nocturne"
 import { usePrefs } from "@/i18n"
+import { NAV_IDS } from "@/nav"
 import ChatHome from "./ChatHome"
 import DecoderView from "./DecoderView"
 import IntakeView from "./IntakeView"
@@ -35,6 +36,10 @@ import StudentView from "./StudentView"
 // forbids. "No access" is not "no results".
 const LOAD_FAILED = Symbol("load failed")
 
+// Every routable segment, which is deliberately not the rail's five slots (`@/nav`):
+// `decoder`, `program` and `dashboard` are reachable and deep-linkable but hold no slot,
+// because each would duplicate an entry point that already exists. Chat is absent because
+// it is `/`.
 const VIEW_PATHS = [
   "intake",
   "decoder",
@@ -164,9 +169,7 @@ export default function StudentShell({ me, onSignOut }) {
         return t(`nav.${id}.sub`)
     }
   }
-  const subs = Object.fromEntries(
-    ["chat", "planner", "mission", "intake", "sequence"].map((id) => [id, subFor(id)]),
-  )
+  const subs = Object.fromEntries(NAV_IDS.map((id) => [id, subFor(id)]))
 
   // A deep-linkable page deserves a nameable tab; the chat keeps the product name.
   useEffect(() => {
@@ -211,7 +214,7 @@ export default function StudentShell({ me, onSignOut }) {
               className="mx-4 mt-3 flex-none rounded-xl px-4 py-2.5"
               style={{
                 background: "var(--color-rose-muted)",
-                border: "1px solid rgba(190,18,60,0.2)",
+                border: "1px solid var(--color-rose-edge)",
               }}
             >
               <span className="text-[12px] font-semibold" style={{ color: "var(--color-rose)" }}>

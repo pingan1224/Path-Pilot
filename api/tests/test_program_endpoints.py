@@ -51,9 +51,14 @@ def client():
     account at whatever the last test set.
     """
     with get_sessionmaker()() as session:
-        original = session.scalar(
-            select(User.program_id).where(User.email == PROBE_EMAIL)
-        )
+        user = session.scalars(select(User).where(User.email == PROBE_EMAIL)).first()
+        # The three sibling modules skip here; this one used to read a null program off a
+        # missing user and then error nine times on a 401 from the login below, which said
+        # nothing about the cause. The seed owns the account now, so this branch should be
+        # unreachable — it exists to name itself if that ever stops being true.
+        if user is None:
+            pytest.skip("live probe account is not seeded")
+        original = user.program_id
 
     c = TestClient(app)
     response = c.post(

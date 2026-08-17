@@ -208,7 +208,7 @@ export function MissionCard({ mission: initial, onOpenView }) {
               className="pp-slide-up rounded-xl p-3"
               style={{
                 background: "var(--color-violet-muted)",
-                border: "1px solid rgba(124,58,237,0.25)",
+                border: "1px solid var(--color-violet-edge)",
                 animationDelay: `${i * 60}ms`,
               }}
             >
@@ -333,7 +333,7 @@ export function SequenceCard({ plan, onOpenView }) {
             className="rounded-xl p-3"
             style={{
               background: "var(--color-surface-2)",
-              border: `1px solid ${termIndex === 0 ? "rgba(124,58,237,0.25)" : "var(--color-rail)"}`,
+              border: `1px solid ${termIndex === 0 ? "var(--color-violet-edge)" : "var(--color-rail)"}`,
             }}
           >
             <div className="flex flex-wrap items-baseline gap-2">

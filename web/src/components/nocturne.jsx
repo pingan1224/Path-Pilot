@@ -72,7 +72,7 @@ export function ProgramNotice({ code, message, onChooseProgram }) {
   return (
     <div
       className="pp-slide-up flex flex-col items-start gap-3 rounded-2xl px-4 py-3.5"
-      style={{ background: "var(--color-amber-muted)", border: "1px solid rgba(180,83,9,0.2)" }}
+      style={{ background: "var(--color-amber-muted)", border: "1px solid var(--color-amber-edge)" }}
     >
       <div>
         <p className="text-[13px] font-semibold" style={{ color: "var(--color-amber)" }}>

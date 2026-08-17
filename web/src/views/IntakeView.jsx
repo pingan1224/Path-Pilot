@@ -158,7 +158,7 @@ export default function IntakeView({ onOpenView }) {
           said before the upload because only the student can decide. */}
       <div
         className="pp-slide-up flex items-start gap-2.5 rounded-xl px-4 py-3"
-        style={{ background: "var(--color-rose-muted)", border: "1px solid rgba(190,18,60,0.2)" }}
+        style={{ background: "var(--color-rose-muted)", border: "1px solid var(--color-rose-edge)" }}
       >
         <Camera size={13} style={{ color: "var(--color-rose)", flexShrink: 0, marginTop: 1 }} aria-hidden="true" />
         <div>
@@ -175,7 +175,7 @@ export default function IntakeView({ onOpenView }) {
       </div>
       <div
         className="pp-slide-up flex items-start gap-2.5 rounded-xl px-4 py-2.5"
-        style={{ background: "var(--color-sky-muted)", border: "1px solid rgba(96,165,250,0.2)", animationDelay: "60ms" }}
+        style={{ background: "var(--color-sky-muted)", border: "1px solid var(--color-sky-edge)", animationDelay: "60ms" }}
       >
         <Info size={12} style={{ color: "var(--color-sky)", flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
         <p className="text-[11px] leading-relaxed" style={{ color: "var(--color-sky)", opacity: 0.85 }}>
@@ -241,7 +241,7 @@ export default function IntakeView({ onOpenView }) {
       </MakeCard>
 
       {result ? (
-        <MakeCard style={{ borderColor: "rgba(124,58,237,0.4)" }}>
+        <MakeCard style={{ borderColor: "var(--color-violet-edge-strong)" }}>
           <div className="flex items-center gap-2 text-[13px] font-semibold" style={{ color: "var(--color-ink)" }}>
             <CheckCircle size={13} style={{ color: "var(--color-emerald)" }} aria-hidden="true" />
             Added {result.written} course{result.written === 1 ? "" : "s"} to your record
@@ -296,7 +296,7 @@ export default function IntakeView({ onOpenView }) {
             {reading.read_by_ocr ? (
               <div
                 className="flex items-start gap-2 rounded-xl px-3 py-2.5"
-                style={{ background: "var(--color-amber-muted)", border: "1px solid rgba(180,83,9,0.2)" }}
+                style={{ background: "var(--color-amber-muted)", border: "1px solid var(--color-amber-edge)" }}
               >
                 <AlertTriangle size={11} style={{ color: "var(--color-amber)", flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
                 <p className="text-[11px] leading-relaxed" style={{ color: "var(--color-amber)" }}>
@@ -320,7 +320,7 @@ export default function IntakeView({ onOpenView }) {
                   <div
                     key={i}
                     className="rounded-xl p-3"
-                    style={{ background: "var(--color-rose-muted)", border: "1px dashed rgba(190,18,60,0.25)" }}
+                    style={{ background: "var(--color-rose-muted)", border: "1px dashed var(--color-rose-edge-strong)" }}
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <XCircle size={12} style={{ color: "var(--color-rose)" }} aria-hidden="true" />
@@ -347,7 +347,7 @@ export default function IntakeView({ onOpenView }) {
                   className="pp-slide-up rounded-xl p-3"
                   style={{
                     background: isMatched ? "var(--color-surface-2)" : "var(--color-amber-muted)",
-                    border: `1px solid ${isMatched ? "var(--color-rail)" : "rgba(180,83,9,0.2)"}`,
+                    border: `1px solid ${isMatched ? "var(--color-rail)" : "var(--color-amber-edge)"}`,
                     animationDelay: `${i * 40}ms`,
                   }}
                 >

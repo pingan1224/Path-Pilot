@@ -11,13 +11,19 @@ never re-solved at all.
 """
 
 import pytest
+from sqlalchemy import select
 
+from app.db.session import get_sessionmaker
+from app.models import User
+from app.planning.loader import load_program_rules
 from app.planning.rules import CourseRule, ProgramRules, RequirementRuleSpec
 from app.planning.types import CourseState, StatedCourse
 from app.sequence.delay import delay_costs
+from app.sequence.service import sequence_for_user
 from app.sequence.terms import Term
 
 FALL26 = Term.parse("Fall 2026")
+PROBE_EMAIL = "live.probe@pathpilot.example.edu"
 
 
 def course(code, *, prereqs=(), offered=None, credits=3):
@@ -129,3 +135,55 @@ def test_a_credit_placeholder_is_not_priced():
     )
     codes = [c.code for c in delay_costs(program, held(), start_term=FALL26)]
     assert codes == ["A"]
+
+
+# --------------------------------------------------------------------------------------
+# The service boundary: which baseline the prices belong to
+# --------------------------------------------------------------------------------------
+
+
+def _db_available() -> bool:
+    try:
+        with get_sessionmaker()() as session:
+            session.scalar(select(User.id).limit(1))
+            load_program_rules(session, "MASY-MS-REAL")
+        return True
+    except Exception:  # noqa: BLE001 — the suite must skip, not fail, without a database
+        return False
+
+
+needs_db = pytest.mark.skipif(
+    not _db_available(), reason="needs the seeded dev database with catalog programmes"
+)
+
+
+@needs_db
+def test_a_deferral_returns_no_prices_rather_than_the_baselines():
+    """The prices belong to a board the caller has just replaced.
+
+    Under `defer=X` every remaining course kept a price solved from the plan where X was
+    still in the starting term, and the UI rendered those chips beside the deferred board.
+    Same failure the no-feasible-baseline case guards against, one step along: a delay cost
+    is a comparison, and the thing it compared against is not what is on screen.
+    """
+    with get_sessionmaker()() as session:
+        uid = session.scalar(select(User.id).where(User.email == PROBE_EMAIL))
+        if uid is None:
+            pytest.skip("live probe account is not seeded")
+
+        start = Term.parse("Fall 2026")
+        _, baseline = sequence_for_user(
+            session, uid, start_term=start, program_code="MASY-MS-REAL"
+        )
+        priced = [c.code for c in baseline["delay_costs"]]
+        assert priced, "no baseline prices to begin with, so this proves nothing"
+
+        _, whatif = sequence_for_user(
+            session,
+            uid,
+            start_term=start,
+            program_code="MASY-MS-REAL",
+            defer=priced[0],
+        )
+        assert whatif["deferred"] == priced[0]
+        assert whatif["delay_costs"] == ()

@@ -14,15 +14,16 @@ import re
 
 from sqlalchemy import select
 
-from app.config import settings
 from app.db.session import get_sessionmaker
-from app.models import Student, User, UserRole
+from app.models import Student, User
 from app.planning.types import CourseState
 from app.services.agent import run_agent
-from app.services.auth import hash_password
 from app.services.profile import upsert_course
 
-LIVE_EMAIL = "live.probe@pathpilot.example.edu"
+# Owned by the seed, not by this script. It used to be the other way round, and `reset()`
+# deletes every user, so a reseed silently removed the account four test modules sign in
+# as. Importing rather than redeclaring is what keeps the two from drifting apart again.
+from scripts.seed import LIVE_PROBE_EMAIL as LIVE_EMAIL
 
 # Phrases that would each be a false statement about a system Path Pilot cannot see.
 FORBIDDEN = [
@@ -52,14 +53,12 @@ def check(name: str, passed: bool, detail: str = "") -> None:
 def ensure_live_user(session) -> int:
     user = session.scalars(select(User).where(User.email == LIVE_EMAIL)).first()
     if user is None:
-        user = User(
-            email=LIVE_EMAIL,
-            full_name="Live Probe",
-            role=UserRole.student,
-            password_hash=hash_password(settings.demo_password),
+        # Reachable only on a database that has never been seeded. Creating it here is
+        # what caused the drift this import removed, so say what to run instead.
+        raise SystemExit(
+            f"No {LIVE_EMAIL} account. It is created by the seed — run "
+            "`python -m scripts.seed --reset` (or `--reseed` on the eval runner) first."
         )
-        session.add(user)
-        session.commit()
     # No Student row on purpose: that absence is what puts the turn in live mode.
     linked = session.scalars(select(Student).where(Student.user_id == user.id)).first()
     assert linked is None, "live probe user must have no seeded student fixture"

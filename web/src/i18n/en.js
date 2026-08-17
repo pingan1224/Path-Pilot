@@ -106,6 +106,12 @@ export const en = {
   "greet.courses": ({ count }) =>
     `you have ${count} course${count === 1 ? "" : "s"} on record and no term being prepared.`,
   "greet.empty": "there is nothing on record yet.",
+  // Onboarding, such as it is: a sentence, not a wizard. It says what cannot be computed
+  // and why, rather than instructing — the chip beside it is the instruction, and the
+  // decoder still answers with nothing on file.
+  "greet.onboard.program":
+    "you haven't told me which degree you're in yet, so I can't check anything " +
+    "against it. Registration errors and published policy still work.",
   "greet.failed":
     "Hi {name} — I couldn't read your record just now, so I can't say where your " +
     "registration stands. That is a connection problem, not an empty record. I can " +
@@ -119,6 +125,11 @@ export const en = {
   "chip.prereq": "What does ERR_PREREQ mean?",
   "chip.first": "What should I do first?",
   "chip.holds": "How do registration holds work?",
+  // Chips that open a page instead of asking. Worded as actions, because that is what
+  // they do — and because the model could not carry out any of the three.
+  "chip.pick-program": "Choose my degree",
+  "chip.upload": "Add my courses",
+  "chip.set-target": "Set when I want to finish",
 
   // Chat — answer frame
   "kicker.answered": "Answered from verified sources",

@@ -21,8 +21,9 @@
 | C 方案对比 | ✅ | PR #9 |
 | D Elective 候选 | ✅ | PR #10 |
 | **E Albert 清单** | **未开始** | 见下方待决 |
-| F1 运维建号 | ✅ 2026-08-17 | `scripts/create_user.py`（未提交前为分支上） |
-| F Onboarding / F2 / F3 | 未开始 | 原计划不变 |
+| F1 运维建号 | ✅ 2026-08-17 | `scripts/create_user.py` |
+| F Onboarding | ✅ 2026-08-17 | ChatHome 计算式引导，无新界面 |
+| F2 / F3 | 未开始 | 挂 M12 之后，原计划不变 |
 
 **闭环现在通的是中段。** A–D 把「建立状态 → 表达目标 → 比较方案 → 回流更新」接上了；
 **确认执行那一端仍然缺（E）**，mission 还是五步、没有 `albert_check`。F1 补的是另一端：
@@ -348,10 +349,33 @@ PlannerView、ProgramView。
 | F2 邀请码激活 | `invite_codes` 表 + `POST /auth/redeem` 自设密码；邀请码发到邮箱，投递即身份验证，无需邮件服务 | M12 限流就位 |
 | F3 自助注册 | 注册 + 邮箱验证 + 找回密码；需要邮件服务与完整滥用防护 | M12 完成后单独立项 |
 
-**Onboarding：计算式，chat 主导，非模态。** 引导状态由三个事实推导（专业已选？记录里
-有课？目标学期已存？）→ greeting 分支与 chips 顺序：选专业 → 传成绩单 → 定目标。
-没有 `onboarding_step` 列，每次读取重算；rail 的专业 chip 已有 "Action required"
-徽标承担视觉牵引。
+**Onboarding：计算式，chat 主导，非模态。✅ 2026-08-17。** 引导状态由三个事实推导
+（专业已选？记录里有课？目标学期已存？）→ greeting 分支与 chips 顺序：选专业 →
+传成绩单 → 定目标。没有 `onboarding_step` 列，每次读取重算；rail 的专业 chip 已有
+"Action required" 徽标承担视觉牵引。
+
+**没有新画任何东西。** 复用 ChatHome 已有的 greeting 与 pill chips、rail 的专业 chip，
+全部是 Make 设计 1:1 移植过来的组件——「计算式引导」这个决定的意义就在这里：不新增界面，
+只让既有界面说对话。唯一的新元素是导航型 chip 尾部那枚 `ArrowRight`，而它是
+`cards.OpenLink` 已经在用的「这会打开一个页面」信号，不是新发明的语汇。
+
+**实现时被两条既有决定改了形状，两条都容易踩：**
+
+- **空记录时 decoder chip 必须排第一**（CLAUDE.md 明写）。其他每个界面都得先有记录才能
+  说话，decoder 是唯一能回答「现在就卡在注册页」的入口。为了塞引导把它挤到第二，等于在
+  产品唯一的零门槛门口砌一堵墙。所以引导指令由 greeting 正文和 rail 徽标承担，chip 让位。
+- **目标学期缺失不是一个缺失的步骤。** Phase B 定的是 `user_preferences` 全可空、
+  「未表态是一个真实的答案」。所以它只追加一枚 chip，永不占据 greeting——催一个人说出他
+  还没决定的毕业时间，就是产品在替他发明意图。专业和记录才占 greeting，因为没有它们什么
+  都算不出来。
+
+**chips 能导航而不只是提问,这不是样式选择。** 「选择我的学位」交给模型只会得到一句礼貌
+的答不上来——模型设不了专业,也不该假装能。所以 chip 分两种,提问的送进 agent,导航的开
+页面。
+
+**建议跟着记录走,transcript 不跟。** chat 是隐藏而非卸载的,所以学生去选完专业回来还是
+同一个挂载的组件,而 greeting 只算一次——原样照搬会让它继续叫人去选专业。现在 facts 变化
+时重算 chips,greeting 那条留在线程里不动:会自我改写的 transcript 不是 transcript。
 
 | 决策点 | 结论 | 理由 |
 |---|---|---|

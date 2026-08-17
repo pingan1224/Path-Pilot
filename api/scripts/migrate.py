@@ -288,6 +288,18 @@ STATEMENTS = [
     # fill it from. The rest of `sections` stays — seat counts are what "is it full?"
     # resolves to, and `readiness` reaches enrollments through this table.
     "ALTER TABLE sections DROP COLUMN IF EXISTS meeting_pattern",
+    # 2026-08-17, the rest of the 2026-08-13 residue. Both were found by grep rather than by
+    # anything failing, which is the point: nothing referenced them, so nothing complained.
+    #
+    # `users.stated_program_code` was added by this file and then never read or written by
+    # any code — a real account states its programme through `users.program_id`. Verified
+    # empty before dropping.
+    "ALTER TABLE users DROP COLUMN IF EXISTS stated_program_code",
+    # The `failure_reason` enum type outlived the `registration_attempts` table that used
+    # it; no column has referenced it since. Dropped now rather than left as a type whose
+    # labels no longer match the Python enum — that mismatch is invisible until someone
+    # reintroduces a column and gets the 2026-08-13 vocabulary back.
+    "DROP TYPE IF EXISTS failure_reason",
 ]
 
 

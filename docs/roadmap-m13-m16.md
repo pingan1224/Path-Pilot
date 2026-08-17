@@ -181,9 +181,31 @@ owner 曾提议用 `https://bulletins.nyu.edu/class-search/` 取上课时间，�
   都读这张表。也就是说 `--gate --repeat 3 --reseed` 每跑一次就先把审计历史清空一次。
   现在库里只有 2 行所以无所谓，但这条 CLAUDE.md 里没写。
 - **`MSEM1-GC 2050` 学分是 0.0**，在 Electives 池里。可能真是零学分项，也可能 ingest 漏读。
-- **`sections` 表 45 行虚构班次带编造的座位数**，经 `tool_get_course_info` 暴露给模型，且
-  只挂在 demo 课程上。与 2026-08-13 删掉 holds 的理由同形：用虚构数据讲一个关于可得性的
-  事实，还配了新鲜度时间戳。
+- **`sections` 表 45 行虚构班次的座位数仍是编造的**，经 `tool_get_course_info` 暴露给
+  模型，只挂在 demo 课程上。与 2026-08-13 删掉 holds 的理由同形：用虚构数据讲一个关于
+  可得性的事实，还配了新鲜度时间戳。**2026-08-17 只删掉了它的上课时间那一半**
+  （`meeting_pattern`，随排课出局），座位这一半原封不动。
+
+### 2026-08-13 的残留：已清（2026-08-17）
+
+删 holds 那次留下的死物,清完了,但**过程中发现坏得比记录的多**:
+
+- **`scripts/data_report.py` 整个脚本第一个查询就炸**,不是我原先说的「一处坏查询」。
+  `COUNTS` 数了 `holds`/`registration_attempts`/`cases`/`case_events` 四张已删的表;
+  `FAILURE_BREAKDOWN` 查 `registration_attempts`;**`FRESHNESS_AUDIT` 查 `holds`——
+  而它是 rule 4 在这个脚本里唯一的体现**。还有第四处成因不同的:`REQUIREMENT_PROGRESS`
+  里 `program_id` 有歧义,因为 `users` 后来也加了这一列。
+  - `FAILURE_BREAKDOWN` 直接删——产品不记录注册尝试,它从来看不到一次注册,没有东西可以
+    改指过去;这个行为现在由 `eval/decoder_cases.py` 衡量。
+  - **`FRESHNESS_AUDIT` 改指到所有还带 `source_key` 的表**（students / enrollments /
+    sections / documents),覆盖面比它原来只查 holds 时更广。策略缺失时显示 `(none)` 而
+    不是让那行悄悄消失——镜像行没有对应新鲜度策略,正是 rule 4 禁止的事。
+  - 现在整个脚本 EXIT=0,每一节都出真数据。
+- `users.stated_program_code`(本文件建的,零代码读写,确认无数据)与孤儿 PG 枚举类型
+  `failure_reason` 一并 DROP。
+
+**教训:没人跑的脚本会静默腐烂,而且不止一处。** 这四处没有任何一处是被测试或 CI 抓到的
+——全靠 grep,因为没有东西引用它们,也就没有东西会抱怨。
 
 ### 两条工作经验
 

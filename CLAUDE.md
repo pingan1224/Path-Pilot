@@ -755,14 +755,15 @@ and the intake layouts in api/eval/intake_cases.py. (`golden.RETRIEVAL_CASES` is
 came from.) Runner is scripts/run_eval.py (--gate for thresholds, --only for subsets,
 --only-decoder for the model-free part, --reseed to restore the demo db).
 
-**Latest complete run, 2026-08-17** (`report-20260817-204835.md`, 35 cases × 3 attempts =
-105 runs, `gpt-5.4-mini`), gate PASS: **30/35 passing every attempt, 0 failing every
-attempt, 5 disagreeing across attempts**, high-stakes escalation recall 1.0,
-over-escalation 0.0476, citation coverage 1.0, intent accuracy 0.8889 (labelled subset),
-leakage 0, runs where the assistant was never reached 0, latency p50/p95 3,901/6,966 ms,
-iterations mean 2.62. Trajectory: 1.7 calls/run, redundant 0.0, forbidden 0, uncited
-0.2571, path ratio 1.71 (n=24). Retrieval on the same corpus is unchanged and has no chat
-model in it: recall@5 0.91, MRR 0.825.
+**Latest complete run, 2026-08-17 22:48** (`report-20260817-224837.md`, 35 cases × 3
+attempts = 105 runs, `gpt-5.4-mini`), gate PASS: **30/35 passing every attempt, 0 failing
+every attempt, 5 disagreeing across attempts**, high-stakes escalation recall 1.0,
+over-escalation 0.0714, citation coverage 1.0, intent accuracy 0.8889 (labelled subset),
+leakage 0, runs where the assistant was never reached 0, latency p50/p95 3,496/7,094 ms,
+iterations mean 2.41. Trajectory: 1.58 calls/run, redundant 0.0, forbidden 0, uncited
+0.181, path ratio 1.71 (n=24). Retrieval on the same corpus is unchanged and has no chat
+model in it: recall@5 0.91, MRR 0.825. This covers step six and the query-count work; both
+landed without a regression.
 
 **The tool-calling question the model swap opened is now answered: 1 run in 105 contained
 a failed tool call** (0.0095, against 0/105 on kimi and 0.0476 on the 08-16 baseline). The
@@ -770,22 +771,35 @@ three-case smoke run's alarming 0.6667 was a three-sample artifact, not a proper
 `gpt-5.4-mini` — which is the whole reason a subset run now reports `gate: n/a`. Correct
 tool calling was the property the model was chosen for, and it holds.
 
-**Read the two regressions in this run as flakiness, not as damage, and here is why that
-is more than a shrug.** Against 08-16: B10 improved (flaky → pass), B09 and B30
-destabilised (pass → flaky), so 31→30 passing and 4→5 flaky. Both destabilised cases
-landed in a family that already contained a flaky member with a *byte-identical* failure
-signature — B09 joins B12 on `no citation with prefix ['policy:chunk']`, B30 joins B29 on
-`never called get_course_info`. Neither signature has a mechanism connecting it to what
-changed since the baseline: the payload edits removed a field from a tool's *return* value,
-and a model decides whether to call a tool from its description, before it sees any payload.
+**Three runs on 2026-08-17 are the clearest lesson this suite has produced about reading
+itself, and the lesson is that a single run cannot support a story.** 20:48 gave 30/35.
+22:01, straight after step six, gave **28/35 with two cases failing every attempt — which
+had never happened before** — and over-escalation doubled. 22:48, the same code re-run
+clean, gave 30/35 with nothing failing.
 
-Two numbers moved that are reported and deliberately not gated, and both are small
-denominators rather than trends. Intent accuracy 1.0 → 0.8889 is **one attempt**: B08
-attempt 3 read "What happens if I join a waitlist?" as `explain_blocker` instead of
-`find_policy`, on a case that still passed with the right tool. Only 3 cases carry an
-intent label, so the metric moves in steps of 0.111 and cannot express anything finer.
-Uncited lookups rose 0.181 → 0.2571 — diligence, by the rule that gating it would reward
-padding citations.
+So the 28/35 was noise. Worse, it was noise that invited an explanation, and one was duly
+produced: the two destabilised cases at 22:01 both called `get_mission_state`, whose payload
+step six had just enlarged, and "the model treats the fatter mission state as sufficient and
+skips `albert_checklist`" is a specific, plausible mechanism. **The clean run refutes it** —
+those cases are fine and different ones wobbled. A mechanism that fits the data is not
+evidence when the data is one sample of a noisy process, and the tell was available at the
+time: the same reasoning had been correctly rejected a run earlier for want of a mechanism,
+then accepted the moment a mechanism could be imagined.
+
+Two contaminations made the 22:01 run worse than merely noisy, and both are avoidable:
+performance measurement was running against the same database throughout, and the run's
+own final reseed died on an exhausted API quota — which leaves the twelve synthetic chunks
+unembedded, and **retrieval skips unembedded chunks, so the leak probes pass by finding
+nothing at all.** Check `select count(*) from document_chunks where embedding is null`
+before trusting a leakage figure after any failed reseed.
+
+Intent accuracy sits at 0.8889 and reads like a regression from 1.0; it is **one attempt**.
+B08 attempt 3 read "What happens if I join a waitlist?" as `explain_blocker` instead of
+`find_policy`, on a case that passed with the right tool. Only 3 cases carry an intent
+label, so the metric moves in steps of 0.111 and cannot express anything finer than that.
+Over-escalation across the three runs went 0.0476 / 0.0952 / 0.0714 on identical gated
+thresholds, which is the width of the noise band on 42 high-stakes attempts — read a
+single value from it as a sample, never as a trend.
 
 **Every failure this suite has produced was intermittent**, and until 2026-08-11 it could
 not say so: one attempt per case, a model that rejects any temperature but 1, and a coin
@@ -804,14 +818,20 @@ the direction of the first is the point:
   failed, and is reported with its decision sequence rather than gated — flakiness is a
   property of the system, and failing the build for it leaves the gate permanently red.
 
-At `--repeat 3` on 2026-08-17: 30/35 passing every attempt, **5 flaky — B02, B09, B12,
-B29, B30**; 0 failing all three, as at every previous run. The old pattern was "one
+At `--repeat 3` on 2026-08-17 22:48: 30/35 passing every attempt, **5 flaky — B02, B04,
+B12, B29, B30**; 0 failing all three, as at every previous run. The old pattern was "one
 borderline answer-vs-escalate case at a time, and never the same case" (B17 on 08-12, B20
-on 08-11, B05 before that). **That is no longer the shape.** The flaky set is now five and
-falls into three stable families by failure signature — deferred-instead-of-answered
-(B02), missing policy citation (B09, B12), skipped `get_course_info` (B29, B30) — and
-membership moves within a family rather than wandering. Reading it as one wobbly case is
-now wrong; there are three recurring weaknesses with two members each and one singleton.
+on 08-11, B05 before that). **That is no longer the shape.** The flaky set is five and
+falls into three families by failure signature — deferred-instead-of-answered (B02, B04),
+missing policy citation (B12), skipped `get_course_info` (B29, B30).
+
+**The signatures are what is stable; the membership is not, and the difference is the
+finding.** Across 20:48 and 22:48 the three signatures were identical while two cases
+changed families — B09 left the citation one, B04 joined the deferral one. So this is not
+one wobbly case as it used to be, and it is also not five broken cases: it is three
+recurring weaknesses that different questions fall into on different runs. Chasing an
+individual id would be chasing a sample. `held_out`-style work on a *signature* is the only
+kind that could move it, and none has been attempted yet.
 A subset run (`--only`) now reports `gate: n/a` instead of grading thresholds against a
 sample nobody chose.
 Decoder run 2026-08-17: **27/30, coverage 0.8636**, accuracy 1.00, 0 confidently wrong,

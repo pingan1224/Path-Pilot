@@ -465,6 +465,8 @@ function Mission({ mission, busy, act, onMission, onClose, onOpenPlanner, t }) {
                     <CandidatesBody mission={mission} busy={busy} act={act} />
                   ) : step.id === "open_items" ? (
                     <OpenItemsBody mission={mission} busy={busy} act={act} />
+                  ) : step.id === "albert_check" ? (
+                    <AlbertBody mission={mission} busy={busy} act={act} />
                   ) : step.id === "handoff" ? (
                     <HandoffBody mission={mission} busy={busy} onMission={onMission} />
                   ) : null}
@@ -775,6 +777,109 @@ function OpenItemsBody({ mission, busy, act }) {
             ))}
           </ul>
         </>
+      ) : null}
+    </div>
+  )
+}
+
+/** Step six: the things only Albert can answer, and what the student says they did.
+ *
+ *  Every sentence on this surface comes from the server (`item.status`), which is where the
+ *  red-line probes read. Nothing is composed here, and that is the point: the two claims
+ *  this product must never make — a tick with no date, and anything about what the record
+ *  actually says — are unavailable to this component because it has no access to the words.
+ *  There is no green tick either. A settled item says when it was settled, or it says
+ *  nothing.
+ */
+function AlbertBody({ mission, busy, act }) {
+  const items = mission.albert_items ?? []
+  const outstanding = items.filter((i) => !i.settled)
+
+  return (
+    <div className="mt-3 space-y-2.5">
+      <Muted>
+        Path Pilot cannot see any of this. Open Albert, look, and record what you did — the
+        record is your own, and it goes into the advisor summary in your words.
+      </Muted>
+
+      <ul className="findings">
+        {items.map((item) => (
+          <li
+            key={item.key}
+            className="rounded-xl p-3"
+            style={{
+              background: "var(--color-surface-2)",
+              border: `1px solid ${item.settled ? "var(--color-rail)" : "var(--color-amber-edge)"}`,
+            }}
+          >
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="text-[12px] font-medium" style={{ color: "var(--color-ink)" }}>
+                {item.label}
+              </span>
+              {item.moves_fast ? (
+                <span
+                  className="rounded px-1.5 py-0.5 text-[10px]"
+                  style={{ background: "var(--color-amber-muted)", color: "var(--color-amber)" }}
+                >
+                  Changes quickly
+                </span>
+              ) : null}
+            </div>
+
+            <p className="mt-1 text-[11px] leading-relaxed" style={{ color: "var(--color-ink-3)" }}>
+              {item.where} — {item.what}
+            </p>
+
+            {/* The status sentence, server-rendered. A skipped item is not styled as a
+                success: it is a decision, and the handoff prints it as one. */}
+            <p
+              className="mt-1.5 text-[12px]"
+              style={{
+                color: item.settled && !item.skipped ? "var(--color-emerald)" : "var(--color-ink-2)",
+              }}
+            >
+              {item.status}
+            </p>
+
+            <div className="mt-2 flex flex-wrap gap-2">
+              {item.settled ? (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => act(() => api.missionUndoAlbertCheck(mission.id, item.key))}
+                >
+                  Undo
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    size="xs"
+                    disabled={busy}
+                    onClick={() => act(() => api.missionAlbertCheck(mission.id, item.key, false))}
+                  >
+                    I checked this
+                  </Button>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() => act(() => api.missionAlbertCheck(mission.id, item.key, true))}
+                  >
+                    Skip for now
+                  </Button>
+                </>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {outstanding.length === 0 && items.length > 0 ? (
+        <Muted>
+          Everything on this list is settled. What you skipped is named in the advisor
+          summary too — this records what you did, not what Albert said.
+        </Muted>
       ) : null}
     </div>
   )

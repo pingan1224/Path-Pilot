@@ -489,7 +489,7 @@ added, and there is nothing to expire or diverge between two open tabs.
 
 ## Registration missions (`app/missions/`, M5)
 
-A resumable task: get ready to register for one term, in five steps, each needing a human
+A resumable task: get ready to register for one term, in six steps, each needing a human
 act. What it gives the rest of the system is a **termination condition** — every turn
 before this was a stateless question and answer, so "done" was not a concept the agent had.
 
@@ -515,6 +515,37 @@ before this was a stateless question and answer, so "done" was not a concept the
 Add a step only if a student can work on it. An earlier draft had a sixth ("run the
 prerequisite checks") that completed itself the instant the previous one did; a step nobody
 can act on is a progress bar pretending to be a checklist.
+
+### The Albert check (`app/missions/albert.py`, step six, 2026-08-17)
+
+"Complete" computed *you saw the steps and settled the risks* while a student reads it as
+*I can go and register*. The sixth step closes that distance the only way a product with no
+Albert access honestly can: it records that they **went and looked** at the three things
+only the registrar's system knows — holds, the enrollment appointment, and seats in each
+confirmed course. It gates completion and is skippable, because a gate with no escape is a
+wall, and skipping is itself a recorded decision that the handoff prints.
+
+**No outcome is stored, and that is the design rather than an omission.** `AlbertCheck` has
+a key, a kind and a required date, and no field that could hold what the student saw. A
+`clear: bool` would be filled in within a release, and from then on "you have no holds" —
+a false statement about a system this product cannot see — would be derivable. Not storing
+it makes the sentence unsayable rather than discouraged, and `tests/test_albert_redlines.py`
+(written before the feature, which is why the shape came out this way) enumerates the
+forbidden field names and phrases across every item in every state, including the handoff.
+`decided_at` is required with no default for the same reason: a dateless tick reads as the
+system having confirmed something.
+
+**Re-opening falls out of deriving the list, not from a staleness rule.** Confirm another
+course and a `seats:` key appears with no declaration behind it. The plan called for
+invalidating prior checks on any material change; that would revoke the holds check because
+a course was swapped, and keep the step permanently open for a student who is still
+editing. Older checks are noted, never revoked, and a declaration is deliberately not
+itself a material change — otherwise ticking the last item flags every earlier one.
+
+The step sits **before** the handoff so the document can list what was checked and what was
+skipped, both in the student's own voice ("I checked my holds in Albert on …"). That needed
+a second phrasing per item: `ALBERT_ONLY_TOPICS` labels address the student, which inside a
+first-person email puts a second speaker mid-sentence.
 
 ## Sequence planner (`app/sequence/`, M6)
 

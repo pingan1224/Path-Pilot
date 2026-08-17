@@ -468,13 +468,20 @@ Three rules, and they are the same rules as everywhere else in a new shape:
   returns its top k, so `must_mention` stems verify each passage and the absence gets
   reported (`no_policy_note`). Citing the nearest neighbours instead would put a fetch date
   under an unfounded claim.
-- **Two causes will never have a source, and that is the finished state.** `time_conflict`
-  and `reserved_seat_restriction` report `no_policy_note` permanently. This is not a corpus
-  gap waiting on an ingest run: the university publishes no rule about two classes
-  overlapping, because an overlap is not a rule but a mechanical fact about a schedule, and
-  which seats are held for which cohort is scheduling data. Both are answerable only from
-  the live system — the one thing this product is built not to have. Naming the cause and
-  saying there is no rule to quote is the complete answer. Do not "fix" it by ingesting more.
+- **One cause will never have a source, and that is the finished state.**
+  `reserved_seat_restriction` reports `no_policy_note` permanently. This is not a corpus gap
+  waiting on an ingest run: which seats are held for which cohort is scheduling data,
+  answerable only from the live system — the one thing this product is built not to have.
+  Naming the cause and saying there is no rule to quote is the complete answer. Do not
+  "fix" it by ingesting more.
+- **`time_conflict` was removed on 2026-08-17, and it is worth knowing it was a close
+  call.** It was the second such cause, and unlike everything else cut with scheduling it
+  needed no timetable — it read an error message the university had already sent the
+  student. It went because the product now says it does not do scheduling, and a decoder
+  that names a cause the rest of the product refuses to reason about invites the next
+  question it cannot answer. The cost is real and was accepted: a student who pastes
+  `ERR_CONFLICT` now gets `other` rather than a plain-language reading. That is the one
+  regression in the scheduling cut.
 
 Follow-up answers are appended to the message and the whole thing is re-classified. There is
 no decoder session state — the second reading cannot differ except through what the student
@@ -711,7 +718,7 @@ whatever still has one. Walked into twice, both times while reloading for an unr
 reason; the loader now counts unembedded chunks and says so loudly at the end.
 
 P4 facts: the labelled sets are **35 behavior cases in api/eval/golden.py, 50 retrieval
-queries in api/eval/retrieval_cases.py, 32 error messages in api/eval/decoder_cases.py**,
+queries in api/eval/retrieval_cases.py, 30 error messages in api/eval/decoder_cases.py**,
 and the intake layouts in api/eval/intake_cases.py. (`golden.RETRIEVAL_CASES` is an older
 15-case list that `run_eval` no longer imports — dead, and not the set any number below
 came from.) Runner is scripts/run_eval.py (--gate for thresholds, --only for subsets,
@@ -764,12 +771,21 @@ run's own comparison against the previous baseline flagged as `pass → flaky, d
 pattern: it is one borderline answer-vs-escalate case at a time, not the same case.
 A subset run (`--only`) now reports `gate: n/a` instead of grading thresholds against a
 sample nobody chose.
-Decoder run 2026-08-13: 28/32, coverage 0.8333, accuracy 1.00, 0 confidently wrong,
-0 hold offices invented. Intake, same run: 9/9 layouts, row recall 1.0, 0 silently wrong,
-OCR field errors 1 (reported, deliberately not gated). The
+Decoder run 2026-08-17: **27/30, coverage 0.8636**, accuracy 1.00, 0 confidently wrong,
+0 hold offices invented (was 28/32 / 0.8333 on 2026-08-13, over a set that still had the
+two `time_conflict` cases). Intake, same run: 9/9 layouts, row recall 1.0, 0 silently
+wrong, OCR field errors 1 (reported, deliberately not gated). The
 decoder set's `held_out` family is written to fail — its misses are the table's backlog, and
 adding those exact phrasings to the table is the one way of moving coverage that means
 nothing.
+
+**Coverage went up by 0.03 and none of it is an improvement — read it as a warning label.**
+The two cases removed were D03, which passed, and D32, a `held_out` miss. Deleting a case
+designed to fail raises the ratio exactly as much as fixing it would, and the sentence above
+names only the *other* way of cheating this metric (adding the held-out phrasing to the
+table). Both moves are worthless and this one is the harder to spot, because it arrives as a
+side effect of a scope decision rather than as an attempt to move a number. `held_out` is
+now 1/4, and that is the figure to watch.
 The behavior prompt was tuned against these cases — treat the set as a regression gate,
 and add held-out cases before claiming generalization.
 

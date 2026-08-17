@@ -194,36 +194,6 @@ SPECS: tuple[ReasonSpec, ...] = (
         ),
     ),
     ReasonSpec(
-        reason=FailureReason.time_conflict,
-        label="A time conflict with another class",
-        reading=(
-            "The meeting time of this class overlaps something already on your schedule, "
-            "so the system refused the addition."
-        ),
-        codes=("ERR_CONFLICT", "ERR_TIME"),
-        phrases=(
-            "time conflict",
-            "meeting time conflict",
-            "schedule conflict",
-            "conflicts with class",
-            "time scheduling conflict",
-            "there is a conflict with",
-        ),
-        keywords=("conflict", "overlaps"),
-        office=Office.registrar,
-        what_to_do=(
-            "Find the other class in the message — the number identifies what it collides "
-            "with — and check both meeting patterns in Albert.",
-            "Look for another section of either class before asking anyone to override it.",
-            "Overlapping enrollment normally needs written approval; your advisor or the "
-            "department starts that.",
-        ),
-        policy_query="two of my classes meet at the same time, can I enroll in both",
-        must_mention=("conflict", "same time", "overlap"),
-        albert_topic="registration_errors",
-        needs=("class_number",),
-    ),
-    ReasonSpec(
         reason=FailureReason.section_full,
         label="The section has no room",
         reading="The section had reached its enrollment limit when you tried to add it.",

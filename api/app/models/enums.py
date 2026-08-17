@@ -66,7 +66,6 @@ class FailureReason(str, enum.Enum):
 
     prerequisite_not_met = "prerequisite_not_met"
     financial_hold = "financial_hold"
-    time_conflict = "time_conflict"
     section_full = "section_full"
     reserved_seat_restriction = "reserved_seat_restriction"
     permission_required = "permission_required"

@@ -73,6 +73,23 @@ cd api && .venv/Scripts/python.exe -m scripts.run_eval --gate --repeat 3 --resee
 `typically_offered`(开课季节模式)不受影响——学期模式不是时刻表。CLAUDE.md 那句「时间
 偏好指课程负荷和跳过哪些学期,不是时段」现在是全称成立的。
 
+**decoder 的 `time_conflict` 归因也一并删了(owner 决定)**,连同枚举成员、2 条 eval 用例
+(D03/D32)、2 条单测。它本来是这批里最有理由留下的一个——它不需要课表,读的是学校已经发
+给学生的那句话——但产品既然对外说「不做排课」,一个能命名它拒绝推理的原因的 decoder 只会
+招来它答不上的下一个问题。**代价是真实的且已接受:粘 `ERR_CONFLICT` 的学生现在拿到
+`other`,不再有平白话解读。这是整个排课切除里唯一的能力回退。**
+
+顺带清掉两处 2026-08-13 删 holds 时留下的死物:`seed.FAILURE_WEIGHTS` / `RAW_ERRORS`
+(定义了但**没有任何调用方**)。还剩两处同源残留没动:`data_report.FAILURE_BREAKDOWN`
+查的是已被删除的 `registration_attempts` 表(该查询已经是坏的),以及库里那个没有任何列
+在用的孤儿 PG 枚举类型 `failure_reason`。
+
+**decoder eval:27/30、coverage 0.8636**(此前 28/32、0.8333)。**coverage 涨了 0.03,
+但一分都不是改进**:删掉的两条里 D03 是通过的、D32 是 `held_out` 家族里写来就是要失败的。
+删一条注定失败的用例,和修好它一样能把比值抬上去。CLAUDE.md 原本只写了「把 held-out 的
+措辞加进规则表」这一种作弊法,这是另一种,而且更难察觉——它是作为范围决定的副作用出现的,
+不像是在冲指标。`held_out` 现在 1/4,这才是该看的数。
+
 **下面这段调研结论保留,因为它是这个决定的论据,而不是一条待办。**
 
 ### 已查清的合规事实：NYU class-search 不可用（2026-08-16）

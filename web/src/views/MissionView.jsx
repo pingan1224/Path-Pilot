@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   AlertTriangle,
   CheckCircle,
@@ -48,10 +48,15 @@ const STEP_ICON = {
 
 const TERM_SUGGESTIONS = ["Fall 2026", "Spring 2027", "Summer 2027"]
 
-export default function MissionView({ onOpenPlanner, onOpenProgram }) {
+/** `seedMissions` is the shell's copy of the same `GET /missions` this page used to make
+ *  again on mount — the one it showed "Reading your mission…" for. That endpoint is the
+ *  expensive one: it evaluates the whole plan once per open mission. */
+export default function MissionView({ onOpenPlanner, onOpenProgram, seedMissions = null }) {
   const { t } = usePrefs()
-  const [missions, setMissions] = useState(null)
-  const [activeId, setActiveId] = useState(null)
+  const [missions, setMissions] = useState(seedMissions)
+  const [activeId, setActiveId] = useState(
+    seedMissions?.length ? seedMissions[0].id : null,
+  )
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -66,7 +71,31 @@ export default function MissionView({ onOpenPlanner, onOpenProgram }) {
       .catch((err) => setError(err))
   }, [])
 
-  useEffect(load, [load])
+  // "Do we already have missions", not "have I used the seed" — the second form is spent
+  // by StrictMode's first invocation and refetches on the second, so it would behave one
+  // way in dev and another in production. Set before the call so a double invocation
+  // cannot issue two requests either.
+  const loaded = useRef(seedMissions !== null)
+  useEffect(() => {
+    if (loaded.current) return
+    loaded.current = true
+    load()
+  }, [load])
+
+  // Keep in step with the rail, and *only* on a genuinely new read from the shell.
+  //
+  // Keying this on anything else clobbers writes. `act()` replaces one mission from the
+  // response to its own request, which is newer than anything the shell holds — so an
+  // effect that also fired on, say, `busy` flipping back to false would overwrite the
+  // student's just-confirmed candidate with the state from before they confirmed it. The
+  // shell hands over a fresh array each time it fetches, so identity is the signal.
+  const lastSeed = useRef(seedMissions)
+  useEffect(() => {
+    if (seedMissions && seedMissions !== lastSeed.current) {
+      lastSeed.current = seedMissions
+      setMissions(seedMissions)
+    }
+  }, [seedMissions])
 
   function replace(mission) {
     setMissions((list) => (list ?? []).map((m) => (m.id === mission.id ? mission : m)))

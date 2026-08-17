@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { AlertTriangle, CheckCircle, Clock, GraduationCap, XCircle } from "lucide-react"
 import { api } from "@/api"
 import { Finding } from "@/components/Finding"
@@ -31,10 +31,27 @@ const STATE_LABEL = {
   planned: "Planned",
 }
 
-export default function PlannerView({ onOpenProgram, onOpenMission }) {
+/** `seedCourses` / `seedPlan` are the reads the shell has already made.
+ *
+ *  The shell refetches everything on every view change, and this page then fetched the
+ *  same two endpoints again — so arriving here cost two `/plan` calls, and the one this
+ *  page waited on behind "Reading your plan…" was the second. Seeding from the shell's copy
+ *  removes the wait rather than hiding it: the data is the same round trip, made moments
+ *  earlier by the component that was going to make it anyway.
+ *
+ *  The seed only covers `includePlanned = false`, which is what the shell asks for and
+ *  what this page starts on. Toggling the what-if switch is a different question and still
+ *  fetches.
+ */
+export default function PlannerView({
+  onOpenProgram,
+  onOpenMission,
+  seedCourses = null,
+  seedPlan = null,
+}) {
   const { t } = usePrefs()
-  const [courses, setCourses] = useState(null)
-  const [plan, setPlan] = useState(null)
+  const [courses, setCourses] = useState(seedCourses)
+  const [plan, setPlan] = useState(seedPlan)
   const [includePlanned, setIncludePlanned] = useState(false)
   // The whole error, not just its message: a program-shaped failure gets its own screen
   // rather than a generic note with a retry that cannot help.
@@ -55,10 +72,36 @@ export default function PlannerView({ onOpenProgram, onOpenMission }) {
     }
   }
 
+  // Which question the data currently in state answers — not "have I used the seed yet".
+  //
+  // The difference matters because StrictMode double-invokes effects in development, so a
+  // consume-once flag is spent by the first run and the second fetches anyway. That would
+  // have made this optimisation work in production and not in dev, which is worse than it
+  // not working at all: every measurement taken in dev would describe behaviour the
+  // deployed app does not have. Comparing against the current value is idempotent, so both
+  // invocations agree.
+  //
+  // Seeded state answers `includePlanned = false`, which is what the shell asks for.
+  // `undefined` means there is nothing yet, and never equals a boolean.
+  const loadedFor = useRef(
+    seedCourses !== null && seedPlan !== null ? false : undefined,
+  )
   useEffect(() => {
+    if (loadedFor.current === includePlanned) return
+    loadedFor.current = includePlanned
     refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [includePlanned])
+
+  // The rail and this page must not disagree. When the shell re-reads (it does so on every
+  // view change) its answer replaces the one here, unless the what-if toggle has this page
+  // looking at a different question than the shell asked.
+  useEffect(() => {
+    if (!includePlanned && seedPlan && seedCourses) {
+      setPlan(seedPlan)
+      setCourses(seedCourses)
+    }
+  }, [seedPlan, seedCourses, includePlanned])
 
   async function saveCourse(payload) {
     setBusy(true)

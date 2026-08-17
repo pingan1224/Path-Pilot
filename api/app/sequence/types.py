@@ -46,7 +46,10 @@ class CourseNeed:
 
     code: str
     title: str
-    credits: int
+    # Float: fed from `CourseRule.credits`, and from a `credits`-requirement shortfall,
+    # both of which can be fractional. The per-term cap sums these, so an int annotation
+    # here quietly claims a 1.5-credit course cannot exist.
+    credits: float
     offering: Offering
     # Each inner tuple is an OR-group; every group must be satisfied by an earlier term or
     # by coursework already held.

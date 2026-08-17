@@ -20,6 +20,7 @@ what it is.
 
 from __future__ import annotations
 
+from app.planning.format import fmt_credits
 from app.planning.rules import ProgramRules, RequirementRuleSpec, courses_applied
 from app.planning.types import CourseState, StatedCourse
 from app.sequence.offerings import OfferingBasis, parse_offering
@@ -139,7 +140,7 @@ def _needs_for_requirement(
             needs.append(
                 CourseNeed(
                     code=_placeholder_code(spec.name),
-                    title=f"{short} credit(s) toward {spec.name}",
+                    title=f"{fmt_credits(short)} credit(s) toward {spec.name}",
                     credits=short,
                     # No identity means no offering information; the placeholder can sit in
                     # any term, and that is a genuine unknown rather than flexibility.
@@ -151,9 +152,9 @@ def _needs_for_requirement(
                 Assumption(
                     subject=spec.name,
                     statement=(
-                        f"{short} credit(s) of {spec.name} are held as a placeholder: the "
-                        "eligible set is open-ended, so no specific course was scheduled "
-                        "and no prerequisites were checked for it."
+                        f"{fmt_credits(short)} credit(s) of {spec.name} are held as a "
+                        "placeholder: the eligible set is open-ended, so no specific "
+                        "course was scheduled and no prerequisites were checked for it."
                     ),
                     check=(
                         "Pick the course with your advisor, then re-run this with it in "

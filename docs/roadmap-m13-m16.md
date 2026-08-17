@@ -21,7 +21,12 @@
 | C 方案对比 | ✅ | PR #9 |
 | D Elective 候选 | ✅ | PR #10 |
 | **E Albert 清单** | **未开始** | 见下方待决 |
-| F 账户与 onboarding | 未开始 | 原计划不变 |
+| F1 运维建号 | ✅ 2026-08-17 | `scripts/create_user.py`（未提交前为分支上） |
+| F Onboarding / F2 / F3 | 未开始 | 原计划不变 |
+
+**闭环现在通的是中段。** A–D 把「建立状态 → 表达目标 → 比较方案 → 回流更新」接上了；
+**确认执行那一端仍然缺（E）**，mission 还是五步、没有 `albert_check`。F1 补的是另一端：
+在此之前一个真实用户根本没有入口，唯一建号办法是手写 INSERT 加手算 scrypt 哈希。
 
 `latest.json` = `20260816-200258` / `gpt-5.4-mini` / gate PASS（31/35、高风险召回 1.0、
 forbidden 0、泄漏 0）。这是**第一份同类可比的基线**——此前所有「vs 20260812」都是跨模型
@@ -339,7 +344,7 @@ PlannerView、ProgramView。
 
 | 层 | 内容 | 前提 |
 |---|---|---|
-| F1 运维 CLI | `scripts/create_user.py`：email/姓名/可选专业，一次性密码打印；同脚本支持重置 | 无，立即可做 |
+| ~~F1 运维 CLI~~ ✅ | `scripts/create_user.py`：email/姓名/可选专业，随机密码打印一次；同脚本 `--reset` | 已完成 2026-08-17 |
 | F2 邀请码激活 | `invite_codes` 表 + `POST /auth/redeem` 自设密码；邀请码发到邮箱，投递即身份验证，无需邮件服务 | M12 限流就位 |
 | F3 自助注册 | 注册 + 邮箱验证 + 找回密码；需要邮件服务与完整滥用防护 | M12 完成后单独立项 |
 
@@ -352,6 +357,22 @@ PlannerView、ProgramView。
 |---|---|---|
 | 强制向导 vs 计算式引导 | **计算式** | "The bot is never modal"；强制向导会挡住 decoder —— 产品唯一零门槛入口。空记录学生贴报错必须立即得到答案 |
 | 密码策略/会话/限流细节 | **归 M12** | 本方案不重复展开；F2、F3 显式 gate 在其后 |
+
+**F1 实现时定下的三条，都是结构性拒绝而不是默认值：** 脚本没有 `--role` 参数，所以造不出
+能登录的 advisor（他们 `password_hash` 为 null 正是「没有员工入口」的机制，`authz_probe`
+两个方向都在查）；不建 `Student` 行，那一行的缺席才是 live 模式的开关；`@pathpilot.example.edu`
+整个域被拒——那是 seed 的地盘，把 `live.probe` 重置成随机密码会让四个测试模块以看起来像
+代码故障的方式挂掉。
+
+**「一次性密码」这个词在 F2 之前是假的**，脚本里明说了：没有兑换步骤也没有改密流程，
+打印出来的就是该账户的长期凭据，只能靠 `--reset` 轮换。
+
+**端到端跑通过**（不是只跑单测）：建号 → `POST /auth/login` 200 → `/auth/me` 显示
+`student_number=None`（即 live 模式）→ `/profile/plan` 200 → `/sequence` 可行、
+Spring 2028 → `--reset` 后旧密码 401、新密码 200。**这么跑才发现的一个真缺陷**：脚本原本
+只检查地址里有没有 `@`，而 `POST /auth/login` 用 pydantic `EmailStr` 校验，所以脚本会建出
+一个登录端点在 schema 层就 422 的账户——运维把密码交出去，对方登不进也说不出为什么。
+现在脚本用同一个校验器，并有测试钉住。
 
 **验收：** F1 建号 → 登录 → 依引导走完专业/成绩单/目标 → 偏好落库 → sequence 出
 个性化方案，全程无手写 SQL；F2 redeem 的幂等/过期/绑定错误路径测试；Onboarding 三种

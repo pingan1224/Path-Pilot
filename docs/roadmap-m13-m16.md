@@ -84,17 +84,48 @@ owner 提议用 `https://bulletins.nyu.edu/class-search/` 取上课时间，以�
 - 永不渲染没有日期的 "verified ✓"
 - 永不说「你没有 hold」，只能说「你声明在某日查过 hold」
 
-### 遗留的小问题（都不阻断）
+### 遗留的小问题 —— 2026-08-17 已清（未提交，仍在工作区）
 
-- **`--reseed` 会清掉 live probe 账户**，之后跑测试出现 9 个 error。手动恢复：
-  `python -c "from app.db.session import get_sessionmaker; from scripts.live_mode_probe import ensure_live_user; ...ensure_live_user(s)"`。
-  probe 由探针脚本创建而非 seed，这个割裂本身值得修（今天撞了三次）。
-- **B35 抖动**：一个词 "help" 约 1/3 会触发 `start_mission`。刻意留作已测量事实——硬零
-  门槛对「泄漏」显然正确，对「可见且可一键关闭的空容器」是否同样严格，是门槛设计问题，
-  靠调提示词绕过是更糟的答案。
-- `delay_costs` 不感知 `defer`（what-if 界面残留一枚过期标签）；TONE 的 light 主题
-  rgba 字面量散在 11 个文件；导航注册表三处重复；oxlint 的 rules-of-hooks 被移除；
-  `Course.credits` 是 float 而 `PlanOut` 声明 int（学分含 .5 会让 `/plan` 500）。
+上一条清单里除 B35 外全部处理完，全量 441 passed、lint/build 干净。两处比记的严重：
+
+- **`/plan` 的 500 不是边缘情况，是三个学位从第一步就用不了。** MSEM / TCTM / TCHS 的
+  requirement 总数本身就是小数（16.5 + 1.5），MSEM 的 Internship 是**单门 1.5 学分的
+  必修课**——这三个学位的学生录入任何一门 1.5 学分的课就 500。而且 `loader` 把全部
+  749 门 catalog 课装进 `program.courses`，所以 129 门小数学分课对 22 个学位都在射程内。
+  连带修了一个已在线上的缺陷：`min_credits` 一直是 Float，所以每个 `credits` 类要求的
+  文案都是「Electives: 15.0 credit(s) short」，与 bulletin 原话「Select 15 credits」并排。
+  新增 `planning/format.fmt_credits`。前端 `useCountUp` 原本无条件 `Math.round`，1.5
+  学分的进度环会走到 **2**——错的方向是「告诉学生比实际走得更远」。
+- **`delay_costs` 的症结是 `service.py` 调它时没传 `defer`**：`?defer=X` 返回的棋盘是
+  X 已推后的，每张卡的价签却是从「X 还在本学期」算出来的。改为有 deferral 时不返回价签
+  （`delay_costs` 自己的 docstring 早就立了「没有可比基线就返回空」的先例；UI 本就禁用
+  二次 deferral，所以那些价签既错也点不动）。
+
+其余三项：probe 账户改由 seed 拥有（`seed_live_probe_user`），`test_program_endpoints`
+的 fixture 改为 skip 而非在登录处 401；导航注册表收进 `web/src/nav.js`——**它们已经漂了**，
+侧边栏与 ⌘K 面板的五项顺序不同；`react/rules-of-hooks` 恢复并**实测过它确实在起作用**
+（只有 `plugins` 而没有那行配置时不报），`only-export-components` 明确不恢复，理由写在
+配置里。
+
+- **B35 抖动**（唯一未动）：一个词 "help" 约 1/3 会触发 `start_mission`。刻意留作已测量
+  事实——硬零门槛对「泄漏」显然正确，对「可见且可一键关闭的空容器」是否同样严格，是门槛
+  设计问题，靠调提示词绕过是更糟的答案。
+
+### 留给 owner 的三件事（都已查清，都没动）
+
+- **TONE 的边框不随主题走，而且五个里三个取自 light 调色板、两个取自 dark。** 同一个
+  TONE 条目里 `color`/`bg` 是 token、`border` 是冻死的字面量，所以暗色模式下一张 amber
+  卡片是 amber-500 的图标配 amber-700 的边。37 处字面量已收成 `--color-*-edge` token 放进
+  `App.css`，**值一字未改所以外观零变化**；改成随主题走是那个 block 里五行的事，但会动到
+  两个主题下每一张卡片的边——这个分支的纪律是「1:1 means the running appearance」，此前
+  有人「修」过一个设计 bug 被回退，所以留给你拍。
+- **`reset()` 会清 `ai_interactions`**，而故障注入的降级覆盖率指标和 `trajectory_report`
+  都读这张表。也就是说 `--gate --repeat 3 --reseed` 每跑一次就先把审计历史清空一次。
+  现在库里只有 2 行所以无所谓，但这条 CLAUDE.md 里没写。
+- **`MSEM1-GC 2050` 学分是 0.0**，在 Electives 池里。可能真是零学分项，也可能 ingest 漏读。
+- **`sections` 表 45 行虚构班次带编造的座位数**，经 `tool_get_course_info` 暴露给模型，且
+  只挂在 demo 课程上。与 2026-08-13 删掉 holds 的理由同形：用虚构数据讲一个关于可得性的
+  事实，还配了新鲜度时间戳。
 
 ### 两条工作经验
 

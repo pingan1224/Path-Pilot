@@ -34,7 +34,6 @@ from app.models import (
     DocumentChunk,
     Enrollment,
     EnrollmentStatus,
-    FailureReason,
     Intent,
     InteractionDecision,
     Office,
@@ -803,34 +802,6 @@ def seed_background_enrollments(
                 EnrollmentStatus.completed,
                 {code: RNG.choice(grade_pool) for code in chunk},
             )
-
-
-# Weighted so the breakdown looks like a real registration period rather than a uniform
-# distribution. Financial holds and prerequisite errors dominate, which is what the source
-# RFP's pain-point ranking claimed — the dashboard should be able to confirm or refute it.
-FAILURE_WEIGHTS = [
-    (FailureReason.financial_hold, 26),
-    (FailureReason.prerequisite_not_met, 22),
-    (FailureReason.section_full, 18),
-    (FailureReason.time_conflict, 11),
-    (FailureReason.reserved_seat_restriction, 8),
-    (FailureReason.appointment_not_open, 7),
-    (FailureReason.permission_required, 5),
-    (FailureReason.max_credits_exceeded, 2),
-    (FailureReason.duplicate_enrollment, 1),
-]
-
-RAW_ERRORS = {
-    FailureReason.financial_hold: "ERR_HOLD_ACTIVE: Registration blocked (hold code SF2)",
-    FailureReason.prerequisite_not_met: "ERR_PREREQ: Requisites not met for this class",
-    FailureReason.section_full: "ERR_CLOSED: Class 12043 is full",
-    FailureReason.time_conflict: "ERR_CONFLICT: Time conflict with class 11987",
-    FailureReason.reserved_seat_restriction: "ERR_RESERVE: Reserved capacity requirement not met",
-    FailureReason.appointment_not_open: "ERR_APPT: Enrollment appointment has not begun",
-    FailureReason.permission_required: "ERR_PERM: Department consent required",
-    FailureReason.max_credits_exceeded: "ERR_MAXUNT: Maximum term unit load exceeded",
-    FailureReason.duplicate_enrollment: "ERR_DUPL: Duplicate enrollment for this course",
-}
 
 
 def seed_interactions(session: Session, heroes: dict[str, Student]) -> None:

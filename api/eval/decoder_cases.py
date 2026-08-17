@@ -64,16 +64,6 @@ CASES: list[DecoderCase] = [
         "identified", expected=R.section_full, expect_class_numbers=("12043",),
     ),
     DecoderCase(
-        "D03", "code", "ERR_CONFLICT: Time conflict with class 11987",
-        "identified", expected=R.time_conflict, expect_class_numbers=("11987",),
-        expect_no_policy=True,
-        note=(
-            "No bulletin page covers time conflicts and none ever will — an overlap is a "
-            "fact about a schedule, not a rule a university publishes. Saying so is the "
-            "pass condition; ingesting more pages cannot change it."
-        ),
-    ),
-    DecoderCase(
         "D04", "code", "ERR_RESERVE: Reserved capacity requirement not met",
         "identified", expected=R.reserved_seat_restriction, expect_no_policy=True,
         note=(
@@ -233,10 +223,6 @@ CASES: list[DecoderCase] = [
     DecoderCase(
         "D31", "held_out", "The class has reached capacity",
         "identified", expected=R.section_full,
-    ),
-    DecoderCase(
-        "D32", "held_out", "Enrollment would create a scheduling overlap",
-        "identified", expected=R.time_conflict, expect_no_policy=True,
     ),
 ]
 

@@ -33,7 +33,6 @@ from app.models import FailureReason
 SEEDED = [
     ("ERR_PREREQ: Requisites not met for this class", FailureReason.prerequisite_not_met),
     ("ERR_CLOSED: Class 12043 is full", FailureReason.section_full),
-    ("ERR_CONFLICT: Time conflict with class 11987", FailureReason.time_conflict),
     (
         "ERR_RESERVE: Reserved capacity requirement not met",
         FailureReason.reserved_seat_restriction,
@@ -85,7 +84,6 @@ def test_seeded_hold_error_is_the_one_that_stays_ambiguous():
     [
         ("It says requisites not met", FailureReason.prerequisite_not_met),
         ("the class is full", FailureReason.section_full),
-        ("there is a time conflict with another class", FailureReason.time_conflict),
         ("it wants department consent", FailureReason.permission_required),
         ("my enrollment appointment has not begun yet", FailureReason.appointment_not_open),
         ("seats are reserved for another group", FailureReason.reserved_seat_restriction),

@@ -69,7 +69,12 @@ Three rules when touching colour:
   is invisible to the theme toggle — that bug shipped once in the intake OCR notice, and
   again as `text-white` on the avatars in the Make rebuild. Reach for
   `--good`/`--warn`/`--danger` or their `-soft` pairs, and `--on-accent` for a mark on a
-  filled accent.
+  filled accent. The largest instance of this was 37 `rgba()` literals across eleven files
+  and it is now `--color-*-edge` in `App.css` — but **those tokens are still the only part
+  of the palette that does not follow the theme**, and three of the five are the light
+  hues while two are the dark ones, so `TONE` draws an amber-500 icon inside an amber-700
+  edge in dark mode. Values were lifted unchanged on purpose; making them theme-aware
+  moves every card edge, which is a design call. See the comment above the block.
 - **Text on a filled accent or danger background uses `--on-filled`, never `#fff`.**
   White on the dark-mode accent measures 3.06:1. **On this branch `--on-filled` is white
   in both themes**, so it no longer carries that guarantee on its own: it was the Make

@@ -124,6 +124,18 @@ export const api = {
     request(`/missions/${id}/accepted-risks/${encodeURIComponent(findingKey)}`, {
       method: "DELETE",
     }),
+  // Step six. `skipped` is the only thing the body carries besides the key — there is
+  // deliberately no field for what the student found in Albert, because storing an outcome
+  // is what would let this product start saying "you have no holds".
+  missionAlbertCheck: (id, key, skipped = false) =>
+    request(`/missions/${id}/albert-checks`, {
+      method: "POST",
+      body: JSON.stringify({ key, skipped }),
+    }),
+  missionUndoAlbertCheck: (id, key) =>
+    request(`/missions/${id}/albert-checks/${encodeURIComponent(key)}`, {
+      method: "DELETE",
+    }),
   missionHandoff: (id, question) =>
     request(`/missions/${id}/handoff`, {
       method: "POST",

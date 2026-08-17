@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import {
   AlertCircle,
   AlertTriangle,
+  ArrowRight,
   BookOpen,
   CheckCircle,
   ChevronDown,
@@ -167,8 +168,52 @@ function SourceCard({ entry, delay }) {
   )
 }
 
-/** Where the student stands — computed, not generated; chips are dictionary keys. */
-function greetingFor(missions, profileCount, t) {
+/** A chip that puts its text to the agent, and one that opens a page instead.
+ *
+ *  Onboarding needs the second kind and it is not a styling choice: "Choose my programme"
+ *  handed to the model gets a courteous non-answer, because the model cannot set a
+ *  programme and should not pretend to. The pill is the design's, unchanged; the trailing
+ *  arrow is the same signal `cards.OpenLink` already uses for "this opens a view".
+ */
+const ask_ = (key) => ({ key })
+const go_ = (key, view) => ({ key, go: view })
+
+/** Where the student stands — computed, not generated; chips are dictionary keys.
+ *
+ *  This doubles as onboarding, which is why there is no `onboarding_step` column and no
+ *  wizard: guidance is derived from three facts on every read (is a programme stated, is
+ *  anything on record, is a finish term stated), exactly as mission progress is recomputed
+ *  rather than stored. A stored step drifts from the record and drifts invisibly.
+ *
+ *  Two constraints from elsewhere shape the order, and both would be easy to break:
+ *
+ *  - **The decoder chip stays first while the record is empty.** Every other surface needs
+ *    a record before it can say anything, so the decoder is the only thing that answers a
+ *    student who is stuck at the registration screen right now with nothing on file.
+ *    Demoting it to make room for onboarding would put a wall in front of the one door.
+ *  - **A missing finish term is not a missing step.** `user_preferences` is all-nullable
+ *    because unstated is a real answer, so the target appends a chip and never takes the
+ *    greeting: nagging someone into naming a graduation date they have not chosen is the
+ *    product inventing intent. Programme and record do take the greeting, because without
+ *    them nothing can be computed at all.
+ */
+function greetingFor({ missions, courseCount, programUnknown, targetTerm, t }) {
+  if (programUnknown) {
+    return {
+      status: t("greet.onboard.program"),
+      chips: [ask_("chip.prereq"), go_("chip.pick-program", "program")],
+    }
+  }
+  if (courseCount === 0) {
+    return {
+      status: t("greet.empty"),
+      chips: [ask_("chip.prereq"), go_("chip.upload", "intake")],
+    }
+  }
+
+  // The finish term is set on the sequence page, beside the solver it constrains.
+  const target = targetTerm ? [] : [go_("chip.set-target", "sequence")]
+
   const openMission = missions.find((m) => !m.complete)
   if (openMission) {
     const active = openMission.steps.find((s) => s.state === "active")
@@ -179,16 +224,13 @@ function greetingFor(missions, profileCount, t) {
         total: openMission.steps.length,
         next: active?.what_now ?? "",
       }),
-      chips: ["chip.next", "chip.suggest"],
+      chips: [ask_("chip.next"), ask_("chip.suggest"), ...target],
     }
   }
-  if (profileCount > 0) {
-    return {
-      status: t("greet.courses", { count: profileCount }),
-      chips: ["chip.plan", "chip.delay"],
-    }
+  return {
+    status: t("greet.courses", { count: courseCount }),
+    chips: [ask_("chip.plan"), ask_("chip.delay"), ...target],
   }
-  return { status: t("greet.empty"), chips: ["chip.prereq", "chip.first"] }
 }
 
 export default function ChatHome({
@@ -198,6 +240,12 @@ export default function ChatHome({
   courses,
   ready,
   loadFailed,
+  // The two onboarding facts the chat cannot see for itself. `programUnknown` is the
+  // shell's three-way read (stated / not stated / unreadable) already reduced to the one
+  // case that means "not stated" — a failed fetch must never be guidance to go and state
+  // something, because no access is not no answer.
+  programUnknown,
+  targetTerm,
   onOpenView,
   onTurn,
 }) {
@@ -208,6 +256,7 @@ export default function ChatHome({
   const [busy, setBusy] = useState(false)
   const [sourcesOpen, setSourcesOpen] = useState({})
   const greeted = useRef(null)
+  const suggested = useRef(null)
   const endRef = useRef(null)
 
   const initials = (me.full_name ?? "?")
@@ -218,13 +267,26 @@ export default function ChatHome({
     .join("")
     .toUpperCase()
 
+  // `courses` and `missions` are null before the first read resolves and a sentinel when
+  // it fails, and both are read during render here and in the dependency arrays below —
+  // so neither may be dereferenced without a guard. `ready` is what the effects wait for;
+  // this only has to survive being evaluated before it.
+  const courseCount = Array.isArray(courses) ? courses.length : 0
+  const facts = {
+    missions: Array.isArray(missions) ? missions : [],
+    courseCount,
+    programUnknown,
+    targetTerm,
+    t,
+  }
+
   useEffect(() => {
     if (greeted.current === "ready") return
     const first = (me.full_name ?? "").split(" ")[0]
     if (ready) {
       const recovering = greeted.current === "failed"
       greeted.current = "ready"
-      const greeting = greetingFor(missions, courses.length, t)
+      const greeting = greetingFor(facts)
       const note = {
         kind: "assistant-note",
         text: recovering
@@ -233,12 +295,34 @@ export default function ChatHome({
       }
       setThread((prev) => (recovering ? [...prev, note] : [note]))
       setChips(greeting.chips)
+      suggested.current = greeting.chips.map((c) => c.key).join("|")
     } else if (loadFailed && greeted.current === null) {
       greeted.current = "failed"
       setThread([{ kind: "assistant-note", text: t("greet.failed", { name: first }) }])
-      setChips(["chip.prereq", "chip.holds"])
+      setChips([ask_("chip.prereq"), ask_("chip.holds")])
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, loadFailed, missions, courses, me.full_name, t])
+
+  /** Suggestions follow the record; the transcript does not.
+   *
+   *  The chat is hidden rather than unmounted when a tool page is open, so a student who
+   *  lands with nothing, goes and picks their programme, and comes back is looking at the
+   *  same mounted component — and was still being told to pick a programme, because the
+   *  greeting is computed once. The chips are re-derived when the underlying facts move.
+   *  The greeting note is deliberately *not* rewritten: it is a line in a transcript, and a
+   *  transcript that edits itself is not one. It also does not fire on `ask`, which clears
+   *  the chips on purpose — asking a question does not change the record.
+   */
+  useEffect(() => {
+    if (!ready || greeted.current !== "ready") return
+    const next = greetingFor(facts)
+    const key = next.chips.map((c) => c.key).join("|")
+    if (suggested.current === key) return
+    suggested.current = key
+    setChips(next.chips)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, missions, courseCount, programUnknown, targetTerm])
 
   useEffect(() => {
     if (!active) return
@@ -599,10 +683,10 @@ export default function ChatHome({
           <div className="flex shrink-0 flex-wrap gap-2 px-6 py-2" style={{ borderTop: "1px solid var(--color-rail)" }}>
             {chips.map((chip, i) => (
               <button
-                key={chip}
+                key={chip.key}
                 type="button"
-                onClick={() => ask(t(chip))}
-                className="rounded-full px-3 py-1.5 text-[12px]"
+                onClick={() => (chip.go ? onOpenView?.(chip.go) : ask(t(chip.key)))}
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px]"
                 style={{
                   background: "var(--color-bubble-agent)",
                   border: "1px solid var(--color-rail-strong)",
@@ -621,7 +705,16 @@ export default function ChatHome({
                   e.currentTarget.style.transform = "translateY(0)"
                 }}
               >
-                {t(chip)}
+                {t(chip.key)}
+                {/* The same arrow `cards.OpenLink` uses, so "this opens a page" reads the
+                    same wherever it appears. A question chip carries none. */}
+                {chip.go ? (
+                  <ArrowRight
+                    size={11}
+                    style={{ color: "var(--color-violet-light)" }}
+                    aria-hidden="true"
+                  />
+                ) : null}
               </button>
             ))}
           </div>

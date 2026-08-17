@@ -94,6 +94,10 @@ export default function StudentShell({ me, onSignOut }) {
   // Feeds the Degree-progress sub-line; null is "no live figure" (an unset program
   // 409s here) and the nav falls back to the static description.
   const [plan, setPlan] = useState(null)
+  // The third onboarding fact. Read here rather than in the chat so it refreshes with
+  // everything else on a view change — the student sets it on the sequence page, and the
+  // suggestion that sent them there has to stop suggesting it when they come back.
+  const [prefs, setPrefs] = useState(null)
 
   const refresh = useCallback(() => {
     api.missions().then(setMissions).catch(() => setMissions(LOAD_FAILED))
@@ -105,6 +109,10 @@ export default function StudentShell({ me, onSignOut }) {
         setProgram(err.code === "program_not_stated" ? null : LOAD_FAILED),
       )
     api.plan(false).then(setPlan).catch(() => setPlan(null))
+    // A failed read leaves this null, which reads as "no target stated" and would suggest
+    // going to set one. That is the right way round: the suggestion is harmless and
+    // dismissable, whereas suppressing it on failure would hide a real gap.
+    api.preferences().then(setPrefs).catch(() => setPrefs(null))
   }, [])
 
   // On mount and on every view change: the tool pages write exactly the state the
@@ -257,6 +265,8 @@ export default function StudentShell({ me, onSignOut }) {
                 courses={courses}
                 ready={ready}
                 loadFailed={failed}
+                programUnknown={programUnknown}
+                targetTerm={prefs?.target_finish_term ?? null}
                 onOpenView={setView}
                 onTurn={refresh}
               />

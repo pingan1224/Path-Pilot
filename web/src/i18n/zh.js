@@ -88,6 +88,9 @@ export const zh = {
     `你的 ${term} 注册任务已完成 ${done}/${total} 步。` + (next ? `下一步：${next}` : ""),
   "greet.courses": "记录中有 {count} 门课程，还没有正在准备的学期。",
   "greet.empty": "记录还是空的。",
+  "greet.onboard.program":
+    "你还没有告诉我在读哪个学位，所以我无法对照它检查任何东西。" +
+    "注册报错解读和公开政策仍然可用。",
   "greet.failed":
     "你好 {name}——刚才没能读取你的记录，所以无法说明你的注册进展。这是连接问题，" +
     "不代表记录为空。我仍可以解读注册报错和公开政策——两者都不需要读取记录。",
@@ -100,6 +103,9 @@ export const zh = {
   "chip.prereq": "ERR_PREREQ 是什么意思？",
   "chip.first": "我该先做什么？",
   "chip.holds": "注册 hold 是怎么回事？",
+  "chip.pick-program": "选择我的学位",
+  "chip.upload": "添加我的课程",
+  "chip.set-target": "设定我想毕业的学期",
 
   // Chat — answer frame
   "kicker.answered": "基于已核实来源作答",

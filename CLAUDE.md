@@ -831,7 +831,32 @@ changed families — B09 left the citation one, B04 joined the deferral one. So 
 one wobbly case as it used to be, and it is also not five broken cases: it is three
 recurring weaknesses that different questions fall into on different runs. Chasing an
 individual id would be chasing a sample. `held_out`-style work on a *signature* is the only
-kind that could move it, and none has been attempted yet.
+kind that could move it.
+
+**One attempt was made on 2026-08-17 and reverted; the diagnosis is worth more than the
+patch was.** All five assertions were checked and none deserved loosening — which is the
+opposite of the expected result, because `must_call('get_course_info')` on B29/B30 looks
+exactly like the guessed floor this file warns about. It is not: that tool is the only
+source of the prerequisite's `min_grade` that answers "why did 2200 reject me", and of the
+reserved-seat rule that answers "what are my options if 1800 stays full". Those failures
+are substitutions — the model calls `search_policy` instead and answers without the
+deciding fact — so the tests are right and the model is wrong.
+
+The second finding is that `albert_checklist`'s returned `instruction` contradicted the
+system prompt, saying only "you cannot see this, point them at Albert" while the prompt
+says at length that this is not a reason to defer and that a rule needs a `policy:chunk`
+citation. **The prompt is not the lever there**: it is already maximally explicit and it
+was losing, because a tool result arrives at the moment of use and a contradiction there
+wins.
+
+The fix went red and the method is why. Two things changed at once — that instruction and
+`get_course_info`'s description — and the run came back with **forbidden tool calls: 2**,
+B35 ("help", one word) firing `propose_mission_candidates` and `start_mission` where
+forbidden had been 0 across the four previous runs. Calls per run rose 1.58 → 1.81: the
+edit made the model more active generally. B12 and B29 improved in that same run, so the
+gain and the regression cannot be told apart. **The rule for the next attempt is one change
+per full `--gate --repeat 3`.** Subsets cannot settle it — every subset conclusion on
+2026-08-17 was overturned by the next full run, including a B02 that read 1/3 → 3/3.
 A subset run (`--only`) now reports `gate: n/a` instead of grading thresholds against a
 sample nobody chose.
 Decoder run 2026-08-17: **27/30, coverage 0.8636**, accuracy 1.00, 0 confidently wrong,

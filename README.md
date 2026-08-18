@@ -51,42 +51,32 @@ Latest gated run: **PASS** — `gpt-5.4-mini` with `text-embedding-3-small`.
 ## Product in action
 
 These screenshots come from the running application and the seeded fictional student
-accounts—not from a design mockup.
+accounts—not from a design mockup. They are captured by script at 2× against the local
+stack, so they are regenerated rather than re-cropped when the UI moves:
+`python docs/scripts/capture_screenshots.py`.
 
-<table>
-  <tr>
-    <td width="50%">
-      <img src="docs/assets/agent-tool-trace.png" alt="Path Pilot answer with cited claims and a visible multi-tool audit trace" />
-      <br />
-      <b>Tool-using answer</b><br />
-      One turn combines mission state, the student's plan, and term sequencing. The right
-      rail exposes every lookup and how many sources it returned.
-    </td>
-    <td width="50%">
-      <img src="docs/assets/degree-progress.png" alt="Degree progress computed from published requirements and a self-reported record" />
-      <br />
-      <b>Deterministic degree progress</b><br />
-      Completed, in-progress, and remaining credits are evaluated against encoded degree
-      requirements; each unmet requirement has evidence and a next action.
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="docs/assets/registration-mission.png" alt="Registration mission with derived six-step progress and degree findings" />
-      <br />
-      <b>Resumable registration mission</b><br />
-      Progress is derived from stored facts rather than a mutable status field. The agent
-      may propose courses, but only the student can confirm decisions and accept risks.
-    </td>
-    <td width="50%">
-      <img src="docs/assets/course-sequence.png" alt="Course sequence arranged across terms with assumptions and delay impact" />
-      <br />
-      <b>Constraint-based course sequence</b><br />
-      Remaining courses are placed across terms using prerequisites, requirement groups,
-      course load, and published availability—with unsupported assumptions marked per card.
-    </td>
-  </tr>
-</table>
+**Tool-using answer** — One turn combines mission state, the student's plan, and term
+sequencing. The right rail exposes every lookup and how many sources it returned.
+
+![Path Pilot answer with cited claims and a visible multi-tool audit trace](docs/assets/agent-tool-trace.png)
+
+**Deterministic degree progress** — Completed, in-progress, and remaining credits are
+evaluated against encoded degree requirements; each unmet requirement has evidence and a
+next action.
+
+![Degree progress computed from published requirements and a self-reported record](docs/assets/degree-progress.png)
+
+**Resumable registration mission** — Progress is derived from stored facts rather than a
+mutable status field. The agent may propose courses, but only the student can confirm
+decisions and accept risks.
+
+![Registration mission with derived six-step progress and degree findings](docs/assets/registration-mission.png)
+
+**Constraint-based course sequence** — Remaining courses are placed across terms using
+prerequisites, requirement groups, course load, and published availability—with
+unsupported assumptions marked per card.
+
+![Course sequence arranged across terms with assumptions and delay impact](docs/assets/course-sequence.png)
 
 ## What the product can do
 

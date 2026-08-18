@@ -47,42 +47,28 @@ OpenAI 原生工具调用、确定性学位规则、带权限边界的 RAG，以
 
 ## 实际运行效果
 
-下面的截图来自本地运行中的应用和内置虚构学生数据，不是设计稿。
+下面的截图来自本地运行中的应用和内置虚构学生数据，不是设计稿。截图由脚本以 2× 分辨率
+对本地环境自动拍摄，UI 改动后重新生成而不是手工裁剪：`python docs/scripts/capture_screenshots.py`。
 
-<table>
-  <tr>
-    <td width="50%">
-      <img src="docs/assets/agent-tool-trace.png" alt="Path Pilot 带引用的回答和多工具审计轨迹" />
-      <br />
-      <b>会调用工具、可追溯的回答</b><br />
-      一次对话同时组合注册任务、个人计划和跨学期排课。右侧完整展示工具调用、执行状态以及
-      每个工具返回的来源数量。
-    </td>
-    <td width="50%">
-      <img src="docs/assets/degree-progress.png" alt="根据培养方案与学生记录计算的学位进度" />
-      <br />
-      <b>确定性学位进度</b><br />
-      系统将已完成、进行中和剩余学分与编码后的培养方案进行比对；每个未满足要求都带有
-      依据和下一步动作。
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="docs/assets/registration-mission.png" alt="包含六步进度与学位缺口的注册任务" />
-      <br />
-      <b>可恢复的 Registration Mission</b><br />
-      进度不是一个可随意修改的状态字段，而是每次根据已保存事实重新推导。Agent 可以提出
-      课程建议，但确认课程和接受风险只能由学生本人完成。
-    </td>
-    <td width="50%">
-      <img src="docs/assets/course-sequence.png" alt="包含假设和延迟影响的跨学期课程排期" />
-      <br />
-      <b>基于约束的课程排期</b><br />
-      排期综合先修关系、培养方案分组、学期负载和课程开设信息；无法被数据支持的内容会在
-      对应课程卡片上明确标为假设。
-    </td>
-  </tr>
-</table>
+**会调用工具、可追溯的回答** — 一次对话同时组合注册任务、个人计划和跨学期排课。右侧完整
+展示工具调用、执行状态以及每个工具返回的来源数量。
+
+![Path Pilot 带引用的回答和多工具审计轨迹](docs/assets/agent-tool-trace.png)
+
+**确定性学位进度** — 系统将已完成、进行中和剩余学分与编码后的培养方案进行比对；每个未满足
+要求都带有依据和下一步动作。
+
+![根据培养方案与学生记录计算的学位进度](docs/assets/degree-progress.png)
+
+**可恢复的 Registration Mission** — 进度不是一个可随意修改的状态字段，而是每次根据已保存事实
+重新推导。Agent 可以提出课程建议，但确认课程和接受风险只能由学生本人完成。
+
+![包含六步进度与学位缺口的注册任务](docs/assets/registration-mission.png)
+
+**基于约束的课程排期** — 排期综合先修关系、培养方案分组、学期负载和课程开设信息；无法被数据
+支持的内容会在对应课程卡片上明确标为假设。
+
+![包含假设和延迟影响的跨学期课程排期](docs/assets/course-sequence.png)
 
 ## 产品能力
 

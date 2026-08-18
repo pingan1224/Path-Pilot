@@ -561,7 +561,7 @@ actually costs).
 | M10 | Transcript photos: OCR that is never allowed to be trusted | ✅ |
 | M11 | Multi-turn context budgeting: freshness-aware reuse of tool results | ◻ Next |
 | M12-A | Render + Vercel deployment (access-controlled) | ✅ |
-| M12-B | Invite-only beta and rate limits | ◻ |
+| M12-B | Invite-only beta and rate limits — plan in [m12-rate-limiting.md](m12-rate-limiting.md) | ◻ |
 | — | Staff views (advisor queue, registrar pressure, finance cases) removed; student-only | ✅ |
 
 ## Honest limitations

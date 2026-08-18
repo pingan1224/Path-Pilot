@@ -464,7 +464,7 @@ PlannerView、ProgramView。
 | 层 | 内容 | 前提 |
 |---|---|---|
 | ~~F1 运维 CLI~~ ✅ | `scripts/create_user.py`：email/姓名/可选专业，随机密码打印一次；同脚本 `--reset` | 已完成 2026-08-17 |
-| F2 邀请码激活 | `invite_codes` 表 + `POST /auth/redeem` 自设密码；邀请码发到邮箱，投递即身份验证，无需邮件服务 | M12 限流就位 |
+| F2 邀请码激活 | `invite_codes` 表 + `POST /auth/redeem` 自设密码；邀请码发到邮箱，投递即身份验证，无需邮件服务 | M12 限流就位（方案见 [m12-rate-limiting.md](m12-rate-limiting.md)） |
 | F3 自助注册 | 注册 + 邮箱验证 + 找回密码；需要邮件服务与完整滥用防护 | M12 完成后单独立项 |
 
 **Onboarding：计算式，chat 主导，非模态。✅ 2026-08-17。** 引导状态由三个事实推导

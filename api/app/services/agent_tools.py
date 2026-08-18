@@ -562,27 +562,10 @@ def tool_albert_checklist(ctx: ToolContext, topic: str) -> dict[str, Any]:
         "path_pilot_can_see_this": False,
         "where_to_look": where,
         "what_to_know": why,
-        # This field is the whole turn's instruction as far as the model is concerned: it
-        # arrives at the moment of use, which is nearer than the system prompt. It used to
-        # say only "say you cannot see this and point them at Albert", and that is half an
-        # answer described as if it were the whole one — so the model read the question as
-        # unanswerable and deferred, or answered from this signpost and cited it in place of
-        # a rule. Both are things the system prompt already forbids in as many words; the
-        # prompt was not the lever, because a tool result that contradicts it wins.
-        #
-        # Measured, not guessed: across three attempts each, the failing runs of B02 (aid
-        # hold, deferred instead of answered) and B12 (no policy:chunk citation) are exactly
-        # the ones that called this tool, and B12's two passing runs are the ones that did
-        # not. So the text now names the other half explicitly.
         "instruction": (
-            "This is the signpost half of the answer, not the answer. Say that Path Pilot "
-            "cannot see this and where it lives — then answer the half that is not about "
-            "this student: what the published rules say about this kind of thing, from "
-            "search_policy, cited by its policy:chunk id. This tool cannot support a claim "
-            "about what a rule says or does. Not being able to see the record is the normal "
-            "state of this product and is not by itself a reason to defer; defer when a "
-            "human must act, not when you could not see something. Never guess, and never "
-            "say the record is clear — no access is not no problem."
+            "State that Path Pilot cannot see this and point the student to where it lives. Do "
+            "not guess, and do not say the record is clear — an empty result here means "
+            "no access, not no problem."
         ),
     }
 
@@ -1285,20 +1268,7 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "get_course_info",
-            # Names what is *only* here, because the failures were substitutions rather
-            # than omissions: asked why a named course rejected them, or what to do when a
-            # named course is full, the model sometimes reached for search_policy instead
-            # and answered without the two facts that decide those questions — the
-            # minimum grade on a prerequisite, and the reserved-seat rule that says who a
-            # section is being held for. Published policy cannot supply either; they are
-            # per-course. "Catalog facts" did not convey that.
-            "description": (
-                "Catalog facts for one named course, and the only source for them: its "
-                "prerequisites including any minimum grade, its sections this term, seat "
-                "and waitlist counts, and any reserved-seat rule. Call this whenever a "
-                "question names a course — policy search cannot answer why *this* course "
-                "refused *this* student, or who its seats are held for."
-            ),
+            "description": "Catalog facts for one course: prerequisites, sections this term, seat availability.",
             "parameters": {
                 "type": "object",
                 "properties": {

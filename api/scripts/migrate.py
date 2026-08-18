@@ -227,7 +227,7 @@ STATEMENTS = [
            course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
            PRIMARY KEY (track_id, course_id)
        )""",
-    # Hold-reading was removed on 2026-08-13 (see CLAUDE.md, "Holds: what changed").
+    # Hold-reading was removed on 2026-08-13 (see ARCHITECTURE.md, "Holds: what changed").
     # These two tables held invented rows that nothing reads any more, and leaving them in
     # place would be worse than dropping them: a fixture that still exists is a fixture
     # something can start reading again.

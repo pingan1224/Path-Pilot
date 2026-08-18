@@ -33,7 +33,7 @@ import { usePrefs } from "@/i18n"
  * question, and the answer is the finish date moving.**
  *
  *   Load      — the per-term credit cap is the student's own number, assumed rather than
- *               published (see CLAUDE.md), which makes it the most valuable input on the
+ *               published (see ARCHITECTURE.md), which makes it the most valuable input on the
  *               page. 3/6/9/12 re-solves instantly.
  *   Defer     — "what if this waits?" runs the solver's own counterfactual: the course is
  *               held out of the starting term and the whole thing is re-planned,

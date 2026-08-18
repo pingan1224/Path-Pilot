@@ -2,7 +2,7 @@
 
 `/health` answers "is the process up". `/health/ready` answers "can it actually serve
 requests" — which means the database is reachable, not merely configured. Keeping these
-separate matters for the degradation rules in CLAUDE.md: the API reports partial capability
+separate matters for the degradation rules in ARCHITECTURE.md: the API reports partial capability
 rather than failing outright, and a caller can tell which dependency is missing.
 """
 

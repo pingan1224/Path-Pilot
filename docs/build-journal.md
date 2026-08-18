@@ -170,7 +170,7 @@ fictional, and neither student can reach the other's record — which you are in
 7. Every AI interaction is logged replayably; the audit log doubles as eval data.
 8. The AI can open cases and draft summaries. It can never change an official record.
 
-Full detail in [CLAUDE.md](../CLAUDE.md).
+Full detail in [ARCHITECTURE.md](../ARCHITECTURE.md).
 
 ## Measured
 

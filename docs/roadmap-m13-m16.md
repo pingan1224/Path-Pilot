@@ -1,7 +1,6 @@
 # 闭环方案：M13–M16
 
 2026-08-16 制定，基线 `main@8e7e7d3`（PR #1、#2 已合并）。
-在线版本（含样式）：https://claude.ai/code/artifact/7017d2ae-e8cd-406d-a2e5-124e486bb567
 
 现状一句话：规划计算已经很强，但学生「建立状态 → 表达目标 → 比较方案 → 确认执行 →
 回流更新」的闭环没有接通。本方案把五个产品缺口排成六个阶段，每一步都在现有架构规则
@@ -92,7 +91,7 @@ handoff——**没有这个出口,没空开 Albert 的学生会永远卡在最�
 来源可填。`sections` 其余部分留着:座位数是「这门课满了吗」的答案,`readiness` 也要穿过
 这张表去拿 enrollment。
 
-`typically_offered`(开课季节模式)不受影响——学期模式不是时刻表。CLAUDE.md 那句「时间
+`typically_offered`(开课季节模式)不受影响——学期模式不是时刻表。ARCHITECTURE.md 那句「时间
 偏好指课程负荷和跳过哪些学期,不是时段」现在是全称成立的。
 
 **decoder 的 `time_conflict` 归因也一并删了(owner 决定)**,连同枚举成员、2 条 eval 用例
@@ -108,7 +107,7 @@ handoff——**没有这个出口,没空开 Albert 的学生会永远卡在最�
 
 **decoder eval:27/30、coverage 0.8636**(此前 28/32、0.8333)。**coverage 涨了 0.03,
 但一分都不是改进**:删掉的两条里 D03 是通过的、D32 是 `held_out` 家族里写来就是要失败的。
-删一条注定失败的用例,和修好它一样能把比值抬上去。CLAUDE.md 原本只写了「把 held-out 的
+删一条注定失败的用例,和修好它一样能把比值抬上去。ARCHITECTURE.md 原本只写了「把 held-out 的
 措辞加进规则表」这一种作弊法,这是另一种,而且更难察觉——它是作为范围决定的副作用出现的,
 不像是在冲指标。`held_out` 现在 1/4,这才是该看的数。
 
@@ -129,7 +128,7 @@ owner 曾提议用 `https://bulletins.nyu.edu/class-search/` 取上课时间，�
   `/class-search/?crit-subject=MASY1-GC&crit-srcdb=1268` 在不执行 JS 时**返回空表单，
   没有任何课程数据**。数据只存在于被禁的接口后面，页面是空壳。
 - 现有 bulletin 语料只有 `typically_offered`（开课季节模式），本来就没有具体时间——这
-  正是 CLAUDE.md 写下「产品无法处理时间偏好」那句话的原因。
+  正是 ARCHITECTURE.md 写下「产品无法处理时间偏好」那句话的原因。
 
 三条路都堵死。当时提出的唯一合规替代是**让学生粘贴课表**（学生自己查、产品做交叉比对，
 形状同 transcript intake），**2026-08-17 连同整个排课方向一起否掉了**。理由不是它不可行
@@ -181,7 +180,7 @@ owner 曾提议用 `https://bulletins.nyu.edu/class-search/` 取上课时间，�
 已整体回退。** 留下的是诊断,不是补丁。
 
 **诊断里最扎实的一条:五个断言逐个查过,没有一个该放松。** 这与直觉相反——
-`must_call('get_course_info')` 看起来正是 CLAUDE.md 警告过的猜测性门槛,但它是对的:
+`must_call('get_course_info')` 看起来正是 ARCHITECTURE.md 警告过的猜测性门槛,但它是对的:
 
 - B29「为什么 2200 拒了我」的答案是先修的 `min_grade: "B-"`,**只有这个工具有**;
 - B30「1800 满了我怎么办」的答案是 `reserved_seat_rule`(座位保留给最后两学期的学生,
@@ -224,7 +223,7 @@ forbidden 在此前四次跑里都是 0(12 次 B35 尝试)。**改动整体把�
   有人「修」过一个设计 bug 被回退，所以留给你拍。
 - **`reset()` 会清 `ai_interactions`**，而故障注入的降级覆盖率指标和 `trajectory_report`
   都读这张表。也就是说 `--gate --repeat 3 --reseed` 每跑一次就先把审计历史清空一次。
-  现在库里只有 2 行所以无所谓，但这条 CLAUDE.md 里没写。
+  现在库里只有 2 行所以无所谓，但这条 ARCHITECTURE.md 里没写。
 - **`MSEM1-GC 2050` 学分是 0.0**，在 Electives 池里。可能真是零学分项，也可能 ingest 漏读。
 - **`sections` 表 45 行虚构班次的座位数仍是编造的**，经 `tool_get_course_info` 暴露给
   模型，只挂在 demo 课程上。与 2026-08-13 删掉 holds 的理由同形：用虚构数据讲一个关于
@@ -262,7 +261,7 @@ forbidden 在此前四次跑里都是 0(12 次 B35 尝试)。**改动整体把�
 
 ## 不变量：方案的边界
 
-以下规则来自 CLAUDE.md 与源 RFP，本方案每一项设计服从它们，冲突时以它们为准：
+以下规则来自 ARCHITECTURE.md 与源 RFP，本方案每一项设计服从它们，冲突时以它们为准：
 
 1. **没有状态列。** 进度从事实重算（`steps.compute_state` 的原则），存储的只能是
    「某人在某时做了某事」。
@@ -308,7 +307,7 @@ alternatives、清单状态）。而行为基线仍是 Kimi 时代的 —— 换
 不过 —— 尤其失败工具调用率 —— 先修模型适配（提示词或 `CHAT_REASONING_EFFORT`），
 修完再进 Phase A。
 
-**验收：** 完整 gate 结果落盘（`eval/results/`），CLAUDE.md 的「欠着一次完整运行」段落
+**验收：** 完整 gate 结果落盘（`eval/results/`），ARCHITECTURE.md 的「欠着一次完整运行」段落
 被结果替换；失败工具调用率与 Kimi 基线（0）的差距有结论。
 
 ## Phase A · 统一计划基底
@@ -480,7 +479,7 @@ PlannerView、ProgramView。
 
 **实现时被两条既有决定改了形状，两条都容易踩：**
 
-- **空记录时 decoder chip 必须排第一**（CLAUDE.md 明写）。其他每个界面都得先有记录才能
+- **空记录时 decoder chip 必须排第一**（ARCHITECTURE.md 明写）。其他每个界面都得先有记录才能
   说话，decoder 是唯一能回答「现在就卡在注册页」的入口。为了塞引导把它挤到第二，等于在
   产品唯一的零门槛门口砌一堵墙。所以引导指令由 greeting 正文和 rail 徽标承担，chip 让位。
 - **目标学期缺失不是一个缺失的步骤。** Phase B 定的是 `user_preferences` 全可空、

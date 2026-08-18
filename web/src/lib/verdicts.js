@@ -4,7 +4,7 @@
  * This existed three times — DecoderView, MissionView, PlannerView — and the copies had
  * already drifted: only PlannerView's carried a `label`, so in the other two views a
  * finding's verdict reached the reader as a coloured left border and a glyph and nothing
- * else. That is the "never colour alone" rule in CLAUDE.md failing in two of the three
+ * else. That is the "never colour alone" rule in ARCHITECTURE.md failing in two of the three
  * places it applies, caused by nothing but a copied object literal.
  *
  * `label` names the verdict; `action` is the phrase the UI principle requires each tone to

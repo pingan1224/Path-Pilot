@@ -41,3 +41,7 @@ npm-debug.log*
 
 # Scratch renders and working files
 tmp/
+
+# Local agent tooling — not part of the project
+.claude/
+CLAUDE.md

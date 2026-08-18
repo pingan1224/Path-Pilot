@@ -3,7 +3,7 @@
 Three things about this file are deliberate.
 
 **It is data, not a prompt.** Classification is a decision, and this project computes
-decisions rather than generating them (CLAUDE.md: planning verdicts come from the rule
+decisions rather than generating them (ARCHITECTURE.md: planning verdicts come from the rule
 engine, the model narrates). A model asked "which of these nine causes is it" answers
 fluently and unrepeatably; a table answers the same way every time, is unit-testable
 case by case, and when it is wrong the fix lands at one line.

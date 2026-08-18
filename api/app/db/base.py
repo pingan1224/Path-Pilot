@@ -24,7 +24,7 @@ class TimestampMixin:
 class SourcedMixin:
     """For rows mirrored from an upstream system of record.
 
-    Rule 4 in CLAUDE.md says staleness is disclosed rather than hidden, which is only
+    Rule 4 in ARCHITECTURE.md says staleness is disclosed rather than hidden, which is only
     possible if every mirrored fact remembers where it came from and when it was last
     confirmed. `source_key` joins to `source_freshness_policy`, which owns the maximum
     tolerable age for that source. Anything past that threshold is still served, but the

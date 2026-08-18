@@ -1,5 +1,9 @@
 # Path Pilot
 
+<p align="right">
+  <b>English</b> · <a href="README.zh-CN.md">中文</a>
+</p>
+
 ### A bounded, tool-using academic planning agent
 
 [![Evaluation gate](https://github.com/pingan1224/uax/actions/workflows/eval.yml/badge.svg)](https://github.com/pingan1224/uax/actions/workflows/eval.yml)
@@ -20,10 +24,6 @@ pipeline, evaluation harness, and deployment path.
 > Independent personal project. Not affiliated with NYU and not connected to Albert. All
 > student records in the demo are fictional; official registration state remains outside
 > the system.
-
-<p align="center">
-  <img src="docs/assets/path-pilot-demo.png" alt="Path Pilot sign-in screen showing two fictional student scenarios" width="880" />
-</p>
 
 ## In 60 seconds
 
@@ -47,6 +47,57 @@ Latest gated run: **PASS** — `gpt-5.4-mini` with `text-embedding-3-small`.
 | Transcript intake | 9 document/image layouts | 9/9 passed; row recall **1.00** |
 
 [Read the complete latest report →](api/eval/results/report-20260817-224837.md)
+
+## Product in action
+
+These screenshots come from the running application and the seeded fictional student
+accounts—not from a design mockup.
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/assets/agent-tool-trace.png" alt="Path Pilot answer with cited claims and a visible multi-tool audit trace" />
+      <br />
+      <b>Tool-using answer</b><br />
+      One turn combines mission state, the student's plan, and term sequencing. The right
+      rail exposes every lookup and how many sources it returned.
+    </td>
+    <td width="50%">
+      <img src="docs/assets/degree-progress.png" alt="Degree progress computed from published requirements and a self-reported record" />
+      <br />
+      <b>Deterministic degree progress</b><br />
+      Completed, in-progress, and remaining credits are evaluated against encoded degree
+      requirements; each unmet requirement has evidence and a next action.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/assets/registration-mission.png" alt="Registration mission with derived six-step progress and degree findings" />
+      <br />
+      <b>Resumable registration mission</b><br />
+      Progress is derived from stored facts rather than a mutable status field. The agent
+      may propose courses, but only the student can confirm decisions and accept risks.
+    </td>
+    <td width="50%">
+      <img src="docs/assets/course-sequence.png" alt="Course sequence arranged across terms with assumptions and delay impact" />
+      <br />
+      <b>Constraint-based course sequence</b><br />
+      Remaining courses are placed across terms using prerequisites, requirement groups,
+      course load, and published availability—with unsupported assumptions marked per card.
+    </td>
+  </tr>
+</table>
+
+## What the product can do
+
+| Surface | User outcome | Engineering behind it |
+|---|---|---|
+| Ask Path Pilot | A cited answer, next-term proposal, or registration explanation | Multi-tool agent loop, structured completion, citation provenance, actionable artifacts |
+| Degree Progress | What is complete, in progress, planned, and still required | Deterministic requirement engine over 22 encoded graduate programs |
+| Registration Mission | A resumable path from an entered record to an advisor-ready handoff | Derived state machine, student-only decisions, stale-risk detection, Albert checklist |
+| Course Planner | A feasible term-by-term order and the cost of deferring a course | Constraint solver over prerequisites, offerings, concentration choice, load, and deadline |
+| Error Decoder | A plain-language explanation of a pasted registration error | Evidence-weighted deterministic classifier plus policy retrieval |
+| Transcript Intake | Courses extracted from PDF or photo with explicit review states | Text parsing, vision transcription, catalog matching, and an OCR trust boundary |
 
 ## Architecture
 

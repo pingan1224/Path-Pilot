@@ -59,8 +59,19 @@ export function Meter({ value, max, tone = "accent", label }) {
   );
 }
 
-export function Loading({ what }) {
-  return <p className="state state--loading">Loading {what}…</p>;
+/**
+ * `hint` is for a wait the reader would otherwise read as a hang. A spinner that has not
+ * moved in twenty seconds tells them the page is broken, which is a worse answer than
+ * naming the reason it is slow — so callers pass the reason once they know the wait is
+ * the long kind.
+ */
+export function Loading({ what, hint }) {
+  return (
+    <p className="state state--loading">
+      Loading {what}…
+      {hint ? <span className="state__hint">{hint}</span> : null}
+    </p>
+  );
 }
 
 export function ErrorState({ message, onRetry }) {

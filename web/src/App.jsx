@@ -22,16 +22,28 @@ import StudentShell from "./views/StudentShell";
 export default function App() {
   const [me, setMe] = useState(null);
   const [checking, setChecking] = useState(true);
+  const [waking, setWaking] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // The API sleeps when nobody has asked it anything for a while, and the first request
+    // after that waits for the container to come back — measured at around thirty seconds.
+    // Nothing on this side can shorten it, and aborting would be wrong: the wait is the
+    // service starting, not a failure. What can be fixed is the silence. Four seconds is
+    // past a warm response and well short of a cold one, so the hint only ever appears on
+    // the wait that needs explaining.
+    const slow = setTimeout(() => setWaking(true), 4000);
     api
       .me()
       .then(setMe)
       .catch((err) => {
         if (!(err instanceof UnauthenticatedError)) setError(err.message);
       })
-      .finally(() => setChecking(false));
+      .finally(() => {
+        clearTimeout(slow);
+        setChecking(false);
+      });
+    return () => clearTimeout(slow);
   }, []);
 
   async function signOut() {
@@ -49,7 +61,14 @@ export default function App() {
   if (checking) {
     return (
       <main id="main" className="main">
-        <Loading what="Path Pilot" />
+        <Loading
+          what="Path Pilot"
+          hint={
+            waking
+              ? "The API is on free hosting that sleeps when idle. The first request wakes it, which takes about half a minute — later ones are immediate."
+              : null
+          }
+        />
       </main>
     );
   }

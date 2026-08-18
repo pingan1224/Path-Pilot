@@ -665,6 +665,12 @@
 .state--empty {
   background: var(--surface-2);
 }
+.state__hint {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--ink-3);
+}
 .state--error {
   background: var(--danger-soft);
   color: var(--danger);

@@ -12,7 +12,29 @@ services:
     plan: free
     region: oregon
     rootDir: api
-    buildCommand: pip install -r requirements.txt
+    # Install, then bring the database up to the code that is about to run against it.
+    #
+    # This used to be `pip install` alone, and the schema was a manual step recorded in the
+    # README. The result was the failure it invites: `scripts.migrate` had never once been
+    # run against the deployed database, so it was missing `courses.prerequisite_unparsed`,
+    # `requirement_tracks.min_courses`, `requirement_track_required_courses` and
+    # `user_preferences`. Every screen that reads a student's own record — plan, mission,
+    # sequence, courses — answered 500, while `/health/ready` went on reporting `ok`
+    # because it checks that the database answers, not that it has the right shape.
+    #
+    # The catalogue and requirement rules are here for the same reason. They are reference
+    # data derived from the committed `api/data/sections/` snapshot, not user data, so they
+    # belong to the code that reads them: the deployed database had 72 courses against the
+    # repository's 764, and 8 requirement rows against 79, because that ingest was also
+    # only ever run locally. Both are idempotent upserts keyed on the published codes.
+    #
+    # Failing here fails the deploy, which is the point — the previous arrangement let a
+    # deploy succeed onto a database that could not serve it.
+    buildCommand: >-
+      pip install -r requirements.txt &&
+      python -m scripts.migrate &&
+      python -m ingest.catalog &&
+      python -m ingest.requirements
     # rootDir is api/, so app.main resolves without --app-dir. $PORT is Render's.
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     # Liveness only, despite the name: /health/ready answers 200 even when the database is

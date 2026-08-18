@@ -9,6 +9,7 @@ a poor trade for a demo. Every statement is written to be safe to run repeatedly
 """
 
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.db.session import get_engine
 
@@ -304,18 +305,47 @@ STATEMENTS = [
 
 
 def main() -> None:
+    """Apply every statement, each in its own transaction.
+
+    The statements are independent and individually idempotent, so there is no intermediate
+    state that a single enclosing transaction would be protecting. What it costs is the
+    diagnosis: one statement that cannot apply on one particular database takes every
+    other statement down with it and reverts them, so the run reports a single failure and
+    leaves a schema that is still missing everything else it was asked to add. Isolating
+    each one means a database that is behind gets everything that *can* apply, and the
+    output names exactly what could not.
+
+    Failures are collected rather than raised where they happen, and the run exits non-zero
+    at the end: this runs in the deploy, and a schema that does not match the code has to
+    fail the build rather than pass quietly and 500 on the first request that touches it.
+    """
     engine = get_engine()
-    with engine.begin() as conn:
-        for statement in STATEMENTS:
-            label = " ".join(statement.split())[:80]
-            conn.execute(text(statement))
+    failures: list[tuple[str, str]] = []
+
+    for statement in STATEMENTS:
+        label = " ".join(statement.split())[:80]
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(statement))
+        except SQLAlchemyError as exc:
+            reason = str(getattr(exc, "orig", exc)).strip().splitlines()[0]
+            failures.append((label, reason))
+            print(f"  FAIL  {label}…\n        {reason}")
+        else:
             print(f"  ok  {label}…")
 
+    with engine.connect() as conn:
         n = conn.execute(
             text("SELECT count(*) FROM document_chunks WHERE tsv IS NOT NULL")
         ).scalar_one()
         total = conn.execute(text("SELECT count(*) FROM document_chunks")).scalar_one()
     print(f"\ntsv populated on {n}/{total} chunks")
+
+    if failures:
+        print(f"\n{len(failures)} statement(s) failed:")
+        for label, reason in failures:
+            print(f"  - {label}…\n      {reason}")
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

@@ -92,23 +92,49 @@ unsupported assumptions marked per card.
 ## Architecture
 
 ```mermaid
-flowchart LR
-    U["Student request"] --> API["FastAPI + session identity"]
-    API --> A["Bounded agent loop"]
-    A --> L["OpenAI model"]
-    L -->|"native tool calls"| T["Permission-scoped tool layer"]
-    T --> R["RAG retrieval"]
-    T --> P["Planning + sequence rules"]
-    T --> M["Registration mission"]
-    T --> D["Error decoder"]
-    R --> DB[("Postgres + pgvector")]
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif","fontSize":"14px","lineColor":"#94a3b8","primaryTextColor":"#0f172a","edgeLabelBackground":"#ffffff"},"flowchart":{"curve":"basis","nodeSpacing":30,"rankSpacing":58,"padding":8}}}%%
+flowchart TB
+    U(["Student request"])
+    API["FastAPI<br/>session identity"]
+    A["Bounded agent loop<br/>max 6 model turns"]
+    L{{"OpenAI model"}}
+    T["Permission-scoped<br/>tool layer"]
+    R["RAG retrieval"]
+    P["Planning + sequence rules"]
+    M["Registration mission"]
+    D["Error decoder"]
+    DB[("Postgres + pgvector")]
+    S["submit_answer"]
+    V["Citation + safety validation"]
+    O(["Answer · artifacts · audit trace"])
+
+    U --> API --> A
+    A --> L
+    L -->|"native tool calls"| T
+    T --> R
+    T --> P
+    T --> M
+    T --> D
+    R --> DB
     P --> DB
     M --> DB
     D --> DB
     T -->|"structured results"| L
-    L --> S["submit_answer"]
-    S --> V["Citation + safety validation"]
-    V --> O["Answer, artifacts, audit trace"]
+    L --> S --> V --> O
+
+    classDef entry fill:#ede9fe,stroke:#7c3aed,stroke-width:1.5px,color:#4c1d95
+    classDef server fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a8a
+    classDef model fill:#fae8ff,stroke:#c026d3,stroke-width:1.5px,color:#701a75
+    classDef tool fill:#d1fae5,stroke:#059669,stroke-width:1.5px,color:#065f46
+    classDef data fill:#e2e8f0,stroke:#475569,stroke-width:1.5px,color:#0f172a
+    classDef out fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#92400e
+
+    class U entry
+    class API,A,S,V server
+    class L model
+    class T,R,P,M,D tool
+    class DB data
+    class O out
 ```
 
 The LLM is responsible for language understanding, tool selection, and explanation. It is
@@ -176,16 +202,41 @@ Core implementation:
 ## RAG implementation
 
 ```mermaid
-flowchart LR
-    H["Public NYU pages"] --> E["Extract structured sections"]
-    E --> C["Heading-aware chunks"]
-    C --> B["Heading path + body embedding"]
-    B --> PG[("pgvector, 1,024 dimensions")]
-    Q["User query + authenticated scope"] --> F["Role filter inside SQL"]
-    F --> K["Dense candidate retrieval"]
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif","fontSize":"14px","lineColor":"#94a3b8","primaryTextColor":"#0f172a","edgeLabelBackground":"#ffffff"},"flowchart":{"curve":"basis","nodeSpacing":30,"rankSpacing":58,"padding":8}}}%%
+flowchart TB
+    H(["Public NYU pages"])
+    E["Extract structured sections"]
+    C["Heading-aware chunks<br/>one chunk per course page"]
+    B["Embed heading path + body<br/>text-embedding-3-small"]
+    PG[("pgvector<br/>1,024 dimensions")]
+    Q(["User query + authenticated scope"])
+    F["Role filter inside SQL"]
+    K["Dense cosine retrieval<br/>overfetch candidates"]
+    FB["Keyword fallback<br/>reports the measured quality loss"]
+    RR["School · level · program rerank"]
+    TOP(["Top evidence with source IDs"])
+
+    H --> E --> C --> B
+    B -->|"indexed offline"| PG
+    Q --> F --> K
     PG --> K
-    K --> RR["School, level, and program rerank"]
-    RR --> TOP["Top evidence with source IDs"]
+    K --> RR --> TOP
+    K -.->|"embedding outage"| FB
+    FB -.-> RR
+
+    classDef entry fill:#ede9fe,stroke:#7c3aed,stroke-width:1.5px,color:#4c1d95
+    classDef ingest fill:#e2e8f0,stroke:#475569,stroke-width:1.5px,color:#0f172a
+    classDef store fill:#fae8ff,stroke:#c026d3,stroke-width:1.5px,color:#701a75
+    classDef step fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a8a
+    classDef degraded fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#92400e,stroke-dasharray:5 3
+    classDef out fill:#d1fae5,stroke:#059669,stroke-width:1.5px,color:#065f46
+
+    class H,Q entry
+    class E,C,B ingest
+    class PG store
+    class F,K,RR step
+    class FB degraded
+    class TOP out
 ```
 
 - Embeddings: `text-embedding-3-small`, explicitly requested at 1,024 dimensions.

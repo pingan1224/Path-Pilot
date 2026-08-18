@@ -84,23 +84,49 @@ OpenAI 原生工具调用、确定性学位规则、带权限边界的 RAG，以
 ## 系统架构
 
 ```mermaid
-flowchart LR
-    U["学生请求"] --> API["FastAPI + 会话身份"]
-    API --> A["有界 Agent 循环"]
-    A --> L["OpenAI 模型"]
-    L -->|"原生工具调用"| T["权限受限的工具层"]
-    T --> R["RAG 检索"]
-    T --> P["学位规则 + 排课引擎"]
-    T --> M["注册任务"]
-    T --> D["错误解码器"]
-    R --> DB[("Postgres + pgvector")]
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, Helvetica, Arial, sans-serif","fontSize":"14px","lineColor":"#94a3b8","primaryTextColor":"#0f172a","edgeLabelBackground":"#ffffff"},"flowchart":{"curve":"basis","nodeSpacing":30,"rankSpacing":58,"padding":8}}}%%
+flowchart TB
+    U(["学生请求"])
+    API["FastAPI<br/>会话身份"]
+    A["有界 Agent 循环<br/>最多 6 轮模型调用"]
+    L{{"OpenAI 模型"}}
+    T["权限受限的<br/>工具层"]
+    R["RAG 检索"]
+    P["学位规则 + 排课引擎"]
+    M["注册任务"]
+    D["错误解码器"]
+    DB[("Postgres + pgvector")]
+    S["submit_answer"]
+    V["引用与安全校验"]
+    O(["回答 · 产物 · 审计轨迹"])
+
+    U --> API --> A
+    A --> L
+    L -->|"原生工具调用"| T
+    T --> R
+    T --> P
+    T --> M
+    T --> D
+    R --> DB
     P --> DB
     M --> DB
     D --> DB
     T -->|"结构化结果"| L
-    L --> S["submit_answer"]
-    S --> V["引用与安全校验"]
-    V --> O["回答、产物、审计轨迹"]
+    L --> S --> V --> O
+
+    classDef entry fill:#ede9fe,stroke:#7c3aed,stroke-width:1.5px,color:#4c1d95
+    classDef server fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a8a
+    classDef model fill:#fae8ff,stroke:#c026d3,stroke-width:1.5px,color:#701a75
+    classDef tool fill:#d1fae5,stroke:#059669,stroke-width:1.5px,color:#065f46
+    classDef data fill:#e2e8f0,stroke:#475569,stroke-width:1.5px,color:#0f172a
+    classDef out fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#92400e
+
+    class U entry
+    class API,A,S,V server
+    class L model
+    class T,R,P,M,D tool
+    class DB data
+    class O out
 ```
 
 LLM 负责理解语言、选择工具和组织解释，但不负责学分计算、先修关系真值、任务进度、
@@ -159,16 +185,41 @@ Registration Mission 共 6 步。系统每次读取时都根据存储事实重�
 ## RAG 技术实现
 
 ```mermaid
-flowchart LR
-    H["NYU 公开页面"] --> E["提取结构化章节"]
-    E --> C["标题感知分块"]
-    C --> B["标题路径 + 正文 Embedding"]
-    B --> PG[("pgvector，1,024 维")]
-    Q["用户问题 + 已认证权限"] --> F["SQL 内角色过滤"]
-    F --> K["稠密候选检索"]
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"-apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, Helvetica, Arial, sans-serif","fontSize":"14px","lineColor":"#94a3b8","primaryTextColor":"#0f172a","edgeLabelBackground":"#ffffff"},"flowchart":{"curve":"basis","nodeSpacing":30,"rankSpacing":58,"padding":8}}}%%
+flowchart TB
+    H(["NYU 公开页面"])
+    E["提取结构化章节"]
+    C["标题感知分块<br/>课程页按一门课一块"]
+    B["标题路径 + 正文 Embedding<br/>text-embedding-3-small"]
+    PG[("pgvector<br/>1,024 维")]
+    Q(["用户问题 + 已认证权限"])
+    F["SQL 内角色过滤"]
+    K["稠密余弦检索<br/>过量召回候选"]
+    FB["关键词降级检索<br/>明确报告实测质量损失"]
+    RR["学院 · 层级 · 项目重排"]
+    TOP(["带来源 ID 的 Top-K 证据"])
+
+    H --> E --> C --> B
+    B -->|"离线建索引"| PG
+    Q --> F --> K
     PG --> K
-    K --> RR["学院、层级和项目元数据重排"]
-    RR --> TOP["带来源 ID 的 Top-K 证据"]
+    K --> RR --> TOP
+    K -.->|"Embedding 不可用"| FB
+    FB -.-> RR
+
+    classDef entry fill:#ede9fe,stroke:#7c3aed,stroke-width:1.5px,color:#4c1d95
+    classDef ingest fill:#e2e8f0,stroke:#475569,stroke-width:1.5px,color:#0f172a
+    classDef store fill:#fae8ff,stroke:#c026d3,stroke-width:1.5px,color:#701a75
+    classDef step fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#1e3a8a
+    classDef degraded fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#92400e,stroke-dasharray:5 3
+    classDef out fill:#d1fae5,stroke:#059669,stroke-width:1.5px,color:#065f46
+
+    class H,Q entry
+    class E,C,B ingest
+    class PG store
+    class F,K,RR step
+    class FB degraded
+    class TOP out
 ```
 
 - **Embedding：** `text-embedding-3-small`，显式指定为 1,024 维。

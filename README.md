@@ -443,4 +443,13 @@ OpenAI embeddings/vision · GitHub Actions · Render · Vercel
 
 ## License
 
-MIT
+The code is MIT — see [LICENSE](LICENSE).
+
+That covers what this repository authors. It does not cover `api/data/`, which is a dated
+snapshot of pages published by NYU: the text belongs to its publishers, each file carries
+the URL, SHA-256 and fetch date it came from in `api/data/raw/manifest.json`, and it is
+kept in the repository so the evaluation numbers can be reproduced against the same corpus
+they were measured on. Reuse of that material is between you and its publishers.
+
+Independent personal project. Not affiliated with, endorsed by, or connected to New York
+University.

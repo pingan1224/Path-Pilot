@@ -5,9 +5,35 @@
 # see the API on its own origin. Vercel rewriting /api/* here is what produces that, and
 # it is the same shape the Vite dev proxy gives locally. Point the frontend straight at
 # this host instead and the cookie stops being sent.
+# READ THIS BEFORE TRUSTING ANYTHING BELOW.
+#
+# **This file does not configure the running service.** `path-pilot-api` was created by
+# hand in the Render dashboard rather than from a Blueprint, so Render has never read this
+# file and does not watch it. Everything here is a description of what the service should
+# be; the values Render actually uses live in the dashboard, and the two drift silently
+# because nothing compares them.
+#
+# That drift has now caused two production outages, both of which looked like code bugs:
+#
+#   * The build command here ran migrations and ingest. The dashboard's ran `pip install`
+#     alone, so the deployed database was never migrated and every screen reading a
+#     student's own record answered 500.
+#   * `CHAT_MODEL` is deliberately absent here (see the note further down) so that the
+#     default in `app/config.py` is the only place a model name is written. The dashboard
+#     still held `kimi-k2.7-code-highspeed` from the Moonshot era, so every deployed turn
+#     asked OpenAI for a model it does not have and 404'd into the degradation path —
+#     which is the exact failure the note below describes as already fixed. It was fixed
+#     *here*, and here is not where the service reads from.
+#
+# So: change something in this file and you have changed nothing until you make the same
+# change in the dashboard. The lasting fix is to put the service under a Blueprint, which
+# means recreating it — new service, re-entered secrets, and `web/vercel.json`'s /api/*
+# rewrite repointed at the new host.
 services:
   - type: web
-    name: uax-api
+    # Matches the deployed service's name. It read `uax-api` while the service was called
+    # `path-pilot-api`, which is its own small proof that nothing validates this file.
+    name: path-pilot-api
     runtime: python
     plan: free
     region: oregon
@@ -74,7 +100,14 @@ services:
       # `value:` beats the code default, so every deployed turn asked OpenAI for a Kimi
       # model and 404'd into the generic degradation path. Leaving them unset means the
       # defaults in app/config.py are the only place a model name is written down.
-      # Override in the dashboard for a one-off comparison; do not re-pin them here.
+      #
+      # 2026-08-18: removing them from this file did not remove them from the service.
+      # `CHAT_MODEL=kimi-k2.7-code-highspeed` was still set in the dashboard and still
+      # winning, so the same 404 was live for six days — visible only as the assistant
+      # deferring every question with "hit a technical problem", and recorded in
+      # `ai_interactions.model` on every one of those turns. An env var set in the
+      # dashboard is not unset by deleting it here. Do not override for a comparison
+      # either: put it back to unset the moment the comparison is done.
 
       # Public by design — /demo prints it — but set here so a deployed instance can
       # rotate it without a code change.

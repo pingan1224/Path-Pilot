@@ -395,4 +395,11 @@ OpenAI embeddings/vision · GitHub Actions · Render · Vercel
 
 ## License
 
-MIT
+代码采用 MIT 协议，见 [LICENSE](LICENSE)。
+
+这只覆盖本仓库自己编写的部分，**不覆盖 `api/data/`** —— 那是 NYU 公开页面的一份带时间戳的
+快照，文本版权属于其发布方。每个文件的来源 URL、SHA-256 和抓取时间都记录在
+`api/data/raw/manifest.json` 里；它之所以随仓库一起提交，是为了让评测结果能在当初测量所用的
+同一份语料上复现。这部分内容的再使用，需要你自行与其发布方确认。
+
+独立个人项目，与纽约大学无隶属、无背书、无关联关系。

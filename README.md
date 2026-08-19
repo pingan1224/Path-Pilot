@@ -6,7 +6,7 @@
 
 ### A bounded, tool-using academic planning agent
 
-[![Evaluation gate](https://github.com/pingan1224/uax/actions/workflows/eval.yml/badge.svg)](https://github.com/pingan1224/uax/actions/workflows/eval.yml)
+[![Evaluation gate](https://github.com/pingan1224/Path-Pilot/actions/workflows/eval.yml/badge.svg)](https://github.com/pingan1224/Path-Pilot/actions/workflows/eval.yml)
 
 Path Pilot is an AI agent for NYU SPS graduate course planning. It turns a question such as
 “What should I take next term?” into a reviewable plan by combining native OpenAI tool

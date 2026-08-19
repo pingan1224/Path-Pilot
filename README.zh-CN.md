@@ -6,7 +6,7 @@
 
 ### 一个有边界、会调用工具的学业规划 Agent
 
-[![Evaluation gate](https://github.com/pingan1224/uax/actions/workflows/eval.yml/badge.svg)](https://github.com/pingan1224/uax/actions/workflows/eval.yml)
+[![Evaluation gate](https://github.com/pingan1224/Path-Pilot/actions/workflows/eval.yml/badge.svg)](https://github.com/pingan1224/Path-Pilot/actions/workflows/eval.yml)
 
 Path Pilot 是一个面向 NYU SPS 研究生选课规划的 AI Agent。它会把“我下学期应该
 选什么课？”这类开放问题，转化为一份可以检查、可以追溯的规划结果。系统结合了

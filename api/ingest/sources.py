@@ -54,8 +54,12 @@ SUPPORTED_LEVELS = {"graduate"}
 
 # Politeness. bulletins.nyu.edu publishes no Crawl-delay, so this is our own restraint.
 REQUEST_DELAY_SECONDS = 1.5
+# The contact is a URL rather than a mailbox. Crawler etiquette is that an operator who
+# sees this in their logs can reach whoever is responsible, and the repository's issues
+# satisfy that — while a bare address in a public repository is a harvested address.
 USER_AGENT = (
-    "path-pilot-portfolio-project/0.1 (personal learning project; +mailto:lsttc1224@gmail.com)"
+    "path-pilot-portfolio-project/0.1 "
+    "(personal learning project; +https://github.com/pingan1224/Path-Pilot)"
 )
 
 
